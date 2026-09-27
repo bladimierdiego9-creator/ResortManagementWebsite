@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Audit Log — A&amp;D Thysia Admin{% endblock %}
+{% block breadcrumb %}Audit Log{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Audit Log</h1>
+        <p class="page-subtitle">Complete trail of all admin actions in the system</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Entity</th>
+                    <th>Details</th>
+                    <th>IP Address</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs.items %}
+                <tr>
+                    <td class="text-muted" style="font-size:12px;">{{ log.id }}</td>
+                    <td>
+                        {% if log.account %}
+                        <span class="font-semibold">{{ log.account.username }}</span>
+                        {% else %}
+                        <span class="text-muted">System</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ log.action }}</td>
+                    <td>
+                        {% if log.entity_type %}
+                        <span class="badge badge-info">{{ log.entity_type }}</span>
+                        {% if log.entity_id %}#{{ log.entity_id }}{% endif %}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td class="text-secondary" style="font-size:12.5px;">{{ log.details or '—' }}</td>
+                    <td class="text-muted" style="font-size:12px;">{{ log.ip_address or '—' }}</td>
+                    <td class="text-muted" style="font-size:12px;">{{ log.created_at.strftime('%b %d, %Y %H:%M:%S') }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted" style="padding:36px;">No audit logs found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if logs.pages > 1 %}
+    <div class="card-footer flex items-center justify-between">
+        <span class="text-muted" style="font-size:13px;">
+            Showing page {{ logs.page }} of {{ logs.pages }} ({{ logs.total }} total entries)
+        </span>
+        <nav class="pagination" aria-label="Pagination">
+            {% if logs.has_prev %}
+            <a href="{{ url_for('system.audit_log', page=logs.prev_num) }}">&laquo;</a>
+            {% endif %}
+            {% for p in logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if p %}
+                    {% if p == logs.page %}
+                    <span class="current">{{ p }}</span>
+                    {% else %}
+                    <a href="{{ url_for('system.audit_log', page=p) }}">{{ p }}</a>
+                    {% endif %}
+                {% else %}
+                <span>…</span>
+                {% endif %}
+            {% endfor %}
+            {% if logs.has_next %}
+            <a href="{{ url_for('system.audit_log', page=logs.next_num) }}">&raquo;</a>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

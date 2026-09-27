@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% block title %}Overview — A&D Thysia{% endblock %}
+{% block breadcrumb %}Overview{% endblock %}
+
+{% block content %}
+
+<!-- Page header -->
+<div style="margin-bottom:6px;">
+    <div class="page-eyebrow">{{ today.strftime('%A, %d %B %Y').upper() }}</div>
+    <div class="page-header">
+        <div class="page-header-left">
+            <h1 class="page-title">Good {{ 'morning' if now.hour < 12 else ('afternoon' if now.hour < 17 else 'evening') }}, {{ current_user.full_name.split()[0] }}.</h1>
+            <p class="page-subtitle">Here's what's happening across A&amp;D Thysia today.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ── STAT CARDS ────────────────────────────────────── -->
+<div class="stats-grid">
+
+    <!-- Today's bookings -->
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <span class="stat-label">Today's Bookings</span>
+            <span class="stat-icon">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </span>
+        </div>
+        <span class="stat-value">{{ stats.todays_bookings }}</span>
+        <span class="stat-change up">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M5 1l4 5H1z"/></svg>
+            12.5% vs last Monday
+        </span>
+        <canvas id="sparkBookings" class="stat-sparkline"></canvas>
+    </div>
+
+    <!-- Revenue this month -->
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <span class="stat-label">Revenue This Month</span>
+            <span class="stat-icon">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M8.5 14c0 .828 1.343 1.5 3 1.5s3-.672 3-1.5-1.343-1.5-3-1.5-3-.672-3-1.5 1.343-1.5 3-1.5 3 .672 3 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M11.5 8.5V9m0 6v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/></svg>
+            </span>
+        </div>
+        <span class="stat-value" style="font-size:22px;">₱{{ "{:,.0f}".format(stats.revenue_this_month) }}</span>
+        <span class="stat-change {% if stats.revenue_change >= 0 %}up{% else %}down{% endif %}">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                {% if stats.revenue_change >= 0 %}<path d="M5 1l4 5H1z"/>{% else %}<path d="M5 9L1 4h8z"/>{% endif %}
+            </svg>
+            {{ stats.revenue_change|abs }}% vs August
+        </span>
+        <canvas id="sparkRevenue" class="stat-sparkline"></canvas>
+    </div>
+
+    <!-- Active staff -->
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <span class="stat-label">Active Staff</span>
+            <span class="stat-icon">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </span>
+        </div>
+        <span class="stat-value">{{ stats.clocked_in }} <span style="font-size:16px;font-weight:500;color:var(--text-muted);">/ {{ stats.total_staff }}</span></span>
+        <span class="stat-meta">{{ ((stats.clocked_in / stats.total_staff * 100) | round(0) | int) if stats.total_staff else 0 }}% clocked in today</span>
+    </div>
+
+    <!-- Needs attention -->
+    <div class="stat-card attention">
+        <div class="flex items-center justify-between">
+            <span class="stat-label">Needs Attention</span>
+            <span class="stat-icon">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </span>
+        </div>
+        <span class="stat-value" style="color:var(--pending-text);">{{ stats.needs_attention }}</span>
+        <span class="stat-meta" style="color:var(--pending-text);font-weight:600;">
+            AI escalations awaiting response
+        </span>
+        <div style="height:4px;background:var(--border);border-radius:99px;margin-top:10px;overflow:hidden;">
+            <div style="height:100%;width:{{ [((stats.needs_attention / 10 * 100)|int), 100]|min }}%;background:var(--accent);border-radius:99px;"></div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── CHARTS ROW ────────────────────────────────────── -->
+<div class="grid-2-1 mb-24">
+
+    <!-- Booking activity -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Booking activity</div>
+                <div style="font-size:11.5px;color:var(--text-muted);">Reservations across all facilities</div>
+            </div>
+            <div class="flex gap-8">
+                <button class="btn btn-sm btn-secondary btn-pill" style="font-size:11.5px;" onclick="switchBookingChart('month')">This month</button>
+                <button class="btn btn-sm btn-secondary btn-pill" style="font-size:11.5px;" onclick="switchBookingChart('last')">Last month</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="bookingChart"></canvas>
+            </div>
+            <div style="margin-top:10px;font-size:12px;color:var(--text-muted);">
+                <span style="display:inline-block;width:10px;height:10px;background:var(--accent);border-radius:2px;margin-right:5px;"></span>
+                Confirmed bookings
+                <span style="float:right;font-weight:700;color:var(--text-primary);font-size:13px;">
+                    {{ chart_data.booking.data | sum }} total reservations
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Facility occupancy -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Facility occupancy</div>
+                <div style="font-size:11.5px;color:var(--text-muted);">For today</div>
+            </div>
+            <span style="font-size:18px;cursor:pointer;color:var(--text-muted);">···</span>
+        </div>
+        <div class="card-body">
+            <div style="position:relative;height:180px;">
+                <canvas id="occupancyChart"></canvas>
+                <!-- Center label -->
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);text-align:center;pointer-events:none;">
+                    <div style="font-size:22px;font-weight:800;color:var(--text-primary);">
+                        {% set total = chart_data.occupancy.booked + chart_data.occupancy.available + chart_data.occupancy.blocked %}
+                        {{ ((chart_data.occupancy.booked / total * 100)|round(0)|int) if total else 0 }}%
+                    </div>
+                    <div style="font-size:10.5px;color:var(--text-muted);font-weight:600;">occupied</div>
+                </div>
+            </div>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:5px;">
+                <div class="flex items-center justify-between" style="font-size:12px;">
+                    <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--sidebar-bg);margin-right:6px;"></span>Booked</span>
+                    <span class="font-semibold">{{ chart_data.occupancy.booked }}</span>
+                </div>
+                <div class="flex items-center justify-between" style="font-size:12px;">
+                    <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:6px;"></span>Available</span>
+                    <span class="font-semibold">{{ chart_data.occupancy.available }}</span>
+                </div>
+                <div class="flex items-center justify-between" style="font-size:12px;">
+                    <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cancelled-text);margin-right:6px;"></span>Blocked</span>
+                    <span class="font-semibold">{{ chart_data.occupancy.blocked }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── RECENT RESERVATIONS + AI QUEUE ────────────────── -->
+<div class="grid-2-1">
+
+    <!-- Recent reservations -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Recent reservations</div>
+                <div style="font-size:11.5px;color:var(--text-muted);">Latest activity from your guests</div>
+            </div>
+            <a href="{{ url_for('reservations.index') }}" class="btn btn-sm btn-secondary">View all →</a>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Guest</th>
+                        <th>Facility</th>
+                        <th>Date &amp; Time</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for res in recent_reservations %}
+                    <tr>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <div class="guest-chip">{{ res.guest.full_name[:2].upper() }}</div>
+                                <span class="font-semibold">{{ res.guest.full_name }}</span>
+                            </div>
+                        </td>
+                        <td style="color:var(--text-secondary);">{{ res.facility.name }}</td>
+                        <td style="color:var(--text-secondary);">
+                            {{ res.event_date.strftime('%d %b %Y') }} · {{ res.start_time.strftime('%I:%M %p') }}
+                        </td>
+                        <td class="font-semibold">
+                            {% if res.payment %}₱{{ "{:,.0f}".format(res.payment.amount) }}{% else %}—{% endif %}
+                        </td>
+                        <td><span class="badge badge-{{ res.status }}">{{ res.status.title() }}</span></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center text-muted" style="padding:28px;">No reservations yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- AI concierge queue -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">AI concierge queue</div>
+                <div style="font-size:11.5px;color:var(--text-muted);">Conversations needing a human</div>
+            </div>
+            <a href="{{ url_for('ai_concierge.index') }}" style="font-size:12px;color:var(--accent);font-weight:600;">Open queue →</a>
+        </div>
+        <div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px;">
+            {% for log in ai_queue %}
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:var(--radius-md);background:var(--surface-2);border:1px solid var(--border-light);">
+                <div class="guest-chip" style="flex-shrink:0;">{{ log.guest_name[:2].upper() }}</div>
+                <div style="min-width:0;flex:1;">
+                    <div style="font-size:12.5px;font-weight:600;color:var(--text-primary);">{{ log.guest_name }}</div>
+                    <div style="font-size:11.5px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">"{{ log.inquiry[:60] }}{% if log.inquiry|length > 60 %}…{% endif %}"</div>
+                </div>
+                <div style="font-size:10.5px;color:var(--text-muted);white-space:nowrap;flex-shrink:0;">
+                    {{ log.created_at.strftime('%H:%M') }}
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding:28px;">
+                <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.5"/></svg>
+                <p style="font-size:12.5px;">No escalated inquiries.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* ── Charts ── */
+const bookingLabels = {{ chart_data.booking.labels | tojson }};
+const bookingData   = {{ chart_data.booking.data   | tojson }};
+
+renderSparkline('sparkBookings', {{ stats.sparkline | tojson }}, '#2F4A42');
+renderSparkline('sparkRevenue',  [80,95,70,110,130,120,145], '#C9975A');
+
+let bookingChart;
+function initBookingChart(labels, data) {
+    const canvas = document.getElementById('bookingChart');
+    if (!canvas) return;
+    if (bookingChart) bookingChart.destroy();
+    bookingChart = new Chart(canvas, {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'Bookings', data, backgroundColor: '#C9975A', borderRadius: 4, borderSkipped: false }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { backgroundColor: '#2A3B35' } },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#B0A898', maxTicksLimit: 8 } },
+                y: { grid: { color: '#F0EBE1' }, ticks: { font: { size: 10 }, color: '#B0A898', stepSize: 1 }, beginAtZero: true }
+            }
+        }
+    });
+}
+initBookingChart(bookingLabels, bookingData);
+function switchBookingChart() { initBookingChart(bookingLabels, bookingData); }
+
+(function () {
+    const canvas = document.getElementById('occupancyChart');
+    if (!canvas) return;
+    new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+            labels: ['Booked', 'Available', 'Blocked'],
+            datasets: [{ data: [{{ chart_data.occupancy.booked }}, {{ chart_data.occupancy.available }}, {{ chart_data.occupancy.blocked }}], backgroundColor: ['#2F4A42', '#C9975A', '#C1594A'], borderWidth: 3, borderColor: '#fff' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '72%', plugins: { legend: { display: false }, tooltip: { backgroundColor: '#2A3B35' } } }
+    });
+})();
+</script>
+{% endblock %}

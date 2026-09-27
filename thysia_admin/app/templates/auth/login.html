@@ -1,0 +1,154 @@
+﻿{% extends "base.html" %}
+
+{% block auth_content %}
+<div class="lp-page">
+
+    <div class="lp-container" id="lpContainer">
+
+        <!-- â”€â”€ SIGN IN FORM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+        <div class="lp-form-box lp-signin-box">
+            <form method="POST" action="{{ url_for('auth.login') }}" autocomplete="on">
+                <h2 class="lp-title">Sign In</h2>
+
+                {% if error %}
+                <div class="lp-error">{{ error }}</div>
+                {% endif %}
+
+                <div class="lp-field">
+                    <input type="text" name="username" placeholder="Username" required autofocus autocomplete="username">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/></svg>
+                </div>
+
+                <div class="lp-field">
+                    <input type="password" id="lp-pw" name="password" placeholder="Password" required autocomplete="current-password">
+                    <button type="button" onclick="togglePw()" class="lp-eye" aria-label="Toggle password">
+                        <svg id="eyeShow" width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
+                        <svg id="eyeHide" width="16" height="16" fill="none" viewBox="0 0 24 24" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+
+                <div class="lp-remember">
+                    <label><input type="checkbox" name="remember"> Remember me</label>
+                </div>
+
+                <button type="submit" class="lp-btn">Sign In</button>
+
+                <p class="lp-or">or sign in with</p>
+                <div class="lp-socials">
+                    <button type="button" class="lp-social-btn" title="RFID">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/><path d="M2 10h20" stroke="currentColor" stroke-width="2"/><circle cx="7" cy="15" r="1.5" fill="currentColor"/></svg>
+                    </button>
+                    <button type="button" class="lp-social-btn" title="Fingerprint">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 4C9.8 4 7.8 4.9 6.3 6.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4.2 9.5a8 8 0 000 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6.3 17.7A8 8 0 0012 20c1.5 0 2.9-.4 4.1-1.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19.8 14.5a8 8 0 000-5A8 8 0 0017.7 6.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 8a4 4 0 014 4c0 3-1.5 5.5-4 7-2.5-1.5-4-4-4-7a4 4 0 014-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                    </button>
+                    <button type="button" class="lp-social-btn" title="Key">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" stroke="currentColor" stroke-width="2"/><path d="M12 11l8-8M18 6l2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- â”€â”€ SLIDING OVERLAY PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+        <div class="lp-overlay-panel" id="lpOverlay">
+            <div class="lp-overlay-content">
+                <div class="lp-overlay-chip">A&amp;D</div>
+                <h2 class="lp-overlay-title">Welcome Back!</h2>
+                <p class="lp-overlay-sub">Sign in to manage A&amp;D Thysia<br>Resort &amp; Events Place</p>
+            </div>
+            <!-- decorative circles -->
+            <div class="lp-deco lp-deco-1"></div>
+            <div class="lp-deco lp-deco-2"></div>
+            <div class="lp-deco lp-deco-3"></div>
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+* { box-sizing: border-box; }
+.lp-page { min-height:100vh; display:flex; align-items:stretch; background:#F8F6F1; font-family:'Plus Jakarta Sans','Poppins',sans-serif; }
+.lp-container { position:relative; width:100%; min-height:100vh; background:#F8F6F1; overflow:hidden; display:flex; }
+.lp-form-box { width:60%; min-height:100vh; padding:48px 64px; display:flex; align-items:center; justify-content:center; background:#F8F6F1; z-index:1; }
+.lp-form-box form { width:100%; max-width:380px; display:flex; flex-direction:column; align-items:center; background:#fff; padding:44px 40px; border-radius:20px; box-shadow:0 4px 32px rgba(28,46,38,.08); border:1px solid #E6E0D4; }
+.lp-form-logo { display:flex; align-items:center; gap:10px; margin-bottom:20px; align-self:flex-start; }
+.lp-form-chip { width:38px; height:38px; background:linear-gradient(135deg,#2E4A3D,#4a7060); color:#D9A55C; font-weight:800; font-size:11px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.lp-form-brand { font-size:13px; font-weight:700; color:#2E4A3D; letter-spacing:.5px; }
+.lp-title { font-size:24px; font-weight:800; color:#1C2E26; margin-bottom:24px; letter-spacing:-.4px; align-self:flex-start; }
+.lp-error { width:100%; background:#f5dada; color:#c1594a; padding:9px 12px; border-radius:8px; font-size:12.5px; font-weight:500; margin-bottom:14px; border-left:3px solid #c1594a; }
+.lp-field { position:relative; width:100%; margin-bottom:14px; }
+.lp-field input { width:100%; padding:11px 40px 11px 16px; border:1.5px solid #E6E0D4; border-radius:10px; font-size:13px; color:#1C2E26; background:#F8F6F1; outline:none; font-family:inherit; transition:border-color .2s,box-shadow .2s; }
+.lp-field input:focus { border-color:#D9A55C; background:#fff; box-shadow:0 0 0 3px rgba(217,165,92,.15); }
+.lp-field input::placeholder { color:#B0ADA6; font-size:12.5px; }
+.lp-field > svg { position:absolute; right:13px; top:50%; transform:translateY(-50%); color:#B0ADA6; pointer-events:none; }
+.lp-eye { position:absolute; right:11px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#B0ADA6; padding:2px; display:flex; align-items:center; }
+.lp-eye:hover { color:#D9A55C; }
+.lp-remember { width:100%; margin-bottom:20px; font-size:12.5px; color:#6B7A72; }
+.lp-remember label { display:flex; align-items:center; gap:7px; cursor:pointer; }
+.lp-remember input[type=checkbox] { accent-color:#D9A55C; width:14px; height:14px; }
+.lp-btn { width:100%; padding:12px; background:#D9A55C; color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; letter-spacing:.3px; box-shadow:0 4px 18px rgba(217,165,92,.35); transition:transform .15s,box-shadow .15s,background .15s; margin-bottom:18px; }
+.lp-btn:hover { background:#C9773D; transform:translateY(-1px); }
+.lp-btn:active { transform:translateY(0); }
+.lp-or { font-size:11.5px; color:#B0ADA6; margin-bottom:14px; position:relative; width:100%; text-align:center; }
+.lp-or::before,.lp-or::after { content:""; position:absolute; top:50%; width:34%; height:1px; background:#D5CEBC; }
+.lp-or::before { left:0; }
+.lp-or::after { right:0; }
+.lp-socials { display:flex; gap:12px; }
+.lp-social-btn { width:42px; height:42px; border-radius:50%; border:1.5px solid #E6E0D4; background:#F8F6F1; color:#6B7A72; display:flex; align-items:center; justify-content:center; cursor:pointer; font-family:inherit; transition:border-color .15s,background .15s,color .15s,transform .15s; }
+.lp-social-btn:hover { border-color:#D9A55C; background:#F7EDDA; color:#A97830; transform:translateY(-2px); }
+.lp-footer { font-size:11px; color:#A0ADA6; text-align:center; margin-top:4px; }
+.lp-overlay-panel { position:absolute; top:0; right:0; bottom:0; width:40%; background:#2E4A3D; display:flex; align-items:center; justify-content:center; overflow:hidden; z-index:2; }
+.lp-overlay-content { position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; text-align:center; padding:40px 36px; }
+.lp-overlay-chip { width:60px; height:60px; background:rgba(255,255,255,.1); border:2px solid #D9A55C; color:#D9A55C; font-weight:800; font-size:16px; border-radius:16px; display:flex; align-items:center; justify-content:center; margin-bottom:24px; box-shadow:0 4px 20px rgba(217,165,92,.2); }
+.lp-overlay-title { font-size:28px; font-weight:800; color:#fff; margin-bottom:14px; letter-spacing:-.3px; line-height:1.2; }
+.lp-overlay-sub { font-size:13.5px; color:rgba(255,255,255,.6); line-height:1.75; font-weight:400; }
+.lp-deco { position:absolute; border-radius:50%; border:1.5px solid rgba(255,255,255,.07); pointer-events:none; }
+.lp-deco-1 { width:280px; height:280px; top:-80px; right:-80px; }
+.lp-deco-2 { width:200px; height:200px; bottom:-60px; left:-40px; background:rgba(217,165,92,.04); }
+.lp-deco-3 { width:100px; height:100px; top:42%; right:14px; border-color:rgba(217,165,92,.12); }
+@media (max-width:1024px) { .lp-form-box { padding:40px; } .lp-overlay-title { font-size:24px; } .lp-overlay-sub { font-size:13px; } }
+@media (max-width:768px) {
+  .lp-container { flex-direction:column; }
+  .lp-form-box { width:100%; min-height:auto; padding:40px 32px 48px; order:2; }
+  .lp-overlay-panel { position:relative; width:100%; height:200px; order:1; }
+  .lp-overlay-content { flex-direction:row; gap:20px; padding:24px 32px; text-align:left; align-items:center; }
+  .lp-overlay-chip { width:50px; height:50px; font-size:13px; margin-bottom:0; flex-shrink:0; }
+  .lp-overlay-title { font-size:20px; margin-bottom:6px; }
+  .lp-overlay-sub { font-size:12.5px; }
+  .lp-deco-2,.lp-deco-3 { display:none; }
+  .lp-form-box form { max-width:480px; }
+}
+@media (max-width:480px) {
+  .lp-form-box { padding:32px 16px 40px; }
+  .lp-form-box form { padding:32px 24px; border-radius:16px; }
+  .lp-overlay-panel { height:175px; }
+  .lp-overlay-content { flex-direction:column; text-align:center; padding:20px; gap:8px; }
+  .lp-overlay-chip { width:44px; height:44px; font-size:12px; margin-bottom:0; }
+  .lp-overlay-title { font-size:18px; margin-bottom:4px; }
+  .lp-overlay-sub { font-size:12px; }
+  .lp-title { font-size:21px; }
+  .lp-btn { font-size:13.5px; padding:11px; }
+}
+@media (max-width:360px) { .lp-form-box form { padding:26px 18px; } .lp-overlay-panel { height:155px; } }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePw() {
+    const input   = document.getElementById('lp-pw');
+    const eyeShow = document.getElementById('eyeShow');
+    const eyeHide = document.getElementById('eyeHide');
+    if (input.type === 'password') {
+        input.type = 'text';
+        eyeShow.style.display = 'none';
+        eyeHide.style.display = 'block';
+    } else {
+        input.type = 'password';
+        eyeShow.style.display = 'block';
+        eyeHide.style.display = 'none';
+    }
+}
+window.togglePw = togglePw;
+</script>
+{% endblock %}

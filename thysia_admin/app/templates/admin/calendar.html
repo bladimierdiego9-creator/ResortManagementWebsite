@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}Reservation Calendar — A&D Thysia{% endblock %}
+{% block breadcrumb %}Reservation Calendar{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Reservation Calendar</h1>
+        <p class="page-subtitle">All bookings across every facility, at a glance.</p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('reservations.new') }}" class="btn btn-primary btn-pill">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+            + New reservation
+        </a>
+    </div>
+</div>
+
+<!-- ── CALENDAR CARD ─────────────────────────────────── -->
+<div class="card">
+    <div class="card-header">
+        <div>
+            <div class="card-title">Reservation Calendar</div>
+            <div style="font-size:11.5px;color:var(--text-muted);">Click any booking to view details</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <span style="display:flex;align-items:center;gap:5px;font-size:12px;">
+                <span style="width:11px;height:11px;border-radius:3px;background:#2F4A42;display:inline-block;"></span> Confirmed
+            </span>
+            <span style="display:flex;align-items:center;gap:5px;font-size:12px;">
+                <span style="width:11px;height:11px;border-radius:3px;background:#C9975A;display:inline-block;"></span> Pending
+            </span>
+            <span style="display:flex;align-items:center;gap:5px;font-size:12px;">
+                <span style="width:11px;height:11px;border-radius:3px;background:#9ca3af;display:inline-block;"></span> Cancelled
+            </span>
+            <button onclick="refreshCalendar()" class="btn btn-sm btn-secondary btn-pill" style="font-size:11.5px;display:flex;align-items:center;gap:5px;">
+                <svg id="refreshIcon" width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 9A9 9 0 0 0 5.64 5.64M4 15a9 9 0 0 0 14.36 3.36" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                Refresh
+            </button>
+        </div>
+    </div>
+    <div class="card-body" style="padding:16px;">
+        <div id="reservationCalendar"></div>
+    </div>
+</div>
+
+<!-- ── BOOKING DETAIL MODAL ──────────────────────────── -->
+<div id="bookingModal" style="
+    display:none;position:fixed;inset:0;z-index:1000;
+    background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+    <div style="
+        background:#fff;border-radius:14px;padding:28px 28px 22px;
+        width:100%;max-width:420px;margin:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);
+        position:relative;">
+        <button onclick="closeBookingModal()" style="
+            position:absolute;top:14px;right:16px;background:none;border:none;
+            font-size:20px;color:#9ca3af;cursor:pointer;line-height:1;" aria-label="Close">×</button>
+        <div id="modalBadge" style="
+            display:inline-block;padding:3px 10px;border-radius:99px;
+            font-size:11px;font-weight:700;letter-spacing:.5px;
+            text-transform:uppercase;margin-bottom:12px;"></div>
+        <div style="font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:.5px;margin-bottom:2px;" id="modalRef"></div>
+        <div style="font-size:20px;font-weight:800;color:#1a2e25;margin-bottom:18px;" id="modalGuest"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="modal-field"><div class="modal-field-label">Facility</div><div class="modal-field-val" id="modalFacility"></div></div>
+            <div class="modal-field"><div class="modal-field-label">Date</div><div class="modal-field-val" id="modalDate"></div></div>
+            <div class="modal-field"><div class="modal-field-label">Time</div><div class="modal-field-val" id="modalTime"></div></div>
+            <div class="modal-field"><div class="modal-field-label">Guests</div><div class="modal-field-val" id="modalGuests"></div></div>
+            <div class="modal-field"><div class="modal-field-label">Contact</div><div class="modal-field-val" id="modalPhone"></div></div>
+            <div class="modal-field"><div class="modal-field-label">Amount</div><div class="modal-field-val" id="modalAmount"></div></div>
+        </div>
+        <div id="modalNotesWrap" style="margin-top:12px;display:none;">
+            <div class="modal-field-label">Notes</div>
+            <div id="modalNotes" style="font-size:12.5px;color:#4b5563;margin-top:3px;"></div>
+        </div>
+        <div style="margin-top:20px;text-align:right;">
+            <a id="modalViewLink" href="#" class="btn btn-sm btn-primary">View reservation →</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+<style>
+#reservationCalendar { font-family: 'Plus Jakarta Sans', sans-serif; }
+.fc .fc-toolbar-title { font-size: 15px; font-weight: 700; color: #1a2e25; }
+.fc .fc-button {
+    background: #f5f0e8; border: 1px solid #e0d8cc; color: #3d5a4a;
+    border-radius: 8px; font-size: 12px; font-weight: 600;
+    padding: 5px 12px; box-shadow: none;
+}
+.fc .fc-button:hover { background: #ede8df; }
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active { background: #2F4A42; border-color: #2F4A42; color: #fff; }
+.fc .fc-col-header-cell-cushion { font-size: 11px; font-weight: 700; color: #6b7a72; text-decoration: none; }
+.fc .fc-daygrid-day-number { font-size: 11.5px; color: #4b5563; text-decoration: none; padding: 4px 6px; }
+.fc .fc-day-today { background: #fdf8f0 !important; }
+.fc .fc-day-today .fc-daygrid-day-number { color: #C9975A; font-weight: 800; }
+.fc-theme-standard td, .fc-theme-standard th { border-color: #ede8df; }
+.fc-theme-standard .fc-scrollgrid { border-color: #ede8df; }
+.fc .fc-daygrid-day-frame { min-height: 90px; }
+.fc .fc-daygrid-body-natural .fc-daygrid-day-events { padding-bottom: 4px; }
+.fc .fc-event,
+.fc .fc-event:hover { background: none !important; border: none !important; box-shadow: none !important; padding: 0 !important; }
+.fc .fc-event-main { padding: 0 !important; }
+.fc .fc-daygrid-event-harness { margin: 1px 0 !important; }
+
+.cal-event-card {
+    display: flex; flex-direction: column; gap: 1px;
+    border-radius: 5px; padding: 3px 6px; margin: 0 2px;
+    cursor: pointer; overflow: hidden;
+}
+.cal-event-guest {
+    font-size: 11.5px; font-weight: 700; color: #fff;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;
+}
+.cal-event-times {
+    font-size: 10px; font-weight: 500;
+    color: rgba(255,255,255,0.88); line-height: 1.3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.modal-field { background: #f9f7f3; border-radius: 8px; padding: 8px 10px; }
+.modal-field-label { font-size: 10.5px; color: #9ca3af; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
+.modal-field-val { font-size: 13px; font-weight: 600; color: #1a2e25; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<script>
+let calendarInstance = null;
+
+document.addEventListener('DOMContentLoaded', function () {
+    const calEl = document.getElementById('reservationCalendar');
+
+    calendarInstance = new FullCalendar.Calendar(calEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left:   'prev,next today',
+            center: 'title',
+            right:  'dayGridMonth,listMonth'
+        },
+        buttonText: { today: 'Today', month: 'Month', list: 'List' },
+        height: 'auto',
+        dayMaxEvents: true,
+
+        events: function (info, successCallback, failureCallback) {
+            fetch(`/admin/api/bookings?start=${info.startStr}&end=${info.endStr}&_=${Date.now()}`)
+                .then(r => r.json())
+                .then(data => successCallback(data))
+                .catch(() => failureCallback());
+        },
+        refetchResourcesOnNavigate: true,
+
+        eventContent: function (arg) {
+            const p   = arg.event.extendedProps;
+            const bg  = arg.event.backgroundColor || '#2F4A42';
+            const name = (p.guest || arg.event.title || '').trim();
+
+            const card = document.createElement('div');
+            card.className = 'cal-event-card';
+            card.style.backgroundColor = bg;
+
+            const guestEl = document.createElement('div');
+            guestEl.className = 'cal-event-guest';
+            guestEl.textContent = name;
+
+            const timeEl = document.createElement('div');
+            timeEl.className = 'cal-event-times';
+            timeEl.textContent = `${p.start_time || ''} – ${p.end_time || ''}`;
+
+            card.appendChild(guestEl);
+            card.appendChild(timeEl);
+            return { domNodes: [card] };
+        },
+
+        eventClick: function (info) {
+            openBookingModal(info.event);
+            info.jsEvent.preventDefault();
+        },
+
+        listDaySideFormat: { weekday: 'short' },
+    });
+
+    calendarInstance.render();
+});
+
+function refreshCalendar() {
+    if (!calendarInstance) return;
+    const icon = document.getElementById('refreshIcon');
+    if (icon) icon.style.animation = 'spin 0.6s linear';
+    calendarInstance.refetchEvents();
+    setTimeout(() => { if (icon) icon.style.animation = ''; }, 700);
+}
+window.refreshCalendar = refreshCalendar;
+
+function openBookingModal(event) {
+    const p = event.extendedProps;
+    const badgeColors = {
+        confirmed: { bg: '#dcf1e8', color: '#1a7a4a' },
+        pending:   { bg: '#fef3e2', color: '#b45309' },
+        cancelled: { bg: '#f3f4f6', color: '#6b7280' },
+    };
+    const bc = badgeColors[p.status] || badgeColors.cancelled;
+    const badge = document.getElementById('modalBadge');
+    badge.textContent = p.status.toUpperCase();
+    badge.style.background = bc.bg;
+    badge.style.color = bc.color;
+
+    document.getElementById('modalRef').textContent      = p.ref;
+    document.getElementById('modalGuest').textContent    = p.guest;
+    document.getElementById('modalFacility').textContent = p.facility;
+    document.getElementById('modalDate').textContent     =
+        new Date(event.startStr + 'T00:00:00')
+            .toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+    document.getElementById('modalTime').textContent     = `${p.start_time} – ${p.end_time}`;
+    document.getElementById('modalGuests').textContent   = `${p.guests} pax`;
+    document.getElementById('modalPhone').textContent    = p.phone;
+    document.getElementById('modalAmount').textContent   =
+        p.amount ? `₱${Number(p.amount).toLocaleString('en-PH', { minimumFractionDigits: 0 })}` : '—';
+
+    const notesWrap = document.getElementById('modalNotesWrap');
+    if (p.notes) {
+        document.getElementById('modalNotes').textContent = p.notes;
+        notesWrap.style.display = 'block';
+    } else {
+        notesWrap.style.display = 'none';
+    }
+
+    document.getElementById('modalViewLink').href = `/reservations/${event.id}`;
+    document.getElementById('bookingModal').style.display = 'flex';
+}
+
+function closeBookingModal() {
+    document.getElementById('bookingModal').style.display = 'none';
+}
+window.closeBookingModal = closeBookingModal;
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('bookingModal').addEventListener('click', function (e) {
+        if (e.target === this) closeBookingModal();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeBookingModal();
+    });
+});
+</script>
+{% endblock %}

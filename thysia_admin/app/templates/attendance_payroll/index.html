@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Attendance &amp; Payroll — A&amp;D Thysia Admin{% endblock %}
+{% block breadcrumb %}Attendance &amp; Payroll{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Attendance &amp; Payroll</h1>
+        <p class="page-subtitle">RFID attendance tracking, payroll generation, and shift handovers</p>
+    </div>
+</div>
+
+<!-- TODAY STATS -->
+<div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-bottom:20px;">
+    <div class="stat-card">
+        <span class="stat-label">Clocked In Today</span>
+        <span class="stat-value">{{ today_total }}</span>
+        <span class="stat-meta">of {{ staff_list | length }} active staff</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">On Time</span>
+        <span class="stat-value" style="color:var(--success);">{{ today_on_time }}</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Late</span>
+        <span class="stat-value" style="color:var(--warning);">{{ today_late }}</span>
+    </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+    <a href="{{ url_for('attendance_payroll.index', tab='attendance') }}"
+       class="tab {% if tab == 'attendance' %}active{% endif %}">Attendance Logs</a>
+    <a href="{{ url_for('attendance_payroll.index', tab='payroll') }}"
+       class="tab {% if tab == 'payroll' %}active{% endif %}">Payroll</a>
+    <a href="{{ url_for('attendance_payroll.index', tab='handovers') }}"
+       class="tab {% if tab == 'handovers' %}active{% endif %}">Shift Handovers</a>
+</div>
+
+<!-- ATTENDANCE TAB -->
+{% if tab == 'attendance' %}
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Staff</th>
+                    <th>Role</th>
+                    <th>Time In</th>
+                    <th>Time Out</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                    <th>RFID</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in attendance_logs.items %}
+                <tr>
+                    <td class="font-semibold">{{ log.staff.full_name }}</td>
+                    <td>{{ log.staff.role.replace('_', ' ').title() }}</td>
+                    <td>{{ log.time_in.strftime('%b %d, %H:%M') }}</td>
+                    <td>
+                        {% if log.time_out %}
+                        {{ log.time_out.strftime('%H:%M') }}
+                        {% else %}
+                        <span class="badge badge-confirmed" style="font-size:11px;">Active</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted">
+                        {% if log.time_out %}
+                        {% set mins = ((log.time_out - log.time_in).total_seconds() / 60) | int %}
+                        {{ (mins // 60) }}h {{ (mins % 60) }}m
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        <span class="att-dot {{ log.status }}"></span>
+                        <span class="badge badge-{{ log.status }}">{{ log.status.replace('_', ' ').title() }}</span>
+                    </td>
+                    <td class="text-muted" style="font-size:12px;">{{ log.rfid_tap_in or '—' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted" style="padding:36px;">No attendance logs.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if attendance_logs.pages > 1 %}
+    <div class="card-footer flex items-center justify-between">
+        <span class="text-muted" style="font-size:13px;">Page {{ attendance_logs.page }} of {{ attendance_logs.pages }}</span>
+        <nav class="pagination" aria-label="Pagination">
+            {% if attendance_logs.has_prev %}
+            <a href="{{ url_for('attendance_payroll.index', tab='attendance', page=attendance_logs.prev_num) }}">&laquo;</a>
+            {% endif %}
+            {% for p in attendance_logs.iter_pages() %}
+                {% if p %}<a href="{{ url_for('attendance_payroll.index', tab='attendance', page=p) }}" class="{% if p == attendance_logs.page %}current{% endif %}">{{ p }}</a>{% else %}<span>…</span>{% endif %}
+            {% endfor %}
+            {% if attendance_logs.has_next %}
+            <a href="{{ url_for('attendance_payroll.index', tab='attendance', page=attendance_logs.next_num) }}">&raquo;</a>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- PAYROLL TAB -->
+{% elif tab == 'payroll' %}
+<div class="grid-2-1">
+    <div class="card">
+        <div class="card-header"><span class="card-title">Payroll Records</span></div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Staff</th>
+                        <th>Period</th>
+                        <th>Regular Hrs</th>
+                        <th>OT Hrs</th>
+                        <th>Gross</th>
+                        <th>Deductions</th>
+                        <th>Net Pay</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pr in payrolls %}
+                    <tr>
+                        <td class="font-semibold">{{ pr.staff.full_name }}</td>
+                        <td class="text-muted" style="font-size:12px;">{{ pr.pay_period_start.strftime('%b %d') }} – {{ pr.pay_period_end.strftime('%b %d, %Y') }}</td>
+                        <td>{{ pr.regular_hours }}</td>
+                        <td>{{ pr.overtime_hours }}</td>
+                        <td>₱{{ "{:,.2f}".format(pr.gross_pay) }}</td>
+                        <td class="text-danger">-₱{{ "{:,.2f}".format(pr.deductions) }}</td>
+                        <td class="font-bold" style="color:var(--success);">₱{{ "{:,.2f}".format(pr.net_pay) }}</td>
+                        <td><span class="badge badge-{{ pr.status }}">{{ pr.status.title() }}</span></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8" class="text-center text-muted" style="padding:36px;">No payroll records. Generate payroll below.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card" style="align-self:start;">
+        <div class="card-header"><span class="card-title">Generate Payroll</span></div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('attendance_payroll.generate_payroll') }}"
+                  data-confirm="Generate payroll for all active staff for this period?">
+                <div class="form-group">
+                    <label class="form-label">Period Start</label>
+                    <input type="date" name="period_start" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Period End</label>
+                    <input type="date" name="period_end" class="form-input" required>
+                </div>
+                <p class="form-hint">Will calculate hours from attendance logs for all {{ staff_list | length }} active staff.</p>
+                <div class="mt-16">
+                    <button type="submit" class="btn btn-primary w-full" style="justify-content:center;">Generate Payroll</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- HANDOVERS TAB -->
+{% elif tab == 'handovers' %}
+<div class="card">
+    <div class="card-header"><span class="card-title">Shift Handover Logs</span></div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Outgoing Staff</th>
+                    <th>Incoming Staff</th>
+                    <th>Notes</th>
+                    <th>Pending Tasks</th>
+                    <th>Acknowledged</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for h in handovers %}
+                <tr>
+                    <td class="font-semibold">{{ h.outgoing_staff.full_name }}</td>
+                    <td>{{ h.incoming_staff.full_name if h.incoming_staff else '—' }}</td>
+                    <td style="max-width:200px;">{{ h.notes[:80] }}{% if h.notes|length > 80 %}…{% endif %}</td>
+                    <td class="text-secondary" style="font-size:12.5px;">{{ h.pending_tasks or '—' }}</td>
+                    <td>
+                        {% if h.acknowledged %}
+                        <span class="badge badge-confirmed">Yes</span>
+                        {% else %}
+                        <span class="badge badge-pending">No</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted" style="font-size:12px;">{{ h.created_at.strftime('%b %d, %H:%M') }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted" style="padding:36px;">No shift handovers logged.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

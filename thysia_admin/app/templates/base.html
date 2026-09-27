@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}A&D Thysia Admin Console{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body>
+
+{% if current_user.is_authenticated %}
+<!-- ══ SIDEBAR ════════════════════════════════════════════ -->
+<aside class="sidebar" id="sidebar">
+
+    <!-- Logo -->
+    <div class="sidebar-logo">
+        <div class="logo-chip">A&amp;D</div>
+        <div class="logo-text">
+            <span class="logo-title">A&amp;D THYSIA</span>
+            <span class="logo-sub">Admin Console</span>
+        </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">Workspace</div>
+        <ul class="nav-list">
+            <li>
+                <a href="{{ url_for('admin.overview') }}"
+                   class="nav-item {% if request.endpoint == 'admin.overview' %}active{% endif %}">
+                    <span class="nav-icon">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/>
+                            <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/>
+                            <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/>
+                            <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </span>
+                    Dashboard
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('reservations.index') }}"
+                   class="nav-item {% if request.blueprint == 'reservations' %}active{% endif %}">
+                    <span class="nav-icon">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <rect x="3" y="4" width="18" height="17" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                    Reservations
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('admin.calendar') }}"
+                   class="nav-item {% if request.endpoint == 'admin.calendar' %}active{% endif %}">
+                    <span class="nav-icon">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <rect x="3" y="4" width="18" height="17" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                    Calendar
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('facilities.index') }}"
+                   class="nav-item {% if request.blueprint == 'facilities' %}active{% endif %}">
+                    <span class="nav-icon">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <path d="M12 3L4 9v12h16V9L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                            <rect x="9" y="14" width="6" height="7" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </span>
+                    Facilities
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('payments.index') }}"
+                   class="nav-item {% if request.blueprint == 'payments' %}active{% endif %}">
+                    <span class="nav-icon">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M2 10h20" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </span>
+                    Payments
+                </a>
+            </li>
+        </ul>
+
+        <div class="nav-divider"></div>
+        <div class="nav-section-label">Analytics</div>
+        <ul class="nav-list">
+            <li>
+                <a href="{{ url_for('analytics.index') }}"
+                   class="nav-item {% if request.blueprint == 'analytics' %}active{% endif %}">
+                    <span class="nav-icon">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <path d="M3 17l4-5 4 3 4-6 4 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M3 21h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                    Analytics
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('ai_concierge.index') }}"
+                   class="nav-item {% if request.blueprint == 'ai_concierge' %}active{% endif %}">
+                    <span class="nav-icon">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    AI Concierge
+                    {%- if g_ai_unread is defined and g_ai_unread > 0 %}
+                    <span class="nav-badge">{{ g_ai_unread }}</span>
+                    {%- endif %}
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('attendance_payroll.index') }}"
+                   class="nav-item {% if request.blueprint == 'attendance_payroll' %}active{% endif %}">
+                    <span class="nav-icon">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
+                            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                    Attendance
+                </a>
+            </li>
+        </ul>
+
+        {% if current_user.is_admin %}
+        <div class="nav-divider"></div>
+        <div class="nav-section-label">Administration</div>
+        <ul class="nav-list">
+            <li>
+                <a href="{{ url_for('accounts.index', tab='admins') }}"
+                   class="nav-item {% if request.blueprint == 'accounts' and request.args.get('tab') != 'staff' and request.args.get('tab') != 'guests' %}active{% endif %}">
+                    <span class="nav-icon">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+                            <path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                    Admin Accounts
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('accounts.index', tab='staff') }}"
+                   class="nav-item {% if request.blueprint == 'accounts' and request.args.get('tab') == 'staff' %}active{% endif %}">
+                    <span class="nav-icon">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
+                            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                    Staff Management
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('system.settings') }}"
+                   class="nav-item {% if request.endpoint == 'system.settings' %}active{% endif %}">
+                    <span class="nav-icon">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </span>
+                    System Settings
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('system.audit_log') }}"
+                   class="nav-item {% if request.endpoint == 'system.audit_log' %}active{% endif %}">
+                    <span class="nav-icon">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2"/>
+                            <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                    Audit Log
+                </a>
+            </li>
+        </ul>
+        {% endif %}
+    </nav>
+
+    <!-- User chip -->
+    <div class="sidebar-user">
+        <div class="user-avatar">{{ current_user.full_name[:2].upper() }}</div>
+        <div class="user-info">
+            <span class="user-name">{{ current_user.full_name }}</span>
+            <span class="user-role">{{ current_user.role.replace('_', ' ').title() }}</span>
+        </div>
+        <a href="{{ url_for('auth.logout') }}" class="user-menu-btn" title="Sign out"
+           onclick="return confirm('Are you sure you want to sign out?')"
+           style="text-decoration:none;">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+    </div>
+</aside>
+
+<!-- Mobile overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<!-- ══ MAIN WRAPPER ══════════════════════════════════════ -->
+<div class="main-wrapper">
+
+    <!-- Top bar -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <button class="hamburger" onclick="toggleSidebar()" aria-label="Toggle menu">
+                <span></span><span></span><span></span>
+            </button>
+            <nav class="breadcrumb" aria-label="Breadcrumb">
+                <a href="{{ url_for('admin.overview') }}" class="breadcrumb-home">A&amp;D Thysia</a>
+                <span class="breadcrumb-sep">/</span>
+                <span class="breadcrumb-current">{% block breadcrumb %}Overview{% endblock %}</span>
+            </nav>
+        </div>
+        <div class="topbar-right">
+            <span class="live-pill">
+                <span class="live-dot"></span> Live
+            </span>
+            <button class="topbar-icon-btn" title="Help" aria-label="Help">
+                <svg width="15" height="15" fill="none" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                    <path d="M9 9a3 3 0 015.83 1c0 2-3 3-3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="12" cy="17" r="1" fill="currentColor"/>
+                </svg>
+            </button>
+            <div class="topbar-avatar">{{ current_user.full_name[:2].upper() }}</div>
+        </div>
+    </header>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container">
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">
+            {{ message }}
+            <button onclick="this.parentElement.remove()" class="flash-close" aria-label="Dismiss">×</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- Page content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+{% else %}
+<!-- Unauthenticated: login page -->
+{% block auth_content %}{% endblock %}
+{% endif %}
+
+<script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

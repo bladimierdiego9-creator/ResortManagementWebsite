@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Payments — A&amp;D Thysia Admin{% endblock %}
+{% block breadcrumb %}Payments &amp; Reports{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Payments &amp; Reports</h1>
+        <p class="page-subtitle">Track and manage all payment transactions</p>
+    </div>
+</div>
+
+<!-- SUMMARY STATS -->
+<div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));margin-bottom:20px;">
+    <div class="stat-card">
+        <span class="stat-label">Total Revenue (Paid)</span>
+        <span class="stat-value" style="font-size:22px;">₱{{ "{:,.0f}".format(total_revenue) }}</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Pending Amount</span>
+        <span class="stat-value" style="font-size:22px;color:var(--warning);">₱{{ "{:,.0f}".format(pending_amount) }}</span>
+    </div>
+</div>
+
+<!-- FILTERS -->
+<form method="GET" action="{{ url_for('payments.index') }}" class="filter-bar">
+    <select name="status" class="form-select" onchange="this.form.submit()">
+        <option value="">All Statuses</option>
+        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>Paid</option>
+        <option value="refunded" {% if status_filter == 'refunded' %}selected{% endif %}>Refunded</option>
+    </select>
+    <select name="mode" class="form-select" onchange="this.form.submit()">
+        <option value="">All Modes</option>
+        <option value="cash" {% if mode_filter == 'cash' %}selected{% endif %}>Cash</option>
+        <option value="gcash" {% if mode_filter == 'gcash' %}selected{% endif %}>GCash</option>
+        <option value="bank" {% if mode_filter == 'bank' %}selected{% endif %}>Bank Transfer</option>
+        <option value="card" {% if mode_filter == 'card' %}selected{% endif %}>Card</option>
+    </select>
+    <button type="submit" class="btn btn-secondary">Filter</button>
+    <a href="{{ url_for('payments.index') }}" class="btn btn-secondary">Reset</a>
+</form>
+
+<!-- TABLE -->
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Reservation</th>
+                    <th>Guest</th>
+                    <th>Amount</th>
+                    <th>Mode</th>
+                    <th>Receipt #</th>
+                    <th>Status</th>
+                    <th>Paid At</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payments %}
+                <tr>
+                    <td class="text-muted" style="font-size:12px;">#{{ p.id }}</td>
+                    <td>
+                        <a href="{{ url_for('reservations.detail', id=p.reservation_id) }}" class="text-secondary" style="text-decoration:underline;">
+                            Res #{{ p.reservation_id }}
+                        </a>
+                    </td>
+                    <td>{{ p.reservation.guest.full_name }}</td>
+                    <td class="font-bold">₱{{ "{:,.2f}".format(p.amount) }}</td>
+                    <td>
+                        <span class="badge badge-info">{{ p.payment_mode.title() }}</span>
+                    </td>
+                    <td style="font-size:12px;">{{ p.receipt_number or '—' }}</td>
+                    <td><span class="badge badge-{{ p.status }}">{{ p.status.title() }}</span></td>
+                    <td class="text-muted" style="font-size:12px;">
+                        {{ p.paid_at.strftime('%b %d, %H:%M') if p.paid_at else '—' }}
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('payments.update', id=p.id) }}" class="flex gap-8 items-center">
+                            <select name="status" class="form-select" style="padding:4px 8px;font-size:12px;width:auto;">
+                                <option value="pending" {% if p.status == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="paid" {% if p.status == 'paid' %}selected{% endif %}>Paid</option>
+                                <option value="refunded" {% if p.status == 'refunded' %}selected{% endif %}>Refunded</option>
+                            </select>
+                            <button type="submit" class="btn btn-xs btn-primary">Save</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted" style="padding:36px;">No payments found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if pagination.pages > 1 %}
+    <div class="card-footer flex items-center justify-between">
+        <span class="text-muted" style="font-size:13px;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        <nav class="pagination" aria-label="Pagination">
+            {% if pagination.has_prev %}
+            <a href="{{ url_for('payments.index', page=pagination.prev_num, status=status_filter, mode=mode_filter) }}">&laquo;</a>
+            {% endif %}
+            {% for p in pagination.iter_pages() %}
+                {% if p %}
+                    {% if p == pagination.page %}
+                    <span class="current">{{ p }}</span>
+                    {% else %}
+                    <a href="{{ url_for('payments.index', page=p, status=status_filter, mode=mode_filter) }}">{{ p }}</a>
+                    {% endif %}
+                {% else %}
+                <span>…</span>
+                {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+            <a href="{{ url_for('payments.index', page=pagination.next_num, status=status_filter, mode=mode_filter) }}">&raquo;</a>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

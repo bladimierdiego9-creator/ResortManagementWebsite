@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}AI Concierge — A&amp;D Thysia Admin{% endblock %}
+{% block breadcrumb %}AI Concierge{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">AI Concierge</h1>
+        <p class="page-subtitle">Manage guest inquiries — {{ unread_count }} escalated &amp; unresolved</p>
+    </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+    <a href="{{ url_for('ai_concierge.index', status='escalated') }}"
+       class="tab {% if status_filter == 'escalated' %}active{% endif %}">
+        Escalated / Needs Reply
+        {% if unread_count > 0 %}
+        <span class="nav-badge" style="margin-left:6px;background:var(--danger);">{{ unread_count }}</span>
+        {% endif %}
+    </a>
+    <a href="{{ url_for('ai_concierge.index', status='resolved') }}"
+       class="tab {% if status_filter == 'resolved' %}active{% endif %}">Resolved</a>
+    <a href="{{ url_for('ai_concierge.index', status='all') }}"
+       class="tab {% if status_filter == 'all' %}active{% endif %}">All Inquiries</a>
+</div>
+
+{% for log in logs %}
+<div class="chat-card">
+    <div class="chat-card-header">
+        <div>
+            <span class="chat-guest-name">{{ log.guest_name }}</span>
+            {% if log.guest_contact %}
+            <span class="text-muted" style="font-size:12px;margin-left:8px;">{{ log.guest_contact }}</span>
+            {% endif %}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+            {% if log.escalated and not log.resolved %}
+            <span class="badge badge-pending">Escalated</span>
+            {% elif log.resolved %}
+            <span class="badge badge-confirmed">Resolved</span>
+            {% endif %}
+            <span class="chat-time">{{ log.created_at.strftime('%b %d, %Y %H:%M') }}</span>
+        </div>
+    </div>
+
+    <div class="chat-inquiry">
+        <strong style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);">Guest Inquiry</strong><br>
+        {{ log.inquiry }}
+    </div>
+
+    {% if log.ai_response %}
+    <div class="chat-ai-response">
+        <strong style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--brand-green);">AI Response</strong><br>
+        {{ log.ai_response }}
+    </div>
+    {% endif %}
+
+    {% if log.admin_reply %}
+    <div class="chat-admin-reply">
+        <strong style="font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--info);">Admin Reply</strong><br>
+        {{ log.admin_reply }}
+    </div>
+    {% endif %}
+
+    {% if not log.resolved %}
+    <form method="POST" action="{{ url_for('ai_concierge.reply', id=log.id) }}" class="chat-reply-form">
+        <input type="text" name="admin_reply" class="form-input" placeholder="Type your reply to the guest…" required>
+        <button type="submit" class="btn btn-primary" style="white-space:nowrap;">Send Reply</button>
+    </form>
+    <div style="margin-top:8px;">
+        <form method="POST" action="{{ url_for('ai_concierge.resolve', id=log.id) }}" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-secondary">Mark as Resolved</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <svg width="40" height="40" fill="none" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="1.5"/></svg>
+        <p>No inquiries in this category.</p>
+    </div>
+</div>
+{% endfor %}
+
+{% if pagination.pages > 1 %}
+<div class="flex items-center justify-between mt-16">
+    <span class="text-muted" style="font-size:13px;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+    <nav class="pagination" aria-label="Pagination">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('ai_concierge.index', page=pagination.prev_num, status=status_filter) }}">&laquo;</a>
+        {% endif %}
+        {% for p in pagination.iter_pages() %}
+            {% if p %}
+                {% if p == pagination.page %}
+                <span class="current">{{ p }}</span>
+                {% else %}
+                <a href="{{ url_for('ai_concierge.index', page=p, status=status_filter) }}">{{ p }}</a>
+                {% endif %}
+            {% else %}
+            <span>…</span>
+            {% endif %}
+        {% endfor %}
+        {% if pagination.has_next %}
+        <a href="{{ url_for('ai_concierge.index', page=pagination.next_num, status=status_filter) }}">&raquo;</a>
+        {% endif %}
+    </nav>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}{{ 'New Reservation' if mode == 'new' else 'Reservation #' ~ reservation.id }} — A&amp;D Thysia Admin{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('reservations.index') }}" class="breadcrumb-home">Reservations</a> <span class="breadcrumb-sep">/</span> {{ 'New' if mode == 'new' else '#' ~ reservation.id }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">{{ 'New Reservation' if mode == 'new' else 'Reservation #' ~ reservation.id }}</h1>
+        <p class="page-subtitle">{{ 'Fill in the details to create a new booking.' if mode == 'new' else 'View and manage this reservation.' }}</p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('reservations.index') }}" class="btn btn-secondary">← Back</a>
+    </div>
+</div>
+
+{% if mode == 'new' %}
+<!-- NEW RESERVATION FORM -->
+<div class="card" style="max-width:720px;">
+    <div class="card-header"><span class="card-title">Booking Details</span></div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('reservations.new') }}">
+            <!-- Guest Selection -->
+            <div class="form-group">
+                <label class="form-label">Guest</label>
+                <select name="guest_id" class="form-select" id="guestSelect" onchange="toggleNewGuest(this.value)">
+                    <option value="">— Select existing guest —</option>
+                    <option value="new">➕ Add new guest</option>
+                    {% for g in guests %}
+                    <option value="{{ g.id }}">{{ g.full_name }} {% if g.phone %}({{ g.phone }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div id="newGuestFields" style="display:none; background:var(--surface-2); border-radius:var(--radius-md); padding:16px; margin-bottom:16px;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Full Name *</label>
+                        <input type="text" name="guest_name" class="form-input" placeholder="Guest full name">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="text" name="guest_phone" class="form-input" placeholder="09XXXXXXXXX">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="guest_email" class="form-input" placeholder="guest@email.com">
+                </div>
+            </div>
+
+            <!-- Facility -->
+            <div class="form-group">
+                <label class="form-label">Facility</label>
+                <select name="facility_id" class="form-select" required>
+                    <option value="">— Select facility —</option>
+                    {% for f in facilities %}
+                    <option value="{{ f.id }}">{{ f.name }} (Cap: {{ f.capacity }} | ₱{{ "{:,.0f}".format(f.price_per_hour) }}/hr)</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Date & Time -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Event Date *</label>
+                    <input type="date" name="event_date" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Guest Count *</label>
+                    <input type="number" name="guest_count" class="form-input" min="1" value="20" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Start Time *</label>
+                    <input type="time" name="start_time" class="form-input" value="09:00" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End Time *</label>
+                    <input type="time" name="end_time" class="form-input" value="17:00" required>
+                </div>
+            </div>
+
+            <!-- Payment -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Payment Mode</label>
+                    <select name="payment_mode" class="form-select">
+                        <option value="cash">Cash</option>
+                        <option value="gcash">GCash</option>
+                        <option value="bank">Bank Transfer</option>
+                        <option value="card">Card</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Amount (₱)</label>
+                    <input type="number" name="amount" class="form-input" step="0.01" min="0" placeholder="0.00">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Notes</label>
+                <textarea name="notes" class="form-textarea" placeholder="Special requests, setup notes…"></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <a href="{{ url_for('reservations.index') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Create Reservation</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% else %}
+<!-- DETAIL VIEW -->
+<div class="grid-2">
+    <div>
+        <div class="card mb-16">
+            <div class="card-header">
+                <span class="card-title">Guest Information</span>
+                <span class="badge badge-{{ reservation.status }}">{{ reservation.status.title() }}</span>
+            </div>
+            <div class="card-body">
+                <table style="width:100%;">
+                    <tbody>
+                        <tr><td class="text-secondary" style="padding:6px 0;width:130px;">Guest</td><td class="font-semibold">{{ reservation.guest.full_name }}</td></tr>
+                        <tr><td class="text-secondary" style="padding:6px 0;">Email</td><td>{{ reservation.guest.email or '—' }}</td></tr>
+                        <tr><td class="text-secondary" style="padding:6px 0;">Phone</td><td>{{ reservation.guest.phone or '—' }}</td></tr>
+                        <tr><td class="text-secondary" style="padding:6px 0;">Facility</td><td>{{ reservation.facility.name }}</td></tr>
+                        <tr><td class="text-secondary" style="padding:6px 0;">Event Date</td><td>{{ reservation.event_date.strftime('%B %d, %Y') }}</td></tr>
+                        <tr><td class="text-secondary" style="padding:6px 0;">Time</td><td>{{ reservation.start_time.strftime('%I:%M %p') }} – {{ reservation.end_time.strftime('%I:%M %p') }}</td></tr>
+                        <tr><td class="text-secondary" style="padding:6px 0;">Guest Count</td><td>{{ reservation.guest_count }}</td></tr>
+                        <tr><td class="text-secondary" style="padding:6px 0;">Notes</td><td>{{ reservation.notes or '—' }}</td></tr>
+                        <tr><td class="text-secondary" style="padding:6px 0;">Created</td><td>{{ reservation.created_at.strftime('%b %d, %Y %H:%M') }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Update Status -->
+        <div class="card">
+            <div class="card-header"><span class="card-title">Update Status</span></div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('reservations.detail', id=reservation.id) }}">
+                    <input type="hidden" name="action" value="update_status">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Reservation Status</label>
+                            <select name="status" class="form-select">
+                                <option value="pending" {% if reservation.status == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="confirmed" {% if reservation.status == 'confirmed' %}selected{% endif %}>Confirmed</option>
+                                <option value="cancelled" {% if reservation.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                            </select>
+                        </div>
+                        <div style="align-self:flex-end; padding-bottom:16px;">
+                            <button type="submit" class="btn btn-primary">Update</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Payment Information</span>
+                {% if reservation.payment %}
+                <span class="badge badge-{{ reservation.payment.status }}">{{ reservation.payment.status.title() }}</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if reservation.payment %}
+                <table style="width:100%;">
+                    <tbody>
+                        <tr><td class="text-secondary" style="padding:6px 0;width:140px;">Amount</td><td class="font-bold" style="font-size:18px;">₱{{ "{:,.2f}".format(reservation.payment.amount) }}</td></tr>
+                        <tr><td class="text-secondary" style="padding:6px 0;">Mode</td><td>{{ reservation.payment.payment_mode.title() }}</td></tr>
+                        <tr><td class="text-secondary" style="padding:6px 0;">Receipt #</td><td class="font-semibold">{{ reservation.payment.receipt_number or '—' }}</td></tr>
+                        <tr><td class="text-secondary" style="padding:6px 0;">Invoice #</td><td>{{ reservation.payment.invoice_number or '—' }}</td></tr>
+                        <tr><td class="text-secondary" style="padding:6px 0;">Paid At</td><td>{{ reservation.payment.paid_at.strftime('%b %d, %Y %H:%M') if reservation.payment.paid_at else '—' }}</td></tr>
+                    </tbody>
+                </table>
+                <div class="divider"></div>
+                <form method="POST" action="{{ url_for('reservations.detail', id=reservation.id) }}">
+                    <input type="hidden" name="action" value="update_payment">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Payment Status</label>
+                            <select name="payment_status" class="form-select">
+                                <option value="pending" {% if reservation.payment.status == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="paid" {% if reservation.payment.status == 'paid' %}selected{% endif %}>Paid</option>
+                                <option value="refunded" {% if reservation.payment.status == 'refunded' %}selected{% endif %}>Refunded</option>
+                            </select>
+                        </div>
+                        <div style="align-self:flex-end; padding-bottom:16px;">
+                            <button type="submit" class="btn btn-primary">Update</button>
+                        </div>
+                    </div>
+                </form>
+                {% else %}
+                <p class="text-muted">No payment record found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleNewGuest(val) {
+    document.getElementById('newGuestFields').style.display = val === 'new' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,441 @@
+﻿{% extends "base.html" %}
+{% block title %}Account Management — A&amp;D Thysia Admin{% endblock %}
+{% block breadcrumb %}Account Management{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Account Management</h1>
+        <p class="page-subtitle">Manage admin accounts, staff, and guest records</p>
+    </div>
+    <div class="page-actions">
+        <button onclick="openModal('addAccountModal')" class="btn btn-primary">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+            Add Admin Account
+        </button>
+    </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+    <a href="{{ url_for('accounts.index', tab='admins') }}" class="tab {% if tab == 'admins' %}active{% endif %}">Admin Accounts</a>
+    <a href="{{ url_for('accounts.index', tab='staff') }}" class="tab {% if tab == 'staff' %}active{% endif %}">Staff</a>
+    <a href="{{ url_for('accounts.index', tab='guests') }}" class="tab {% if tab == 'guests' %}active{% endif %}">Guests</a>
+</div>
+
+{% if tab == 'admins' %}
+
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>RFID</th>
+                    <th>Status</th>
+                    <th>Last Login</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for acct in admin_accounts %}
+                <tr>
+                    <td class="font-semibold">{{ acct.full_name }}</td>
+                    <td class="text-muted">{{ acct.username }}</td>
+                    <td>{{ acct.email }}</td>
+                    <td>
+                        {% if acct.role == 'super_admin' %}
+                        <span class="badge badge-gold">Super Admin</span>
+                        {% else %}
+                        <span class="badge badge-info">Admin</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted" style="font-size:12px;">{{ acct.rfid_tag or '—' }}</td>
+                    <td><span class="badge badge-{{ acct.status }}">{{ acct.status.title() }}</span></td>
+                    <td class="text-muted" style="font-size:12px;">{{ acct.last_login.strftime('%b %d, %H:%M') if acct.last_login else 'Never' }}</td>
+                    <td>
+                        <div class="flex gap-8">
+                            <button onclick="openEditAccount({{ acct.id }}, '{{ acct.full_name|e }}', '{{ acct.email|e }}', '{{ acct.role }}', '{{ acct.status }}', '{{ acct.rfid_tag or '' }}')"
+                                    class="btn btn-xs btn-secondary">Edit</button>
+                            <form method="POST" action="{{ url_for('accounts.delete_account', id=acct.id) }}"
+                                  data-confirm="Delete account '{{ acct.username }}'? This cannot be undone.">
+                                <button type="submit" class="btn btn-xs btn-danger">Del</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="text-center text-muted" style="padding:36px;">No accounts found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% elif tab == 'staff' %}
+<div class="page-actions mb-16" style="display:flex;justify-content:flex-end;">
+    <button onclick="openModal('addStaffModal')" class="btn btn-primary">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        Add Staff Member
+    </button>
+</div>
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Shift</th>
+                    <th>RFID</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th style="width:100px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in staff_list.items %}
+                <tr>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div class="guest-chip" style="font-size:11px;">{{ s.full_name[:2].upper() }}</div>
+                            <span class="font-semibold">{{ s.full_name }}</span>
+                        </div>
+                    </td>
+                    <td>{{ s.role.replace('_', ' ').title() }}</td>
+                    <td><span class="badge badge-info">{{ s.shift.title() if s.shift else '—' }}</span></td>
+                    <td class="text-muted" style="font-size:12px;">{{ s.rfid_tag or '—' }}</td>
+                    <td class="text-muted">{{ s.email or '—' }}</td>
+                    <td class="text-muted">{{ s.phone or '—' }}</td>
+                    <td><span class="badge badge-{{ s.status }}">{{ s.status.title() }}</span></td>
+                    <td>
+                        <div class="flex gap-8">
+                            <button onclick="openEditStaff({{ s.id }}, '{{ s.full_name|e }}', '{{ s.role|e }}', '{{ s.shift or 'morning' }}', '{{ s.email or '' }}', '{{ s.phone or '' }}', '{{ s.rfid_tag or '' }}', '{{ s.status }}')"
+                                    class="btn btn-xs btn-secondary">Edit</button>
+                            <form method="POST" action="{{ url_for('accounts.delete_staff', id=s.id) }}"
+                                  data-confirm="Remove {{ s.full_name }}? This cannot be undone.">
+                                <button type="submit" class="btn btn-xs btn-danger">Del</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" class="text-center text-muted" style="padding:36px;">No staff members yet. Click "Add Staff Member" to get started.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% elif tab == 'guests' %}
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Address</th>
+                    <th>Joined</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in guests.items %}
+                <tr>
+                    <td class="font-semibold">{{ g.full_name }}</td>
+                    <td>{{ g.email or '—' }}</td>
+                    <td>{{ g.phone or '—' }}</td>
+                    <td class="text-muted">{{ g.address or '—' }}</td>
+                    <td class="text-muted" style="font-size:12px;">{{ g.created_at.strftime('%b %d, %Y') }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center text-muted" style="padding:36px;">No guests found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if guests.pages > 1 %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:12.5px;color:var(--text-muted);">
+    <span>Showing {{ ((guests.page - 1) * 8) + 1 }}–{{ [guests.page * 8, guests.total] | min }} of {{ guests.total }} guests</span>
+    <div style="display:flex;gap:6px;">
+        {% if guests.has_prev %}
+        <a href="{{ url_for('accounts.index', tab='guests', page=guests.prev_num) }}" class="btn btn-sm btn-secondary">← Prev</a>
+        {% endif %}
+        {% for p in guests.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+            <a href="{{ url_for('accounts.index', tab='guests', page=p) }}"
+               class="btn btn-sm {% if p == guests.page %}btn-primary{% else %}btn-secondary{% endif %}">{{ p }}</a>
+            {% else %}
+            <span style="padding:0 4px;align-self:center;">…</span>
+            {% endif %}
+        {% endfor %}
+        {% if guests.has_next %}
+        <a href="{{ url_for('accounts.index', tab='guests', page=guests.next_num) }}" class="btn btn-sm btn-secondary">Next →</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+{% endif %}{# end tab if/elif/elif #}
+
+<!-- ADD ACCOUNT MODAL -->
+<div class="modal-overlay" id="addAccountModal">
+    <div class="modal">
+        <h2 class="modal-title">Add Admin Account</h2>
+        <button class="modal-close" onclick="closeModal('addAccountModal')" aria-label="Close">×</button>
+        <div class="divider"></div>
+        <form method="POST" action="{{ url_for('accounts.new_account') }}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" name="full_name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Username *</label>
+                    <input type="text" name="username" class="form-input" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email *</label>
+                <input type="email" name="email" class="form-input" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Role</label>
+                    <select name="role" class="form-select">
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">RFID Tag</label>
+                    <input type="text" name="rfid_tag" class="form-input" placeholder="Optional">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Password *</label>
+                <input type="password" name="password" class="form-input" required>
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('addAccountModal')" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Account</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ADD STAFF MODAL -->
+<div class="modal-overlay" id="addStaffModal">
+    <div class="modal">
+        <h2 class="modal-title">Add Staff Member</h2>
+        <button class="modal-close" onclick="closeModal('addStaffModal')" aria-label="Close">×</button>
+        <div class="divider"></div>
+        <form method="POST" action="{{ url_for('accounts.new_staff') }}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" name="full_name" class="form-input" required placeholder="e.g. Juan dela Cruz">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Role *</label>
+                    <select name="role" class="form-select" required>
+                        <option value="">— Select role —</option>
+                        <option value="front_desk">Front Desk</option>
+                        <option value="security">Security</option>
+                        <option value="housekeeping">Housekeeping</option>
+                        <option value="concierge">Concierge</option>
+                        <option value="kitchen">Kitchen</option>
+                        <option value="maintenance">Maintenance</option>
+                        <option value="staff">General Staff</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Shift</label>
+                    <select name="shift" class="form-select">
+                        <option value="morning">Morning</option>
+                        <option value="afternoon">Afternoon</option>
+                        <option value="evening">Evening</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">RFID Tag</label>
+                    <input type="text" name="rfid_tag" class="form-input" placeholder="Optional">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-input" placeholder="Optional">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="text" name="phone" class="form-input" placeholder="Optional">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('addStaffModal')" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add Staff Member</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT STAFF MODAL -->
+<div class="modal-overlay" id="editStaffModal">
+    <div class="modal">
+        <h2 class="modal-title">Edit Staff Member</h2>
+        <button class="modal-close" onclick="closeModal('editStaffModal')" aria-label="Close">×</button>
+        <div class="divider"></div>
+        <form method="POST" id="editStaffForm" action="">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" name="full_name" id="editStaffName" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Role *</label>
+                    <select name="role" id="editStaffRole" class="form-select" required>
+                        <option value="front_desk">Front Desk</option>
+                        <option value="security">Security</option>
+                        <option value="housekeeping">Housekeeping</option>
+                        <option value="concierge">Concierge</option>
+                        <option value="kitchen">Kitchen</option>
+                        <option value="maintenance">Maintenance</option>
+                        <option value="staff">General Staff</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Shift</label>
+                    <select name="shift" id="editStaffShift" class="form-select">
+                        <option value="morning">Morning</option>
+                        <option value="afternoon">Afternoon</option>
+                        <option value="evening">Evening</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="status" id="editStaffStatus" class="form-select">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" id="editStaffEmail" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="text" name="phone" id="editStaffPhone" class="form-input">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">RFID Tag</label>
+                <input type="text" name="rfid_tag" id="editStaffRfid" class="form-input" placeholder="Optional">
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('editStaffModal')" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT ACCOUNT MODAL -->
+<div class="modal-overlay" id="editAccountModal">
+    <div class="modal">
+        <h2 class="modal-title">Edit Admin Account</h2>
+        <button class="modal-close" onclick="closeModal('editAccountModal')" aria-label="Close">×</button>
+        <div class="divider"></div>
+        <form method="POST" id="editAccountForm" action="">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" name="full_name" id="editAccFullName" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email *</label>
+                    <input type="email" name="email" id="editAccEmail" class="form-input" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Role</label>
+                    <select name="role" id="editAccRole" class="form-select">
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="status" id="editAccStatus" class="form-select">
+                        <option value="active">Active</option>
+                        <option value="disabled">Disabled</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">RFID Tag</label>
+                    <input type="text" name="rfid_tag" id="editAccRfid" class="form-input" placeholder="Optional">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">New Password</label>
+                    <input type="password" name="new_password" id="editAccPassword" class="form-input" placeholder="Leave blank to keep current">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('editAccountModal')" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+function openEditAccount(id, fullName, email, role, status, rfid) {
+    document.getElementById('editAccountForm').action = `/accounts/${id}/edit`;
+    document.getElementById('editAccFullName').value = fullName;
+    document.getElementById('editAccEmail').value    = email;
+    document.getElementById('editAccRfid').value     = rfid;
+    document.getElementById('editAccPassword').value = '';
+    ['editAccRole', 'editAccStatus'].forEach(function(elId) {
+        const val = elId === 'editAccRole' ? role : status;
+        const el  = document.getElementById(elId);
+        for (let i = 0; i < el.options.length; i++) {
+            el.options[i].selected = (el.options[i].value === val);
+        }
+    });
+    openModal('editAccountModal');
+}
+
+function openEditStaff(id, name, role, shift, email, phone, rfid, status) {
+    document.getElementById('editStaffForm').action = `/accounts/staff/${id}/edit`;
+    document.getElementById('editStaffName').value  = name;
+    document.getElementById('editStaffEmail').value = email;
+    document.getElementById('editStaffPhone').value = phone;
+    document.getElementById('editStaffRfid').value  = rfid;
+    ['editStaffRole', 'editStaffShift', 'editStaffStatus'].forEach(function(elId) {
+        const val = elId === 'editStaffRole' ? role : elId === 'editStaffShift' ? shift : status;
+        const el  = document.getElementById(elId);
+        for (let i = 0; i < el.options.length; i++) {
+            el.options[i].selected = (el.options[i].value === val);
+        }
+    });
+    openModal('editStaffModal');
+}
+
+</script>
+{% endblock %}
+{% endblock %}
