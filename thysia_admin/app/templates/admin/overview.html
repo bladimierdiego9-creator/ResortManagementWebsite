@@ -239,8 +239,29 @@
 const bookingLabels = {{ chart_data.booking.labels | tojson }};
 const bookingData   = {{ chart_data.booking.data   | tojson }};
 
-renderSparkline('sparkBookings', {{ stats.sparkline | tojson }}, '#2F4A42');
-renderSparkline('sparkRevenue',  [80,95,70,110,130,120,145], '#C9975A');
+// main.js is an ES module (deferred) — wait for it before calling its helpers
+function bootOverviewCharts() {
+renderSparkline('sparkBookings', {{ stats.sparkline | tojson }}, '#4edea3');
+renderSparkline('sparkRevenue',  [80,95,70,110,130,120,145], '#ffb95f');
+initBookingChart(bookingLabels, bookingData);
+(function () {
+    const canvas = document.getElementById('occupancyChart');
+    if (!canvas) return;
+    new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+            labels: ['Booked', 'Available', 'Blocked'],
+            datasets: [{ data: [{{ chart_data.occupancy.booked }}, {{ chart_data.occupancy.available }}, {{ chart_data.occupancy.blocked }}], backgroundColor: ['#10b981', '#ffb95f', '#ffb4ab'], borderWidth: 3, borderColor: '#09241a' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '72%', plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0a271b', borderColor: '#24483a', borderWidth: 1, titleColor: '#ecfdf5', bodyColor: '#9ab9aa' } } }
+    });
+})();
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootOverviewCharts);
+} else {
+    bootOverviewCharts();
+}
 
 let bookingChart;
 function initBookingChart(labels, data) {
@@ -249,31 +270,17 @@ function initBookingChart(labels, data) {
     if (bookingChart) bookingChart.destroy();
     bookingChart = new Chart(canvas, {
         type: 'bar',
-        data: { labels, datasets: [{ label: 'Bookings', data, backgroundColor: '#C9975A', borderRadius: 4, borderSkipped: false }] },
+        data: { labels, datasets: [{ label: 'Bookings', data, backgroundColor: '#10b981', borderRadius: 4, borderSkipped: false }] },
         options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { display: false }, tooltip: { backgroundColor: '#2A3B35' } },
+            plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0a271b', borderColor: '#24483a', borderWidth: 1, titleColor: '#ecfdf5', bodyColor: '#9ab9aa' } },
             scales: {
-                x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#B0A898', maxTicksLimit: 8 } },
-                y: { grid: { color: '#F0EBE1' }, ticks: { font: { size: 10 }, color: '#B0A898', stepSize: 1 }, beginAtZero: true }
+                x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#6f8e7d', maxTicksLimit: 8 } },
+                y: { grid: { color: 'rgba(60,74,66,.35)' }, ticks: { font: { size: 10 }, color: '#6f8e7d', stepSize: 1 }, beginAtZero: true }
             }
         }
     });
 }
-initBookingChart(bookingLabels, bookingData);
 function switchBookingChart() { initBookingChart(bookingLabels, bookingData); }
-
-(function () {
-    const canvas = document.getElementById('occupancyChart');
-    if (!canvas) return;
-    new Chart(canvas, {
-        type: 'doughnut',
-        data: {
-            labels: ['Booked', 'Available', 'Blocked'],
-            datasets: [{ data: [{{ chart_data.occupancy.booked }}, {{ chart_data.occupancy.available }}, {{ chart_data.occupancy.blocked }}], backgroundColor: ['#2F4A42', '#C9975A', '#C1594A'], borderWidth: 3, borderColor: '#fff' }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, cutout: '72%', plugins: { legend: { display: false }, tooltip: { backgroundColor: '#2A3B35' } } }
-    });
-})();
 </script>
 {% endblock %}

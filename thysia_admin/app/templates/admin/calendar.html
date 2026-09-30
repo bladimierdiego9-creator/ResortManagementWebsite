@@ -20,13 +20,13 @@
         </div>
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
             <span style="display:flex;align-items:center;gap:5px;font-size:12px;">
-                <span style="width:11px;height:11px;border-radius:3px;background:#2F4A42;display:inline-block;"></span> Confirmed
+                <span style="width:11px;height:11px;border-radius:3px;background:#4edea3;display:inline-block;"></span> Confirmed
             </span>
             <span style="display:flex;align-items:center;gap:5px;font-size:12px;">
-                <span style="width:11px;height:11px;border-radius:3px;background:#C9975A;display:inline-block;"></span> Pending
+                <span style="width:11px;height:11px;border-radius:3px;background:#ffb95f;display:inline-block;"></span> Pending
             </span>
             <span style="display:flex;align-items:center;gap:5px;font-size:12px;">
-                <span style="width:11px;height:11px;border-radius:3px;background:#9ca3af;display:inline-block;"></span> Cancelled
+                <span style="width:11px;height:11px;border-radius:3px;background:#6f8e7d;display:inline-block;"></span> Cancelled
             </span>
             <button onclick="refreshCalendar()" class="btn btn-sm btn-secondary btn-pill" style="font-size:11.5px;display:flex;align-items:center;gap:5px;">
                 <svg id="refreshIcon" width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 9A9 9 0 0 0 5.64 5.64M4 15a9 9 0 0 0 14.36 3.36" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -41,21 +41,20 @@
 
 <!-- ── BOOKING DETAIL MODAL ──────────────────────────── -->
 <div id="bookingModal" style="
-    display:none;position:fixed;inset:0;z-index:1000;
-    background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
+    display:none;position:fixed;inset:0;z-index:1000;        background:rgba(0,10,6,.7);align-items:center;justify-content:center;backdrop-filter:blur(4px);">
     <div style="
-        background:#fff;border-radius:14px;padding:28px 28px 22px;
-        width:100%;max-width:420px;margin:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);
+        background:#0a271b;border:1px solid #24483a;border-radius:16px;padding:28px 28px 22px;
+        width:100%;max-width:420px;margin:16px;box-shadow:0 30px 80px rgba(0,0,0,.6);
         position:relative;">
         <button onclick="closeBookingModal()" style="
             position:absolute;top:14px;right:16px;background:none;border:none;
-            font-size:20px;color:#9ca3af;cursor:pointer;line-height:1;" aria-label="Close">×</button>
+            font-size:20px;color:#6f8e7d;cursor:pointer;line-height:1;" aria-label="Close">×</button>
         <div id="modalBadge" style="
             display:inline-block;padding:3px 10px;border-radius:99px;
             font-size:11px;font-weight:700;letter-spacing:.5px;
             text-transform:uppercase;margin-bottom:12px;"></div>
-        <div style="font-size:11px;color:#9ca3af;font-weight:600;letter-spacing:.5px;margin-bottom:2px;" id="modalRef"></div>
-        <div style="font-size:20px;font-weight:800;color:#1a2e25;margin-bottom:18px;" id="modalGuest"></div>
+        <div style="font-size:11px;color:#6f8e7d;font-weight:600;letter-spacing:.5px;margin-bottom:2px;" id="modalRef"></div>
+        <div style="font-size:20px;font-weight:800;color:#ecfdf5;margin-bottom:18px;" id="modalGuest"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div class="modal-field"><div class="modal-field-label">Facility</div><div class="modal-field-val" id="modalFacility"></div></div>
             <div class="modal-field"><div class="modal-field-label">Date</div><div class="modal-field-val" id="modalDate"></div></div>
@@ -66,7 +65,7 @@
         </div>
         <div id="modalNotesWrap" style="margin-top:12px;display:none;">
             <div class="modal-field-label">Notes</div>
-            <div id="modalNotes" style="font-size:12.5px;color:#4b5563;margin-top:3px;"></div>
+            <div id="modalNotes" style="font-size:12.5px;color:#9ab9aa;margin-top:3px;"></div>
         </div>
         <div style="margin-top:20px;text-align:right;">
             <a id="modalViewLink" href="#" class="btn btn-sm btn-primary">View reservation →</a>
@@ -82,21 +81,21 @@
 
 <style>
 #reservationCalendar { font-family: 'Plus Jakarta Sans', sans-serif; }
-.fc .fc-toolbar-title { font-size: 15px; font-weight: 700; color: #1a2e25; }
+.fc .fc-toolbar-title { font-size: 15px; font-weight: 700; color: #ecfdf5; }
 .fc .fc-button {
-    background: #f5f0e8; border: 1px solid #e0d8cc; color: #3d5a4a;
+    background: #152f24; border: 1px solid #24483a; color: #cbe9d9;
     border-radius: 8px; font-size: 12px; font-weight: 600;
     padding: 5px 12px; box-shadow: none;
 }
-.fc .fc-button:hover { background: #ede8df; }
+.fc .fc-button:hover { background: #203a2f; border-color: #4edea3; color: #ecfdf5; }
 .fc .fc-button-primary:not(:disabled).fc-button-active,
-.fc .fc-button-primary:not(:disabled):active { background: #2F4A42; border-color: #2F4A42; color: #fff; }
-.fc .fc-col-header-cell-cushion { font-size: 11px; font-weight: 700; color: #6b7a72; text-decoration: none; }
-.fc .fc-daygrid-day-number { font-size: 11.5px; color: #4b5563; text-decoration: none; padding: 4px 6px; }
-.fc .fc-day-today { background: #fdf8f0 !important; }
-.fc .fc-day-today .fc-daygrid-day-number { color: #C9975A; font-weight: 800; }
-.fc-theme-standard td, .fc-theme-standard th { border-color: #ede8df; }
-.fc-theme-standard .fc-scrollgrid { border-color: #ede8df; }
+.fc .fc-button-primary:not(:disabled):active { background: #10b981; border-color: #10b981; color: #032b1c; }
+.fc .fc-col-header-cell-cushion { font-size: 11px; font-weight: 700; color: #6f8e7d; text-decoration: none; text-transform: uppercase; letter-spacing: .5px; }
+.fc .fc-daygrid-day-number { font-size: 11.5px; color: #9ab9aa; text-decoration: none; padding: 4px 6px; }
+.fc .fc-day-today { background: rgba(78,222,163,.08) !important; }
+.fc .fc-day-today .fc-daygrid-day-number { color: #4edea3; font-weight: 800; }
+.fc-theme-standard td, .fc-theme-standard th { border-color: #1d3a2e; }
+.fc-theme-standard .fc-scrollgrid { border-color: #1d3a2e; }
 .fc .fc-daygrid-day-frame { min-height: 90px; }
 .fc .fc-daygrid-body-natural .fc-daygrid-day-events { padding-bottom: 4px; }
 .fc .fc-event,
@@ -119,10 +118,10 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
-.modal-field { background: #f9f7f3; border-radius: 8px; padding: 8px 10px; }
-.modal-field-label { font-size: 10.5px; color: #9ca3af; font-weight: 700;
+.modal-field { background: #052016; border: 1px solid #1d3a2e; border-radius: 8px; padding: 8px 10px; }
+.modal-field-label { font-size: 10.5px; color: #6f8e7d; font-weight: 700;
     text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
-.modal-field-val { font-size: 13px; font-weight: 600; color: #1a2e25; }
+.modal-field-val { font-size: 13px; font-weight: 600; color: #ecfdf5; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 
@@ -153,7 +152,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         eventContent: function (arg) {
             const p   = arg.event.extendedProps;
-            const bg  = arg.event.backgroundColor || '#2F4A42';
+            // Theme colors by status (frontend-only; ignores legacy API colors)
+            const statusColors = { confirmed: '#10b981', pending: '#ee9800', cancelled: '#6f8e7d' };
+            const bg  = statusColors[p.status] || arg.event.backgroundColor || '#10b981';
             const name = (p.guest || arg.event.title || '').trim();
 
             const card = document.createElement('div');
@@ -196,9 +197,9 @@ window.refreshCalendar = refreshCalendar;
 function openBookingModal(event) {
     const p = event.extendedProps;
     const badgeColors = {
-        confirmed: { bg: '#dcf1e8', color: '#1a7a4a' },
-        pending:   { bg: '#fef3e2', color: '#b45309' },
-        cancelled: { bg: '#f3f4f6', color: '#6b7280' },
+        confirmed: { bg: 'rgba(78,222,163,.14)', color: '#4edea3' },
+        pending:   { bg: 'rgba(255,185,95,.14)', color: '#ffb95f' },
+        cancelled: { bg: 'rgba(148,163,184,.14)', color: '#9ab9aa' },
     };
     const bc = badgeColors[p.status] || badgeColors.cancelled;
     const badge = document.getElementById('modalBadge');

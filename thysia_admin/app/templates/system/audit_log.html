@@ -10,6 +10,29 @@
     </div>
 </div>
 
+<!-- Toolbar: search, user filter, page size -->
+<form method="GET" action="{{ url_for('system.audit_log') }}" class="filter-bar" style="gap:10px;">
+    <div style="position:relative;flex:1;min-width:220px;max-width:340px;">
+        <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;" width="14" height="14" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input type="text" name="q" value="{{ search }}" class="form-input" placeholder="Search action, entity, details, IP…" style="width:100%;padding-left:34px;border-radius:99px;">
+    </div>
+    <select name="user" class="form-select" style="width:auto;min-width:150px;border-radius:99px;">
+        <option value="">All users</option>
+        {% for uid, username in users %}
+        <option value="{{ uid }}" {% if user_filter == uid|string %}selected{% endif %}>{{ username }}</option>
+        {% endfor %}
+    </select>
+    <select name="per_page" class="form-select" style="width:auto;border-radius:99px;">
+        {% for size in [10, 25, 30, 50, 100] %}
+        <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }} / page</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm" style="border-radius:99px;">Apply</button>
+    {% if search or user_filter %}
+    <a href="{{ url_for('system.audit_log') }}" class="btn btn-secondary btn-sm" style="border-radius:99px;">Clear</a>
+    {% endif %}
+</form>
+
 <div class="card">
     <div class="table-wrap">
         <table>
@@ -30,7 +53,10 @@
                     <td class="text-muted" style="font-size:12px;">{{ log.id }}</td>
                     <td>
                         {% if log.account %}
-                        <span class="font-semibold">{{ log.account.username }}</span>
+                        <span style="display:inline-flex;align-items:center;gap:8px;">
+                            <span class="guest-chip" style="width:26px;height:26px;font-size:9.5px;">{{ log.account.username[:2]|upper }}</span>
+                            <span class="font-semibold">{{ log.account.username }}</span>
+                        </span>
                         {% else %}
                         <span class="text-muted">System</span>
                         {% endif %}
@@ -39,46 +65,58 @@
                     <td>
                         {% if log.entity_type %}
                         <span class="badge badge-info">{{ log.entity_type }}</span>
-                        {% if log.entity_id %}#{{ log.entity_id }}{% endif %}
+                        {% if log.entity_id %}<span class="text-muted" style="font-size:11.5px;">#{{ log.entity_id }}</span>{% endif %}
                         {% else %}—{% endif %}
                     </td>
                     <td class="text-secondary" style="font-size:12.5px;">{{ log.details or '—' }}</td>
                     <td class="text-muted" style="font-size:12px;">{{ log.ip_address or '—' }}</td>
-                    <td class="text-muted" style="font-size:12px;">{{ log.created_at.strftime('%b %d, %Y %H:%M:%S') }}</td>
+                    <td class="text-muted" style="font-size:12px;white-space:nowrap;">{{ log.created_at.strftime('%b %d, %Y %H:%M:%S') }}</td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" class="text-center text-muted" style="padding:36px;">No audit logs found.</td>
+                    <td colspan="7" class="text-center text-muted" style="padding:36px;">
+                        {% if search or user_filter %}No audit logs match your filters.{% else %}No audit logs found.{% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-    {% if logs.pages > 1 %}
-    <div class="card-footer flex items-center justify-between">
+
+    <div class="card-footer flex items-center justify-between" style="gap:12px;flex-wrap:wrap;">
         <span class="text-muted" style="font-size:13px;">
-            Showing page {{ logs.page }} of {{ logs.pages }} ({{ logs.total }} total entries)
+            {% set start = (logs.page - 1) * logs.per_page + 1 if logs.items else 0 %}
+            {% set end = (logs.page - 1) * logs.per_page + logs.items|length %}
+            Showing {{ start }}–{{ end }} of {{ logs.total }} entr{{ 'y' if logs.total == 1 else 'ies' }}
         </span>
         <nav class="pagination" aria-label="Pagination">
+            {% set sep = '&' if ('?' in request.full_path and request.full_path != '?') else '' %}
+            {% set base = request.base_url ~ ('?' if '?' in request.full_path and request.full_path != '?' else '?') %}
+            {# Preserve q / user filters, swap page; per_page comes from the form or default #}
             {% if logs.has_prev %}
-            <a href="{{ url_for('system.audit_log', page=logs.prev_num) }}">&laquo;</a>
+            <a href="{{ url_for('system.audit_log', page=logs.prev_num, per_page=per_page, q=search or none, user=user_filter or none) }}">&laquo;</a>
+            {% else %}
+            <span class="disabled">&laquo;</span>
             {% endif %}
+
             {% for p in logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
                 {% if p %}
                     {% if p == logs.page %}
                     <span class="current">{{ p }}</span>
                     {% else %}
-                    <a href="{{ url_for('system.audit_log', page=p) }}">{{ p }}</a>
+                    <a href="{{ url_for('system.audit_log', page=p, per_page=per_page, q=search or none, user=user_filter or none) }}">{{ p }}</a>
                     {% endif %}
                 {% else %}
                 <span>…</span>
                 {% endif %}
             {% endfor %}
+
             {% if logs.has_next %}
-            <a href="{{ url_for('system.audit_log', page=logs.next_num) }}">&raquo;</a>
+            <a href="{{ url_for('system.audit_log', page=logs.next_num, per_page=per_page, q=search or none, user=user_filter or none) }}">&raquo;</a>
+            {% else %}
+            <span class="disabled">&raquo;</span>
             {% endif %}
         </nav>
     </div>
-    {% endif %}
 </div>
 {% endblock %}

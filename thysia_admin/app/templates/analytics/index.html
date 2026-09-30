@@ -67,11 +67,13 @@
 <script>
 const cd = {{ chart_data | tojson }};
 
+// main.js is an ES module (deferred) — wait for it before calling its helpers
+function bootAnalyticsCharts() {
 renderLineChart('bookingTrendChart', cd.bookingTrends.labels, [{
     label: 'Bookings',
     data: cd.bookingTrends.data,
-    borderColor: '#1a7a4a',
-    backgroundColor: '#1a7a4a22',
+    borderColor: '#4edea3',
+    backgroundColor: 'rgba(78,222,163,.13)',
     fill: true,
     tension: 0.4,
     pointRadius: 3,
@@ -80,19 +82,25 @@ renderLineChart('bookingTrendChart', cd.bookingTrends.labels, [{
 renderDoughnutChart('reservationStatusChart',
     ['Confirmed', 'Pending', 'Cancelled'],
     [cd.reservationStatus.confirmed, cd.reservationStatus.pending, cd.reservationStatus.cancelled],
-    ['#16a34a', '#d97706', '#dc2626']
+    ['#10b981', '#ffb95f', '#ffb4ab']
 );
 
 renderDoughnutChart('revenueByModeChart',
     ['Cash', 'GCash', 'Bank', 'Card'],
     [cd.revenueByMode.cash, cd.revenueByMode.gcash, cd.revenueByMode.bank, cd.revenueByMode.card],
-    ['#1a7a4a', '#2563eb', '#c9a44e', '#7c3aed']
+    ['#10b981', '#8cc6ff', '#ffb95f', '#68dba9']
 );
 
 renderDoughnutChart('attendanceChart',
     ['On Time', 'Late'],
     [cd.attendance.on_time, cd.attendance.late],
-    ['#16a34a', '#d97706']
+    ['#10b981', '#ffb95f']
 );
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootAnalyticsCharts);
+} else {
+    bootAnalyticsCharts();
+}
 </script>
 {% endblock %}

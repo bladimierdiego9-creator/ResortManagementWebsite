@@ -118,6 +118,14 @@ document.addEventListener('submit', function (e) {
   }
 });
 
+// ── EXPOSE CHART HELPERS GLOBALLY ──────────────────────────
+// main.js loads as a module, so these must be attached to window
+// for inline template scripts (overview/analytics) to call them.
+window.renderSparkline = renderSparkline;
+window.renderBookingChart = renderBookingChart;
+window.renderDoughnutChart = renderDoughnutChart;
+window.renderLineChart = renderLineChart;;
+
 // ── SPARKLINE CHART ─────────────────────────────────────────
 function renderSparkline(canvasId, data, color) {
   const canvas = document.getElementById(canvasId);

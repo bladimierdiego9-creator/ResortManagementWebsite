@@ -1,64 +1,146 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block auth_content %}
 <div class="lp-page">
 
-    <div class="lp-container" id="lpContainer">
+    <div class="lp-container">
 
-        <!-- â”€â”€ SIGN IN FORM â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
-        <div class="lp-form-box lp-signin-box">
-            <form method="POST" action="{{ url_for('auth.login') }}" autocomplete="on">
-                <h2 class="lp-title">Sign In</h2>
+        <!-- ── LEFT PANEL: BRAND ATMOSPHERE ─────────────────── -->
+        <div class="lp-brand-panel">
+            <div class="lp-brand-scrim"></div>
+            <div class="lp-glow lp-glow-1"></div>
+            <div class="lp-glow lp-glow-2"></div>
+
+            <div class="lp-brand-top">
+                <div class="lp-brand-row">
+                    <div class="lp-monogram"><span>A&amp;D</span></div>
+                    <div class="lp-brand-text">
+                        <span class="lp-brand-eyebrow">Exclusive Hospitality</span>
+                        <span class="lp-brand-name">A&amp;D Thysia Resort &amp; Event's Place</span>
+                    </div>
+                </div>
+
+                <span class="lp-console-pill"><span class="lp-pill-dot"></span> Management Console</span>
+
+                <h1 class="lp-brand-headline">Resort Operations &amp;<br>Administrative Suite</h1>
+                <p class="lp-brand-sub">Centralized orchestration hub for guest suites, event
+                    pavilions, guest verification, and on-premise transactional flows.</p>
+            </div>
+
+            <div class="lp-feature-grid">
+                <div class="lp-feature-card">
+                    <span class="lp-feature-icon em"><svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 21s-7-5.1-7-11a7 7 0 0114 0c0 5.9-7 11-7 11z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="10" r="2.6" stroke="currentColor" stroke-width="1.8"/></svg></span>
+                    <div>
+                        <div class="lp-feature-title">Sta. Cruz, Laguna</div>
+                        <div class="lp-feature-desc">Live Operations Center</div>
+                    </div>
+                </div>
+                <div class="lp-feature-card">
+                    <span class="lp-feature-icon gold"><svg width="18" height="18" fill="none" viewBox="0 0 24 24"><rect x="6" y="5" width="12" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 8.5h5M9.5 12h5M9.5 15.5h2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+                    <div>
+                        <div class="lp-feature-title">RFID &amp; Shifts</div>
+                        <div class="lp-feature-desc">Contactless Terminal Sync</div>
+                    </div>
+                </div>
+                <div class="lp-feature-card">
+                    <span class="lp-feature-icon em"><svg width="18" height="18" fill="none" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M8 9.5l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 16h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+                    <div>
+                        <div class="lp-feature-title">QRPh Engine</div>
+                        <div class="lp-feature-desc">Instant Settlement Matrix</div>
+                    </div>
+                </div>
+                <div class="lp-feature-card">
+                    <span class="lp-feature-icon gold"><svg width="18" height="18" fill="none" viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="11" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M12 7V4.5M9 13h.01M15 13h.01M9.5 15.8h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+                    <div>
+                        <div class="lp-feature-title">AI Concierge</div>
+                        <div class="lp-feature-desc">24/7 Guest Intelligence</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lp-brand-foot">
+                <span class="lp-foot-left"><svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg> Strictly Authorized Personnel Only • Laguna, Philippines</span>
+                <span class="lp-foot-sec">SEC-ID 7702</span>
+            </div>
+        </div>
+
+        <!-- ── RIGHT PANEL: AUTH GATEWAY ────────────────────── -->
+        <div class="lp-auth-panel">
+            <div class="lp-auth-glow"></div>
+
+            <div class="lp-auth-card">
+                <div class="lp-card-toprow">
+                    <span class="lp-encrypted-chip">
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 10V7.5a3.5 3.5 0 017 0V10" stroke="currentColor" stroke-width="1.8"/></svg>
+                        Encrypted Administrative Portal
+                    </span>
+                    <span class="lp-version-chip"><span class="lp-ping"></span> v2.4</span>
+                </div>
+
+                <h2 class="lp-title">Admin Sign In</h2>
+                <p class="lp-card-sub">Enter your verified credentials to access the resort control engine.</p>
 
                 {% if error %}
                 <div class="lp-error">{{ error }}</div>
                 {% endif %}
 
-                <div class="lp-field">
-                    <input type="text" name="username" placeholder="Username" required autofocus autocomplete="username">
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/></svg>
-                </div>
+                <form method="POST" action="{{ url_for('auth.login') }}" autocomplete="on">
+                    <div class="lp-field">
+                        <label for="lp-username">Admin ID or Username</label>
+                        <div class="lp-input-wrap">
+                            <span class="lp-input-icon"><svg width="16" height="16" fill="none" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+                            <input type="text" id="lp-username" name="username" placeholder="admin@adthysia.ph" required autofocus autocomplete="username">
+                        </div>
+                    </div>
 
-                <div class="lp-field">
-                    <input type="password" id="lp-pw" name="password" placeholder="Password" required autocomplete="current-password">
-                    <button type="button" onclick="togglePw()" class="lp-eye" aria-label="Toggle password">
-                        <svg id="eyeShow" width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
-                        <svg id="eyeHide" width="16" height="16" fill="none" viewBox="0 0 24 24" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    <div class="lp-field">
+                        <div class="lp-label-row">
+                            <label for="lp-pw">Security Passcode</label>
+                            <span class="lp-label-hint">Keep credentials confidential</span>
+                        </div>
+                        <div class="lp-input-wrap">
+                            <span class="lp-input-icon"><svg width="16" height="16" fill="none" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M11 12l8.5-8.5M17 6l2 2M14.5 8.5l2 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+                            <input type="password" id="lp-pw" name="password" placeholder="••••••••••••" required autocomplete="current-password">
+                            <button type="button" onclick="togglePw()" class="lp-eye" aria-label="Toggle password">
+                                <svg id="eyeShow" width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.8" stroke="currentColor" stroke-width="1.8"/></svg>
+                                <svg id="eyeHide" width="16" height="16" fill="none" viewBox="0 0 24 24" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <label class="lp-remember">
+                        <input type="checkbox" name="remember">
+                        <span class="lp-checkmark"><svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 13l4.5 4.5L19 8" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                        Remember this workstation
+                    </label>
+
+                    <button type="submit" class="lp-btn">
+                        <span>Sign In to Operations Console</span>
+                        <svg width="17" height="17" fill="none" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
+                </form>
+
+                <div class="lp-rfid-strip">
+                    <div class="lp-rfid-info">
+                        <span class="lp-rfid-icon"><svg width="17" height="17" fill="none" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2.5" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.8"/><path d="M8 17.5c.8-1.8 2.3-2.8 4-2.8s3.2 1 4 2.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+                        <div>
+                            <div class="lp-rfid-title">Physical Keycard Reader</div>
+                            <div class="lp-rfid-desc">Tap desk scanner to authorize sign-in</div>
+                        </div>
+                    </div>
+                    <button type="button" class="lp-rfid-btn" title="RFID sign-in coming soon">
+                        <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M7.8 7.8a6 6 0 000 8.4M16.2 16.2a6 6 0 000-8.4M5 5a10 10 0 000 14M19 5a10 10 0 010 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                        Scan Badge
                     </button>
                 </div>
 
-                <div class="lp-remember">
-                    <label><input type="checkbox" name="remember"> Remember me</label>
+                <div class="lp-security-foot">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                    <p>Protected by 256-bit SSL encryption. All administrative actions and shift modifications are permanently recorded in the System Audit Trail.</p>
                 </div>
-
-                <button type="submit" class="lp-btn">Sign In</button>
-
-                <p class="lp-or">or sign in with</p>
-                <div class="lp-socials">
-                    <button type="button" class="lp-social-btn" title="RFID">
-                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/><path d="M2 10h20" stroke="currentColor" stroke-width="2"/><circle cx="7" cy="15" r="1.5" fill="currentColor"/></svg>
-                    </button>
-                    <button type="button" class="lp-social-btn" title="Fingerprint">
-                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 4C9.8 4 7.8 4.9 6.3 6.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4.2 9.5a8 8 0 000 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6.3 17.7A8 8 0 0012 20c1.5 0 2.9-.4 4.1-1.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19.8 14.5a8 8 0 000-5A8 8 0 0017.7 6.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 8a4 4 0 014 4c0 3-1.5 5.5-4 7-2.5-1.5-4-4-4-7a4 4 0 014-4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-                    </button>
-                    <button type="button" class="lp-social-btn" title="Key">
-                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" stroke="currentColor" stroke-width="2"/><path d="M12 11l8-8M18 6l2 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- â”€â”€ SLIDING OVERLAY PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
-        <div class="lp-overlay-panel" id="lpOverlay">
-            <div class="lp-overlay-content">
-                <div class="lp-overlay-chip">A&amp;D</div>
-                <h2 class="lp-overlay-title">Welcome Back!</h2>
-                <p class="lp-overlay-sub">Sign in to manage A&amp;D Thysia<br>Resort &amp; Events Place</p>
             </div>
-            <!-- decorative circles -->
-            <div class="lp-deco lp-deco-1"></div>
-            <div class="lp-deco lp-deco-2"></div>
-            <div class="lp-deco lp-deco-3"></div>
+
+            <div class="lp-auth-pagefoot">© 2026 A&amp;D Thysia Resort &amp; Event's Place</div>
         </div>
 
     </div>
@@ -67,69 +149,229 @@
 
 <style>
 * { box-sizing: border-box; }
-.lp-page { min-height:100vh; display:flex; align-items:stretch; background:#F8F6F1; font-family:'Plus Jakarta Sans','Poppins',sans-serif; }
-.lp-container { position:relative; width:100%; min-height:100vh; background:#F8F6F1; overflow:hidden; display:flex; }
-.lp-form-box { width:60%; min-height:100vh; padding:48px 64px; display:flex; align-items:center; justify-content:center; background:#F8F6F1; z-index:1; }
-.lp-form-box form { width:100%; max-width:380px; display:flex; flex-direction:column; align-items:center; background:#fff; padding:44px 40px; border-radius:20px; box-shadow:0 4px 32px rgba(28,46,38,.08); border:1px solid #E6E0D4; }
-.lp-form-logo { display:flex; align-items:center; gap:10px; margin-bottom:20px; align-self:flex-start; }
-.lp-form-chip { width:38px; height:38px; background:linear-gradient(135deg,#2E4A3D,#4a7060); color:#D9A55C; font-weight:800; font-size:11px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.lp-form-brand { font-size:13px; font-weight:700; color:#2E4A3D; letter-spacing:.5px; }
-.lp-title { font-size:24px; font-weight:800; color:#1C2E26; margin-bottom:24px; letter-spacing:-.4px; align-self:flex-start; }
-.lp-error { width:100%; background:#f5dada; color:#c1594a; padding:9px 12px; border-radius:8px; font-size:12.5px; font-weight:500; margin-bottom:14px; border-left:3px solid #c1594a; }
-.lp-field { position:relative; width:100%; margin-bottom:14px; }
-.lp-field input { width:100%; padding:11px 40px 11px 16px; border:1.5px solid #E6E0D4; border-radius:10px; font-size:13px; color:#1C2E26; background:#F8F6F1; outline:none; font-family:inherit; transition:border-color .2s,box-shadow .2s; }
-.lp-field input:focus { border-color:#D9A55C; background:#fff; box-shadow:0 0 0 3px rgba(217,165,92,.15); }
-.lp-field input::placeholder { color:#B0ADA6; font-size:12.5px; }
-.lp-field > svg { position:absolute; right:13px; top:50%; transform:translateY(-50%); color:#B0ADA6; pointer-events:none; }
-.lp-eye { position:absolute; right:11px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#B0ADA6; padding:2px; display:flex; align-items:center; }
-.lp-eye:hover { color:#D9A55C; }
-.lp-remember { width:100%; margin-bottom:20px; font-size:12.5px; color:#6B7A72; }
-.lp-remember label { display:flex; align-items:center; gap:7px; cursor:pointer; }
-.lp-remember input[type=checkbox] { accent-color:#D9A55C; width:14px; height:14px; }
-.lp-btn { width:100%; padding:12px; background:#D9A55C; color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; letter-spacing:.3px; box-shadow:0 4px 18px rgba(217,165,92,.35); transition:transform .15s,box-shadow .15s,background .15s; margin-bottom:18px; }
-.lp-btn:hover { background:#C9773D; transform:translateY(-1px); }
+.lp-page { min-height:100vh; display:flex; background:#00170e; font-family:'Plus Jakarta Sans',sans-serif; }
+.lp-container { position:relative; width:100%; min-height:100vh; display:flex; overflow:hidden; }
+
+/* ── LEFT BRAND PANEL ── */
+.lp-brand-panel {
+  position:relative; width:46%; min-height:100vh;
+  display:flex; flex-direction:column; justify-content:space-between;
+  padding:52px 56px 40px; overflow:hidden; z-index:1;
+}
+.lp-brand-scrim {
+  position:absolute; inset:0; z-index:-1;
+  background:
+    radial-gradient(ellipse at 18% 12%, rgba(16,185,129,.16), transparent 46%),
+    radial-gradient(ellipse at 82% 88%, rgba(255,185,95,.07), transparent 42%),
+    linear-gradient(160deg, #00170e 0%, #052016 55%, #00120a 100%);
+}
+.lp-glow { position:absolute; border-radius:50%; filter:blur(70px); pointer-events:none; z-index:0; }
+.lp-glow-1 { width:340px; height:340px; top:-110px; right:-90px; background:rgba(78,222,163,.14); }
+.lp-glow-2 { width:260px; height:260px; bottom:-80px; left:-70px; background:rgba(255,185,95,.08); }
+
+.lp-brand-top { position:relative; z-index:2; }
+.lp-brand-row { display:flex; align-items:center; gap:16px; }
+.lp-monogram {
+  width:56px; height:56px; border-radius:50%;
+  background:linear-gradient(145deg, #152f24, #00120a);
+  border:1px solid rgba(255,185,95,.35);
+  box-shadow:0 0 0 4px rgba(255,185,95,.06), 0 10px 30px rgba(0,0,0,.5), inset 0 1px rgba(255,255,255,.08);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.lp-monogram span { font-size:15px; font-weight:800; letter-spacing:2px; color:#ffb95f; }
+.lp-brand-text { display:flex; flex-direction:column; gap:3px; }
+.lp-brand-eyebrow { font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#ffb95f; }
+.lp-brand-name { font-size:13.5px; font-weight:600; color:#cbe9d9; }
+
+.lp-console-pill {
+  display:inline-flex; align-items:center; gap:8px; margin-top:36px;
+  padding:6px 14px; border-radius:99px;
+  background:rgba(21,47,36,.75); border:1px solid rgba(78,222,163,.18);
+  backdrop-filter:blur(8px);
+  font-size:10px; font-weight:700; letter-spacing:1.6px; text-transform:uppercase; color:#9ab9aa;
+}
+.lp-pill-dot { width:7px; height:7px; border-radius:50%; background:#4edea3; box-shadow:0 0 8px rgba(78,222,163,.8); animation:lpPulse 2.2s infinite; }
+@keyframes lpPulse { 0%,100%{opacity:1;} 50%{opacity:.35;} }
+
+.lp-brand-headline {
+  margin:18px 0 0; font-size:38px; line-height:1.16; font-weight:800;
+  letter-spacing:-1px; color:#ecfdf5;
+}
+.lp-brand-sub { margin:16px 0 0; max-width:430px; font-size:14.5px; line-height:1.7; color:#9ab9aa; }
+
+.lp-feature-grid {
+  position:relative; z-index:2;
+  display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:44px 0 0;
+}
+.lp-feature-card {
+  display:flex; align-items:center; gap:12px;
+  padding:14px 16px; border-radius:14px;
+  background:rgba(9,36,26,.72); border:1px solid rgba(203,233,217,.08);
+  backdrop-filter:blur(10px);
+  transition:border-color .2s, transform .2s;
+}
+.lp-feature-card:hover { border-color:rgba(78,222,163,.3); transform:translateY(-2px); }
+.lp-feature-icon {
+  width:36px; height:36px; border-radius:10px; flex-shrink:0;
+  background:rgba(21,47,36,.9); border:1px solid rgba(203,233,217,.07);
+  display:flex; align-items:center; justify-content:center;
+}
+.lp-feature-icon.em  { color:#4edea3; }
+.lp-feature-icon.gold{ color:#ffb95f; }
+.lp-feature-title { font-size:12.5px; font-weight:700; color:#ecfdf5; }
+.lp-feature-desc  { font-size:11px; color:#9ab9aa; margin-top:1px; }
+
+.lp-brand-foot {
+  position:relative; z-index:2;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding-top:24px; font-size:11px; color:#6f8e7d;
+}
+.lp-foot-left { display:flex; align-items:center; gap:7px; }
+.lp-foot-sec { letter-spacing:2px; text-transform:uppercase; font-size:10px; }
+
+/* ── RIGHT AUTH PANEL ── */
+.lp-auth-panel {
+  position:relative; width:54%; min-height:100vh;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:44px 40px; overflow:hidden;
+  background:radial-gradient(ellipse at 50% 0%, rgba(5,32,22,.9), #00120a 70%);
+}
+.lp-auth-glow {
+  position:absolute; top:18%; right:22%; width:380px; height:380px;
+  border-radius:50%; background:rgba(78,222,163,.07); filter:blur(80px); pointer-events:none;
+}
+.lp-auth-card {
+  position:relative; z-index:2; width:100%; max-width:470px;
+  background:rgba(5,32,22,.72); backdrop-filter:blur(24px);
+  border:1px solid rgba(203,233,217,.1);
+  border-radius:22px; padding:38px 36px 30px;
+  box-shadow:0 30px 80px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.05);
+}
+.lp-card-toprow { display:flex; align-items:center; justify-content:space-between; gap:10px; padding-bottom:22px; }
+.lp-encrypted-chip {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:8px 13px; border-radius:10px;
+  background:rgba(21,47,36,.9); color:#cbe9d9;
+  font-size:11.5px; font-weight:600; letter-spacing:.3px;
+}
+.lp-encrypted-chip svg { color:#ffb95f; }
+.lp-version-chip {
+  display:inline-flex; align-items:center; gap:7px;
+  padding:6px 10px; border-radius:8px;
+  background:rgba(9,36,26,.9); font-size:10.5px; font-weight:600; color:#68dba9; letter-spacing:.5px;
+}
+.lp-ping { width:6px; height:6px; border-radius:50%; background:#4edea3; animation:lpPulse 1.6s infinite; }
+
+.lp-title { margin:0 0 6px; font-size:27px; font-weight:800; letter-spacing:-.6px; color:#ecfdf5; }
+.lp-card-sub { margin:0 0 24px; font-size:13px; line-height:1.6; color:#9ab9aa; }
+
+.lp-error {
+  width:100%; padding:10px 14px; margin-bottom:18px; border-radius:10px;
+  background:rgba(147,0,10,.26); border:1px solid rgba(255,180,171,.28); border-left:3px solid #ffb4ab;
+  color:#ffdad6; font-size:12.5px; font-weight:500;
+}
+
+.lp-field { margin-bottom:18px; }
+.lp-field label { display:block; font-size:12.5px; font-weight:600; color:#cbe9d9; margin-bottom:8px; }
+.lp-label-row { display:flex; align-items:center; justify-content:space-between; }
+.lp-label-hint { font-size:10.5px; font-weight:500; color:#6f8e7d; }
+.lp-input-wrap { position:relative; display:flex; align-items:center; }
+.lp-input-icon {
+  position:absolute; left:14px; display:flex; color:#6f8e7d; pointer-events:none;
+}
+.lp-field input {
+  width:100%; padding:13px 44px 13px 42px;
+  border:1px solid rgba(203,233,217,.12); border-radius:12px;
+  background:#00120a; color:#ecfdf5; font-size:13.5px; font-family:inherit;
+  outline:none; transition:border-color .2s, background .2s, box-shadow .2s;
+}
+.lp-field input::placeholder { color:#3c4a42; }
+.lp-field input:focus {
+  border-color:rgba(78,222,163,.55); background:#0d281c;
+  box-shadow:0 0 0 3px rgba(78,222,163,.14);
+}
+.lp-eye {
+  position:absolute; right:12px; display:flex; align-items:center;
+  background:none; border:none; cursor:pointer; color:#6f8e7d; padding:4px;
+}
+.lp-eye:hover { color:#4edea3; }
+
+.lp-remember {
+  display:flex; align-items:center; gap:10px; cursor:pointer;
+  font-size:12.5px; color:#9ab9aa; margin-bottom:22px; user-select:none;
+}
+.lp-remember input { position:absolute; opacity:0; width:0; height:0; }
+.lp-checkmark {
+  width:18px; height:18px; border-radius:6px; flex-shrink:0;
+  background:#152f24; border:1px solid rgba(203,233,217,.15);
+  display:flex; align-items:center; justify-content:center;
+  color:transparent; transition:background .15s, border-color .15s;
+}
+.lp-remember input:checked + .lp-checkmark { background:#10b981; border-color:#10b981; color:#032b1c; }
+
+.lp-btn {
+  width:100%; padding:14px 20px; border:none; border-radius:13px; cursor:pointer;
+  background:linear-gradient(90deg, #059669 0%, #10b981 55%, #34d399 100%);
+  color:#022c1d; font-size:14px; font-weight:700; font-family:inherit; letter-spacing:.2px;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  box-shadow:0 6px 26px rgba(16,185,129,.35), inset 0 1px rgba(255,255,255,.25);
+  transition:transform .15s, box-shadow .2s, filter .2s;
+}
+.lp-btn:hover { transform:translateY(-1px); filter:brightness(1.06); box-shadow:0 10px 32px rgba(16,185,129,.45), inset 0 1px rgba(255,255,255,.25); }
 .lp-btn:active { transform:translateY(0); }
-.lp-or { font-size:11.5px; color:#B0ADA6; margin-bottom:14px; position:relative; width:100%; text-align:center; }
-.lp-or::before,.lp-or::after { content:""; position:absolute; top:50%; width:34%; height:1px; background:#D5CEBC; }
-.lp-or::before { left:0; }
-.lp-or::after { right:0; }
-.lp-socials { display:flex; gap:12px; }
-.lp-social-btn { width:42px; height:42px; border-radius:50%; border:1.5px solid #E6E0D4; background:#F8F6F1; color:#6B7A72; display:flex; align-items:center; justify-content:center; cursor:pointer; font-family:inherit; transition:border-color .15s,background .15s,color .15s,transform .15s; }
-.lp-social-btn:hover { border-color:#D9A55C; background:#F7EDDA; color:#A97830; transform:translateY(-2px); }
-.lp-footer { font-size:11px; color:#A0ADA6; text-align:center; margin-top:4px; }
-.lp-overlay-panel { position:absolute; top:0; right:0; bottom:0; width:40%; background:#2E4A3D; display:flex; align-items:center; justify-content:center; overflow:hidden; z-index:2; }
-.lp-overlay-content { position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; text-align:center; padding:40px 36px; }
-.lp-overlay-chip { width:60px; height:60px; background:rgba(255,255,255,.1); border:2px solid #D9A55C; color:#D9A55C; font-weight:800; font-size:16px; border-radius:16px; display:flex; align-items:center; justify-content:center; margin-bottom:24px; box-shadow:0 4px 20px rgba(217,165,92,.2); }
-.lp-overlay-title { font-size:28px; font-weight:800; color:#fff; margin-bottom:14px; letter-spacing:-.3px; line-height:1.2; }
-.lp-overlay-sub { font-size:13.5px; color:rgba(255,255,255,.6); line-height:1.75; font-weight:400; }
-.lp-deco { position:absolute; border-radius:50%; border:1.5px solid rgba(255,255,255,.07); pointer-events:none; }
-.lp-deco-1 { width:280px; height:280px; top:-80px; right:-80px; }
-.lp-deco-2 { width:200px; height:200px; bottom:-60px; left:-40px; background:rgba(217,165,92,.04); }
-.lp-deco-3 { width:100px; height:100px; top:42%; right:14px; border-color:rgba(217,165,92,.12); }
-@media (max-width:1024px) { .lp-form-box { padding:40px; } .lp-overlay-title { font-size:24px; } .lp-overlay-sub { font-size:13px; } }
-@media (max-width:768px) {
-  .lp-container { flex-direction:column; }
-  .lp-form-box { width:100%; min-height:auto; padding:40px 32px 48px; order:2; }
-  .lp-overlay-panel { position:relative; width:100%; height:200px; order:1; }
-  .lp-overlay-content { flex-direction:row; gap:20px; padding:24px 32px; text-align:left; align-items:center; }
-  .lp-overlay-chip { width:50px; height:50px; font-size:13px; margin-bottom:0; flex-shrink:0; }
-  .lp-overlay-title { font-size:20px; margin-bottom:6px; }
-  .lp-overlay-sub { font-size:12.5px; }
-  .lp-deco-2,.lp-deco-3 { display:none; }
-  .lp-form-box form { max-width:480px; }
+
+.lp-rfid-strip {
+  margin-top:26px; padding:14px 16px; border-radius:14px;
+  background:rgba(9,36,26,.55); border:1px solid rgba(203,233,217,.07);
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
 }
-@media (max-width:480px) {
-  .lp-form-box { padding:32px 16px 40px; }
-  .lp-form-box form { padding:32px 24px; border-radius:16px; }
-  .lp-overlay-panel { height:175px; }
-  .lp-overlay-content { flex-direction:column; text-align:center; padding:20px; gap:8px; }
-  .lp-overlay-chip { width:44px; height:44px; font-size:12px; margin-bottom:0; }
-  .lp-overlay-title { font-size:18px; margin-bottom:4px; }
-  .lp-overlay-sub { font-size:12px; }
-  .lp-title { font-size:21px; }
-  .lp-btn { font-size:13.5px; padding:11px; }
+.lp-rfid-info { display:flex; align-items:center; gap:12px; }
+.lp-rfid-icon {
+  width:38px; height:38px; border-radius:50%; flex-shrink:0;
+  background:rgba(21,47,36,.9); color:#ffb95f;
+  display:flex; align-items:center; justify-content:center;
 }
-@media (max-width:360px) { .lp-form-box form { padding:26px 18px; } .lp-overlay-panel { height:155px; } }
+.lp-rfid-title { font-size:12.5px; font-weight:700; color:#ecfdf5; }
+.lp-rfid-desc  { font-size:11px; color:#9ab9aa; }
+.lp-rfid-btn {
+  display:inline-flex; align-items:center; gap:8px; padding:9px 16px;
+  border:none; border-radius:10px; cursor:pointer;
+  background:#203a2f; color:#ffb95f; font-size:12px; font-weight:700; font-family:inherit;
+  transition:background .15s, color .15s;
+}
+.lp-rfid-btn:hover { background:#2c4a3c; color:#ffddb8; }
+
+.lp-security-foot {
+  display:flex; align-items:flex-start; gap:9px; margin-top:24px;
+  padding-top:20px; border-top:1px solid rgba(203,233,217,.07);
+  color:#4edea3;
+}
+.lp-security-foot p { margin:0; font-size:11px; line-height:1.65; color:#6f8e7d; }
+
+.lp-auth-pagefoot { position:relative; z-index:2; margin-top:26px; font-size:11px; color:#4c6459; }
+
+/* ── RESPONSIVE ── */
+@media (max-width:1080px) {
+  .lp-brand-panel { padding:40px 36px 32px; }
+  .lp-brand-headline { font-size:30px; }
+  .lp-feature-grid { gap:10px; }
+}
+@media (max-width:900px) {
+  .lp-page, .lp-container { flex-direction:column; }
+  .lp-brand-panel { width:100%; min-height:auto; padding:36px 28px 28px; }
+  .lp-feature-grid { margin-top:28px; }
+  .lp-brand-foot { padding-top:18px; }
+  .lp-auth-panel { width:100%; min-height:auto; padding:34px 22px 40px; }
+}
+@media (max-width:520px) {
+  .lp-brand-headline { font-size:25px; }
+  .lp-feature-grid { grid-template-columns:1fr 1fr; gap:8px; }
+  .lp-feature-card { padding:11px 12px; }
+  .lp-feature-title { font-size:11.5px; }
+  .lp-feature-desc { font-size:10px; }
+  .lp-auth-card { padding:28px 22px 24px; }
+  .lp-monogram { width:48px; height:48px; }
+}
 </style>
 {% endblock %}
 
