@@ -48,15 +48,24 @@ def log_action(action, entity_type=None, entity_id=None, details=None):
     from app.extensions import db
     from flask import request
     try:
+        # Only set entity_id if it's an integer (skip UUIDs for now)
+        entity_id_val = None
+        if entity_id is not None:
+            try:
+                entity_id_val = int(entity_id)
+            except (ValueError, TypeError):
+                # UUID or non-integer ID — skip for now
+                pass
+        
         log = AuditLog(
             account_id=current_user.id if current_user.is_authenticated else None,
             action=action,
             entity_type=entity_type,
-            entity_id=entity_id,
+            entity_id=entity_id_val,
             details=details,
             ip_address=request.remote_addr
         )
         db.session.add(log)
         db.session.commit()
     except Exception:
-        pass
+        db.session.rollback()

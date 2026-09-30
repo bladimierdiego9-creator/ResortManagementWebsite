@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - {{ resort_name }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+        <p class="text-muted">Welcome back, {{ current_user.full_name }}!</p>
+    </div>
+</div>
+
+<!-- Key Metrics -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Occupancy Rate</h6>
+                        <h2 class="mb-0">{{ occupancy_rate }}%</h2>
+                    </div>
+                    <i class="fas fa-chart-pie fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Active Bookings</h6>
+                        <h2 class="mb-0">{{ active_bookings }}</h2>
+                    </div>
+                    <i class="fas fa-bed fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Today's Revenue</h6>
+                        <h2 class="mb-0">{{ format_currency(todays_revenue) }}</h2>
+                    </div>
+                    <i class="fas fa-dollar-sign fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Check-ins Today</h6>
+                        <h2 class="mb-0">{{ checkins_today|length }}</h2>
+                    </div>
+                    <i class="fas fa-sign-in-alt fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Today's Schedule -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-calendar-check"></i> Today's Check-ins</h5>
+            </div>
+            <div class="card-body">
+                {% if checkins_today %}
+                <div class="list-group">
+                    {% for booking in checkins_today %}
+                    <a href="{{ url_for('bookings.view', booking_id=booking.id) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between">
+                            <strong>{{ booking.guest_name }}</strong>
+                            <span class="badge bg-primary">{{ booking.facility.name }}</span>
+                        </div>
+                        <small class="text-muted">{{ booking.booking_number }}</small>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">No check-ins scheduled for today.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-calendar-times"></i> Today's Check-outs</h5>
+            </div>
+            <div class="card-body">
+                {% if checkouts_today %}
+                <div class="list-group">
+                    {% for booking in checkouts_today %}
+                    <a href="{{ url_for('bookings.view', booking_id=booking.id) }}" class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between">
+                            <strong>{{ booking.guest_name }}</strong>
+                            <span class="badge bg-warning">{{ booking.facility.name }}</span>
+                        </div>
+                        <small class="text-muted">{{ booking.booking_number }}</small>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">No check-outs scheduled for today.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Bookings -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-list"></i> Recent Bookings</h5>
+                <a href="{{ url_for('bookings.index') }}" class="btn btn-sm btn-primary">View All</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Booking #</th>
+                                <th>Guest</th>
+                                <th>Facility</th>
+                                <th>Check-in</th>
+                                <th>Check-out</th>
+                                <th>Status</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for booking in recent_bookings %}
+                            <tr>
+                                <td><a href="{{ url_for('bookings.view', booking_id=booking.id) }}">{{ booking.booking_number }}</a></td>
+                                <td>{{ booking.guest_name }}</td>
+                                <td>{{ booking.facility.name }}</td>
+                                <td>{{ format_date(booking.check_in_date) }}</td>
+                                <td>{{ format_date(booking.check_out_date) }}</td>
+                                <td><span class="badge bg-{{ 'success' if booking.status == 'confirmed' else 'warning' }}">{{ booking.status }}</span></td>
+                                <td>{{ format_currency(booking.final_amount) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -51,29 +51,33 @@
             <tbody>
                 {% for res in reservations %}
                 <tr>
-                    <td class="text-muted" style="font-size:12px;">#{{ res.id }}</td>
+                    <td class="text-muted" style="font-size:12px;">#{{ res['id'] }}</td>
                     <td>
-                        <div class="font-semibold">{{ res.guest.full_name }}</div>
-                        <div class="text-muted" style="font-size:12px;">{{ res.guest.email or res.guest.phone or '—' }}</div>
+                        <div class="font-semibold">{{ res['guest_name'] }}</div>
+                        <div class="text-muted" style="font-size:12px;">{{ res['guest_contact'] }}</div>
                     </td>
-                    <td>{{ res.facility.name }}</td>
-                    <td>{{ res.event_date.strftime('%b %d, %Y') }}</td>
-                    <td class="text-muted">{{ res.start_time.strftime('%I:%M %p') }} – {{ res.end_time.strftime('%I:%M %p') }}</td>
-                    <td>{{ res.guest_count }}</td>
-                    <td>{% if res.payment %}₱{{ "{:,.0f}".format(res.payment.amount) }}{% else %}—{% endif %}</td>
-                    <td><span class="badge badge-{{ res.status }}">{{ res.status.title() }}</span></td>
+                    <td>{{ res['facility'] }}</td>
+                    <td>{{ res['event_date'].strftime('%b %d, %Y') }}</td>
+                    <td class="text-muted">{{ res['time'] }}</td>
+                    <td>{{ res['guests'] }}</td>
+                    <td>₱{{ "{:,.0f}".format(res['amount']) }}</td>
+                    <td><span class="badge badge-{{ res['status'] }}">{{ res['status'].title() }}</span></td>
                     <td>
-                        {% if res.payment %}
-                        <span class="badge badge-{{ res.payment.status }}">{{ res.payment.status.title() }}</span>
+                        {% if res['payment_status'] %}
+                        <span class="badge badge-{{ res['payment_status'] }}">{{ res['payment_status'].title() }}</span>
                         {% else %}—{% endif %}
                     </td>
                     <td>
                         <div class="flex gap-8">
-                            <a href="{{ url_for('reservations.detail', id=res.id) }}" class="btn btn-xs btn-secondary">View</a>
-                            <form method="POST" action="{{ url_for('reservations.delete', id=res.id) }}"
+                            {% if res['detail_url'] %}
+                            <a href="{{ res['detail_url'] }}" class="btn btn-xs btn-secondary">View</a>
+                            {% endif %}
+                            {% if res['delete_url'] %}
+                            <form method="POST" action="{{ res['delete_url'] }}"
                                   data-confirm="Delete this reservation? This cannot be undone.">
                                 <button type="submit" class="btn btn-xs btn-danger">Del</button>
                             </form>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>

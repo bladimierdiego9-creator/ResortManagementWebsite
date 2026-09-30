@@ -1,7 +1,37 @@
+import uuid
 from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db, login_manager
+from sqlalchemy import String, TypeDecorator
+
+
+class GUID(TypeDecorator):
+    """
+    Platform-independent UUID type.
+    - PostgreSQL: uses native UUID column
+    - SQLite / others: stores as VARCHAR(36) string
+    """
+    impl = String(36)
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+            return dialect.type_descriptor(PG_UUID(as_uuid=True))
+        return dialect.type_descriptor(String(36))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        if dialect.name == 'postgresql':
+            return str(value) if not isinstance(value, uuid.UUID) else value
+        return str(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        return str(value)
 
 
 class Account(UserMixin, db.Model):
@@ -10,12 +40,27 @@ class Account(UserMixin, db.Model):
     username = db.Column(db.String(64), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
-    full_name = db.Column(db.String(120), nullable=False)
-    role = db.Column(db.String(32), nullable=False, default='admin')  # admin, super_admin, staff
+    first_name = db.Column(db.String(64), nullable=False)
+    last_name = db.Column(db.String(64), nullable=False)
+    role = db.Column(db.String(32), nullable=False, default='admin')  # admin, super_admin, staff, guest
     rfid_tag = db.Column(db.String(64), unique=True, nullable=True)
     status = db.Column(db.String(16), default='active')  # active, disabled
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, nullable=True)
+
+    # One-to-one bridges to operational/profile tables
+    staff_profile = db.relationship(
+        'Staff', backref='account', uselist=False,
+        foreign_keys='Staff.account_id'
+    )
+    guest_profile = db.relationship(
+        'Guest', backref='account', uselist=False,
+        foreign_keys='Guest.account_id'
+    )
+
+    @property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}"
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -43,6 +88,7 @@ def load_user(user_id):
 class Guest(db.Model):
     __tablename__ = 'guests'
     id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id', ondelete='SET NULL'), nullable=True)
     full_name = db.Column(db.String(120), nullable=False)
     email = db.Column(db.String(120), nullable=True)
     phone = db.Column(db.String(32), nullable=True)
@@ -53,39 +99,72 @@ class Guest(db.Model):
 
 class Facility(db.Model):
     __tablename__ = 'facilities'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), nullable=False)
-    facility_type = db.Column(db.String(64), nullable=False)  # pool, event_center, pavilion, cabana
-    capacity = db.Column(db.Integer, nullable=False)
-    price_per_hour = db.Column(db.Float, nullable=False)
-    price_whole_day = db.Column(db.Float, nullable=True)
+    id = db.Column(GUID(), primary_key=True, default=lambda: str(uuid.uuid4()))
+    facility_name = db.Column(db.String(120), nullable=False)
+    facility_type = db.Column(db.String(64), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    status = db.Column(db.String(16), default='available')  # available, maintenance, blocked
+    capacity = db.Column(db.Integer, nullable=True)
+    base_price = db.Column(db.Float, nullable=False)
+    is_available = db.Column(db.Boolean, default=True)
     image_url = db.Column(db.String(256), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    reservations = db.relationship('Reservation', backref='facility', lazy='dynamic')
+    created_at = db.Column(db.DateTime, nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=True)
+
+    @property
+    def name(self):
+        """Alias so existing code using facility.name keeps working."""
+        return self.facility_name
+
+    @property
+    def status(self):
+        """Map is_available to status string for compatibility."""
+        return 'available' if self.is_available else 'maintenance'
 
 
 class Reservation(db.Model):
     __tablename__ = 'reservations'
     id = db.Column(db.Integer, primary_key=True)
-    guest_id = db.Column(db.Integer, db.ForeignKey('guests.id'), nullable=False)
-    facility_id = db.Column(db.Integer, db.ForeignKey('facilities.id'), nullable=False)
+    guest_id = db.Column(db.Integer, db.ForeignKey('guests.id', ondelete='CASCADE'), nullable=True)
+    facility_id = db.Column(db.Text, nullable=True)  # stores UUID string from facilities table
     event_date = db.Column(db.Date, nullable=False)
     start_time = db.Column(db.Time, nullable=False)
     end_time = db.Column(db.Time, nullable=False)
     guest_count = db.Column(db.Integer, nullable=False)
     status = db.Column(db.String(32), default='pending')  # pending, confirmed, cancelled
+    archived = db.Column(db.Boolean, default=False)  # soft delete
     notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     payment = db.relationship('Payment', backref='reservation', uselist=False)
 
 
+class Booking(db.Model):
+    """Guest-facing bookings from the public application."""
+    __tablename__ = 'bookings'
+    id = db.Column(GUID(), primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=False)
+    facility_type = db.Column(db.Text, nullable=False)
+    inclusions = db.Column(db.JSON, nullable=True)
+    check_in = db.Column(db.Date, nullable=False)
+    check_out = db.Column(db.Date, nullable=False)
+    guests = db.Column(db.Integer, nullable=False)
+    total_amount = db.Column(db.Numeric(10, 2), nullable=False)
+    payment_method = db.Column(db.Text, nullable=False)
+    status = db.Column(db.Text, nullable=False)  # pending, confirmed, cancelled
+    archived = db.Column(db.Boolean, default=False)  # soft delete
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    cancellation_reason = db.Column(db.Text, nullable=True)
+    cancelled_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relationship
+    account = db.relationship('Account', backref='bookings', foreign_keys=[account_id])
+
+
 class Payment(db.Model):
     __tablename__ = 'payments'
     id = db.Column(db.Integer, primary_key=True)
-    reservation_id = db.Column(db.Integer, db.ForeignKey('reservations.id'), nullable=False)
+    reservation_id = db.Column(db.Integer, db.ForeignKey('reservations.id', ondelete='CASCADE'), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     payment_mode = db.Column(db.String(32), nullable=False)  # cash, gcash, bank, card
     status = db.Column(db.String(32), default='pending')  # pending, paid, refunded
@@ -98,7 +177,7 @@ class Payment(db.Model):
 class Staff(db.Model):
     __tablename__ = 'staff'
     id = db.Column(db.Integer, primary_key=True)
-    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id', ondelete='SET NULL'), nullable=True)
     full_name = db.Column(db.String(120), nullable=False)
     role = db.Column(db.String(64), nullable=False)
     email = db.Column(db.String(120), nullable=True)
@@ -158,7 +237,7 @@ class ShiftHandover(db.Model):
 class FacilityAvailability(db.Model):
     __tablename__ = 'facility_availability'
     id = db.Column(db.Integer, primary_key=True)
-    facility_id = db.Column(db.Integer, db.ForeignKey('facilities.id'), nullable=False)
+    facility_id = db.Column(GUID(), db.ForeignKey('facilities.id'), nullable=False)
     date = db.Column(db.Date, nullable=False)
     slot_start = db.Column(db.Time, nullable=False)
     slot_end = db.Column(db.Time, nullable=False)

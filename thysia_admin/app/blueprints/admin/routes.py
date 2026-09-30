@@ -151,6 +151,10 @@ def overview():
     blocked_facilities = Facility.query.filter_by(status='maintenance').count()
     available_facilities = max(0, total_facilities - booked_facilities - blocked_facilities)
 
+    # Create facilities map for template
+    facilities = Facility.query.all()
+    facilities_map = {str(f.id): f.facility_name for f in facilities}
+
     chart_data = {
         'booking':   {'labels': booking_chart_labels, 'data': booking_chart_data},
         'occupancy': {'booked': booked_facilities, 'available': available_facilities, 'blocked': blocked_facilities},
@@ -174,6 +178,7 @@ def overview():
                            stats=stats,
                            chart_data=chart_data,
                            recent_reservations=recent_reservations,
+                           facilities_map=facilities_map,
                            ai_queue=ai_queue,
                            today=today,
                            now=now)

@@ -97,11 +97,11 @@
             </div>
             <div class="facility-card-prices">
                 <div class="facility-price-item">
-                    <strong>₱{{ "{:,.0f}".format(f.price_per_hour) }}</strong>per hour
+                    <strong>₱{{ "{:,.0f}".format(f.base_price) if f.base_price else '0' }}</strong>per hour
                 </div>
-                {% if f.price_whole_day %}
+                {% if f.base_price %}
                 <div class="facility-price-item">
-                    <strong>₱{{ "{:,.0f}".format(f.price_whole_day) }}</strong>whole day
+                    <strong>₱{{ "{:,.0f}".format(f.base_price * 8) }}</strong>whole day
                 </div>
                 {% endif %}
             </div>

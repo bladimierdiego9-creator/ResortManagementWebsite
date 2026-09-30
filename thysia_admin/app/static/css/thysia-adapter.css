@@ -1,0 +1,263 @@
+/* Adapter CSS to bridge Bootstrap templates with dark Tailwind theme */
+
+/* Apply dark theme body styles */
+body {
+    font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif !important;
+    background: radial-gradient(circle at 86% -10%, rgba(16,185,129,.12), transparent 31rem), 
+                radial-gradient(circle at 12% 20%, rgba(255,185,95,.045), transparent 24rem), 
+                #00170e !important;
+    color: #ecfdf5 !important;
+    min-height: 100vh;
+}
+
+/* Override Bootstrap navbar with dark theme */
+.navbar-dark.bg-primary {
+    background: rgba(0,18,10,.86) !important;
+    border-bottom: 1px solid rgba(203,233,217,.07) !important;
+    backdrop-filter: blur(22px);
+}
+
+.navbar-brand {
+    color: #ecfdf5 !important;
+    font-weight: 700;
+}
+
+.nav-link {
+    color: #9ab9aa !important;
+    transition: all .18s ease;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    color: #ecfdf5 !important;
+    background: rgba(203,233,217,.06) !important;
+    border-radius: .5rem;
+}
+
+/* Cards with dark theme */
+.card {
+    background: rgba(7, 34, 24, .72) !important;
+    border: 1px solid rgba(203,233,217,.1) !important;
+    border-radius: 1rem !important;
+    box-shadow: 0 12px 34px rgba(0,0,0,.15), inset 0 1px rgba(255,255,255,.025) !important;
+    backdrop-filter: blur(16px);
+}
+
+.card-header {
+    background: rgba(16, 57, 40, .78) !important;
+    border-bottom: 1px solid rgba(203,233,217,.11) !important;
+    color: #ecfdf5 !important;
+}
+
+.card-body {
+    color: #cbe9d9;
+}
+
+/* Tables */
+.table {
+    background: transparent !important;
+    color: #cbe9d9 !important;
+}
+
+.table thead th {
+    color: #6f8e7d !important;
+    border-bottom: 1px solid rgba(203,233,217,.11) !important;
+}
+
+.table tbody td {
+    border-bottom: 1px solid rgba(203,233,217,.065) !important;
+    color: #9ab9aa;
+}
+
+.table tbody tr:hover {
+    background: rgba(203,233,217,.04) !important;
+}
+
+/* Buttons with emerald theme */
+.btn-primary {
+    background: linear-gradient(135deg, #4edea3, #10b981) !important;
+    border: none !important;
+    color: #002b1c !important;
+    font-weight: 700;
+    box-shadow: 0 8px 22px rgba(16,185,129,.2), inset 0 1px rgba(255,255,255,.35) !important;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 28px rgba(16,185,129,.35), inset 0 1px rgba(255,255,255,.35) !important;
+}
+
+.btn-secondary {
+    background: rgba(21,47,36,.72) !important;
+    border: 1px solid rgba(203,233,217,.18) !important;
+    color: #ecfdf5 !important;
+}
+
+.btn-secondary:hover {
+    background: rgba(32,58,47,.95) !important;
+    border-color: rgba(203,233,217,.28) !important;
+}
+
+.btn-danger {
+    background: rgba(255,180,171,.08) !important;
+    border: 1px solid rgba(255,180,171,.28) !important;
+    color: #ffb4ab !important;
+}
+
+/* Forms */
+.form-control,
+.form-select {
+    background: rgba(4,22,15,.64) !important;
+    border: 1px solid rgba(203,233,217,.12) !important;
+    color: #ecfdf5 !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background: rgba(4,22,15,.64) !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16,185,129,.14) !important;
+    color: #ecfdf5 !important;
+}
+
+.form-control::placeholder {
+    color: #6c8d7d !important;
+}
+
+.form-label {
+    color: #ecfdf5 !important;
+    font-weight: 600;
+}
+
+/* Badges */
+.badge {
+    padding: .35em .65em;
+    border-radius: 99px;
+    font-weight: 700;
+    border: 1px solid;
+}
+
+.badge-success,
+.badge-confirmed {
+    background: rgba(16,185,129,.1) !important;
+    border-color: rgba(78,222,163,.16) !important;
+    color: #4edea3 !important;
+}
+
+.badge-warning,
+.badge-pending {
+    background: rgba(255,185,95,.09) !important;
+    border-color: rgba(255,185,95,.18) !important;
+    color: #ffb95f !important;
+}
+
+.badge-danger,
+.badge-cancelled {
+    background: rgba(255,180,171,.08) !important;
+    border-color: rgba(255,180,171,.18) !important;
+    color: #ffb4ab !important;
+}
+
+.badge-info {
+    background: rgba(112,185,255,.09) !important;
+    border-color: rgba(112,185,255,.16) !important;
+    color: #70b9ff !important;
+}
+
+/* Text colors */
+.text-muted {
+    color: #9ab9aa !important;
+}
+
+.text-secondary {
+    color: #6f8e7d !important;
+}
+
+/* Container */
+.container-fluid {
+    max-width: 1400px;
+}
+
+/* Alerts */
+.alert {
+    border: 1px solid rgba(203,233,217,.12);
+    border-radius: .8rem;
+    backdrop-filter: blur(16px);
+}
+
+.alert-success {
+    background: rgba(16,185,129,.1) !important;
+    border-color: rgba(78,222,163,.2) !important;
+    color: #4edea3 !important;
+}
+
+.alert-danger {
+    background: rgba(255,180,171,.08) !important;
+    border-color: rgba(255,180,171,.2) !important;
+    color: #ffb4ab !important;
+}
+
+.alert-warning {
+    background: rgba(255,185,95,.09) !important;
+    border-color: rgba(255,185,95,.2) !important;
+    color: #ffb95f !important;
+}
+
+/* Dropdown menus */
+.dropdown-menu {
+    background: rgba(7, 34, 24, .95) !important;
+    border: 1px solid rgba(203,233,217,.12) !important;
+    backdrop-filter: blur(22px);
+}
+
+.dropdown-item {
+    color: #cbe9d9 !important;
+}
+
+.dropdown-item:hover {
+    background: rgba(203,233,217,.08) !important;
+    color: #ecfdf5 !important;
+}
+
+/* Pagination */
+.pagination .page-link {
+    background: rgba(21,47,36,.72) !important;
+    border: 1px solid rgba(203,233,217,.18) !important;
+    color: #cbe9d9 !important;
+}
+
+.pagination .page-link:hover {
+    background: rgba(32,58,47,.95) !important;
+    color: #ecfdf5 !important;
+}
+
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #4edea3, #10b981) !important;
+    border-color: #10b981 !important;
+    color: #002b1c !important;
+}
+
+/* Modal */
+.modal-content {
+    background: rgba(7, 34, 24, .95) !important;
+    border: 1px solid rgba(203,233,217,.12) !important;
+    color: #ecfdf5;
+}
+
+.modal-header {
+    border-bottom: 1px solid rgba(203,233,217,.11) !important;
+}
+
+.modal-footer {
+    border-top: 1px solid rgba(203,233,217,.11) !important;
+}
+
+/* Links */
+a {
+    color: #4edea3;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #70f3b8;
+}

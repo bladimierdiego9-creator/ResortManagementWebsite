@@ -43,6 +43,39 @@ def create_app(config_class=Config):
     app.register_blueprint(accounts_bp)
     app.register_blueprint(system_bp)
 
+    @app.context_processor
+    def inject_frontend_globals():
+        from datetime import datetime
+
+        def format_currency(value):
+            try:
+                return f"₱{float(value):,.2f}"
+            except (TypeError, ValueError):
+                return "₱0.00"
+
+        def format_date(value):
+            if not value:
+                return "—"
+            if hasattr(value, "strftime"):
+                return value.strftime("%b %d, %Y")
+            return str(value)
+
+        def format_datetime(value):
+            if not value:
+                return "—"
+            if hasattr(value, "strftime"):
+                return value.strftime("%b %d, %Y %I:%M %p")
+            return str(value)
+
+        return {
+            "resort_name": "A&D Thysia",
+            "app_version": "1.0",
+            "now": datetime.now,
+            "format_currency": format_currency,
+            "format_date": format_date,
+            "format_datetime": format_datetime,
+        }
+
     @app.route('/')
     def index():
         from flask import redirect, url_for

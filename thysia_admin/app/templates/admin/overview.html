@@ -179,11 +179,11 @@
                     <tr>
                         <td>
                             <div style="display:flex;align-items:center;gap:8px;">
-                                <div class="guest-chip">{{ res.guest.full_name[:2].upper() }}</div>
-                                <span class="font-semibold">{{ res.guest.full_name }}</span>
+                                <div class="guest-chip">{{ (res.guest.full_name[:2].upper() if res.guest and res.guest.full_name else 'UN') }}</div>
+                                <span class="font-semibold">{{ res.guest.full_name if res.guest else '(Guest removed)' }}</span>
                             </div>
                         </td>
-                        <td style="color:var(--text-secondary);">{{ res.facility.name }}</td>
+                        <td style="color:var(--text-secondary);">{{ facilities_map.get(res.facility_id, 'Unknown Facility') if res.facility_id else '—' }}</td>
                         <td style="color:var(--text-secondary);">
                             {{ res.event_date.strftime('%d %b %Y') }} · {{ res.start_time.strftime('%I:%M %p') }}
                         </td>

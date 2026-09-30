@@ -98,7 +98,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for s in staff_list.items %}
+                {% for s in staff_accounts.items %}
                 <tr>
                     <td>
                         <div style="display:flex;align-items:center;gap:8px;">
@@ -145,13 +145,13 @@
                 </tr>
             </thead>
             <tbody>
-                {% for g in guests.items %}
+                {% for g in guest_accounts.items %}
                 <tr>
-                    <td class="font-semibold">{{ g.full_name }}</td>
-                    <td>{{ g.email or '—' }}</td>
-                    <td>{{ g.phone or '—' }}</td>
-                    <td class="text-muted">{{ g.address or '—' }}</td>
-                    <td class="text-muted" style="font-size:12px;">{{ g.created_at.strftime('%b %d, %Y') }}</td>
+                    <td class="font-semibold">{{ g[0].first_name }} {{ g[0].last_name }}</td>
+                    <td>{{ g[0].email or '—' }}</td>
+                    <td>{{ g[0].phone or '—' }}</td>
+                    <td class="text-muted">{{ g[1].address if g[1] else '—' }}</td>
+                    <td class="text-muted" style="font-size:12px;">{{ g[0].created_at.strftime('%b %d, %Y') if g[0].created_at else '—' }}</td>
                 </tr>
                 {% else %}
                 <tr><td colspan="5" class="text-center text-muted" style="padding:36px;">No guests found.</td></tr>
@@ -161,23 +161,23 @@
     </div>
 </div>
 
-{% if guests.pages > 1 %}
+{% if guest_accounts.pages > 1 %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:12.5px;color:var(--text-muted);">
-    <span>Showing {{ ((guests.page - 1) * 8) + 1 }}–{{ [guests.page * 8, guests.total] | min }} of {{ guests.total }} guests</span>
+    <span>Showing {{ ((guest_accounts.page - 1) * 8) + 1 }}–{{ [guest_accounts.page * 8, guest_accounts.total] | min }} of {{ guest_accounts.total }} guests</span>
     <div style="display:flex;gap:6px;">
-        {% if guests.has_prev %}
-        <a href="{{ url_for('accounts.index', tab='guests', page=guests.prev_num) }}" class="btn btn-sm btn-secondary">← Prev</a>
+        {% if guest_accounts.has_prev %}
+        <a href="{{ url_for('accounts.index', tab='guests', page=guest_accounts.prev_num) }}" class="btn btn-sm btn-secondary">← Prev</a>
         {% endif %}
-        {% for p in guests.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% for p in guest_accounts.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
             {% if p %}
             <a href="{{ url_for('accounts.index', tab='guests', page=p) }}"
-               class="btn btn-sm {% if p == guests.page %}btn-primary{% else %}btn-secondary{% endif %}">{{ p }}</a>
+               class="btn btn-sm {% if p == guest_accounts.page %}btn-primary{% else %}btn-secondary{% endif %}">{{ p }}</a>
             {% else %}
             <span style="padding:0 4px;align-self:center;">…</span>
             {% endif %}
         {% endfor %}
-        {% if guests.has_next %}
-        <a href="{{ url_for('accounts.index', tab='guests', page=guests.next_num) }}" class="btn btn-sm btn-secondary">Next →</a>
+        {% if guest_accounts.has_next %}
+        <a href="{{ url_for('accounts.index', tab='guests', page=guest_accounts.next_num) }}" class="btn btn-sm btn-secondary">Next →</a>
         {% endif %}
     </div>
 </div>

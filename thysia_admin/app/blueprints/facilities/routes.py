@@ -10,7 +10,7 @@ from app.extensions import db
 @login_required
 @admin_required
 def index():
-    facilities = Facility.query.order_by(Facility.name).all()
+    facilities = Facility.query.order_by(Facility.facility_name).all()
     return render_template('facilities/index.html', facilities=facilities)
 
 
@@ -20,43 +20,43 @@ def index():
 def new():
     if request.method == 'POST':
         facility = Facility(
-            name=request.form.get('name'),
-            facility_type=request.form.get('facility_type'),
+            facility_name=request.form.get('facility_name', '').strip(),
+            facility_type=request.form.get('facility_type', '').strip(),
             capacity=int(request.form.get('capacity', 0)),
-            price_per_hour=float(request.form.get('price_per_hour', 0)),
-            price_whole_day=float(request.form.get('price_whole_day', 0)) if request.form.get('price_whole_day') else None,
-            description=request.form.get('description', ''),
-            status=request.form.get('status', 'available')
+            base_price=float(request.form.get('base_price', 0)),
+            description=request.form.get('description', '').strip(),
+            is_available=request.form.get('is_available', 'true') == 'true',
         )
         db.session.add(facility)
         db.session.commit()
         log_action('Created facility', 'Facility', facility.id)
         flash('Facility added successfully.', 'success')
         return redirect(url_for('facilities.index'))
-    return render_template('facilities/index.html', facilities=Facility.query.all(), mode='new')
+    return render_template('facilities/index.html', facilities=Facility.query.order_by(Facility.facility_name).all(), mode='new')
 
 
-@facilities_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
+@facilities_bp.route('/<id>/edit', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def edit(id):
     facility = Facility.query.get_or_404(id)
     if request.method == 'POST':
-        facility.name = request.form.get('name', facility.name)
-        facility.facility_type = request.form.get('facility_type', facility.facility_type)
-        facility.capacity = int(request.form.get('capacity', facility.capacity))
-        facility.price_per_hour = float(request.form.get('price_per_hour', facility.price_per_hour))
-        facility.price_whole_day = float(request.form.get('price_whole_day', 0)) if request.form.get('price_whole_day') else None
-        facility.description = request.form.get('description', facility.description)
-        facility.status = request.form.get('status', facility.status)
+        facility.facility_name = request.form.get('facility_name', facility.facility_name).strip()
+        facility.facility_type = request.form.get('facility_type', facility.facility_type).strip()
+        facility.capacity      = int(request.form.get('capacity', facility.capacity or 0))
+        facility.base_price    = float(request.form.get('base_price', facility.base_price))
+        facility.description   = request.form.get('description', facility.description or '').strip()
+        facility.is_available  = request.form.get('is_available', 'true') == 'true'
         db.session.commit()
         log_action('Updated facility', 'Facility', id)
         flash('Facility updated.', 'success')
         return redirect(url_for('facilities.index'))
-    return render_template('facilities/index.html', facilities=Facility.query.all(), edit_facility=facility)
+    return render_template('facilities/index.html',
+                           facilities=Facility.query.order_by(Facility.facility_name).all(),
+                           edit_facility=facility)
 
 
-@facilities_bp.route('/<int:id>/delete', methods=['POST'])
+@facilities_bp.route('/<id>/delete', methods=['POST'])
 @login_required
 @admin_required
 def delete(id):

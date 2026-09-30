@@ -1,0 +1,75 @@
+/* Dashboard Specific Styles */
+
+.dashboard-metrics {
+    margin-bottom: 2rem;
+}
+
+.metric-card {
+    border-radius: 12px;
+    padding: 1.5rem;
+    height: 100%;
+}
+
+.metric-icon {
+    font-size: 2.5rem;
+    opacity: 0.7;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0.5rem 0;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.9;
+}
+
+.recent-activity {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+    transition: background-color 0.2s;
+}
+
+.activity-item:hover {
+    background-color: #f8f9fa;
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.quick-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-box {
+    background: #fff;
+    padding: 1.25rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.stat-box h3 {
+    font-size: 1.75rem;
+    margin: 0.5rem 0;
+    color: #0d6efd;
+}
+
+.stat-box p {
+    margin: 0;
+    color: #6c757d;
+    font-size: 0.875rem;
+}

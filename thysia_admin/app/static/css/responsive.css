@@ -1,0 +1,60 @@
+/* Responsive Design */
+
+/* Mobile Devices */
+@media (max-width: 576px) {
+    .container-fluid {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    .table {
+        font-size: 0.75rem;
+    }
+    
+    .btn {
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+    }
+    
+    h2 {
+        font-size: 1.25rem;
+    }
+}
+
+/* Tablet Devices */
+@media (min-width: 577px) and (max-width: 992px) {
+    .navbar-nav {
+        margin-top: 1rem;
+    }
+    
+    .card {
+        margin-bottom: 1.5rem;
+    }
+}
+
+/* Desktop */
+@media (min-width: 993px) {
+    .container-fluid {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+}
+
+/* Print */
+@media print {
+    body {
+        background-color: #fff;
+    }
+    
+    .no-print {
+        display: none !important;
+    }
+}

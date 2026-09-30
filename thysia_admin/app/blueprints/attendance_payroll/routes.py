@@ -84,10 +84,19 @@ def generate_payroll():
                 else:
                     regular_hours += duration
 
-        hourly_rate = 75.0
-        overtime_rate = hourly_rate * 1.25
+        # TODO: Replace with per-staff hourly_rate from Staff model or a
+        # PayrollConfig table. Payroll generation is disabled until real
+        # rates are configured — no record is saved for this staff member.
+        hourly_rate = getattr(staff, 'hourly_rate', None)
+        if not hourly_rate:
+            continue
+
+        overtime_rate = hourly_rate * 1.5  # standard OT multiplier
         gross = (regular_hours * hourly_rate) + (overtime_hours * overtime_rate)
-        deductions = gross * 0.1
+
+        # TODO: Replace with real statutory deductions (SSS, PhilHealth,
+        # Pag-IBIG, withholding tax) from a DeductionConfig table.
+        deductions = 0.0
         net = gross - deductions
 
         payroll = Payroll(
@@ -109,5 +118,9 @@ def generate_payroll():
 
     db.session.commit()
     log_action(f'Generated payroll for {generated} staff members', 'Payroll')
-    flash(f'Payroll generated for {generated} staff members.', 'success')
+    skipped = len(staff_list) - generated
+    msg = f'Payroll generated for {generated} staff member(s).'
+    if skipped:
+        msg += f' {skipped} skipped (no hourly rate configured).'
+    flash(msg, 'success' if generated else 'warning')
     return redirect(url_for('attendance_payroll.index', tab='payroll'))

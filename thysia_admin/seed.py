@@ -1,4 +1,13 @@
-"""Seed the database with sample data."""
+"""Seed the database with sample data (SQLite-compatible)."""
+import os, sys
+
+# Force SQLite — skip Supabase entirely
+os.environ['DATABASE_URL'] = ''
+os.environ['DATABASE_POOLER_URL'] = ''
+
+from dotenv import load_dotenv
+load_dotenv()
+
 from app import create_app
 from app.extensions import db
 from app.models import (Account, Guest, Facility, Reservation, Payment,
@@ -7,6 +16,7 @@ from app.models import (Account, Guest, Facility, Reservation, Payment,
 from datetime import datetime, date, timedelta, time
 import random
 import string
+import uuid
 
 app = create_app()
 
@@ -23,7 +33,8 @@ with app.app_context():
     super_admin = Account(
         username='superadmin',
         email='superadmin@adthysia.com',
-        full_name='Joanna Dela Cruz',
+        first_name='Joanna',
+        last_name='Dela Cruz',
         role='super_admin',
         status='active'
     )
@@ -32,7 +43,8 @@ with app.app_context():
     admin = Account(
         username='admin',
         email='admin@adthysia.com',
-        full_name='Maria Santos',
+        first_name='Maria',
+        last_name='Santos',
         role='admin',
         status='active'
     )
@@ -43,20 +55,21 @@ with app.app_context():
 
     # Facilities
     facilities_data = [
-        ('Main Pool Area', 'pool', 80, 1500, 8000, 'Large swimming pool with lounge area and poolside bar.'),
-        ('Grand Event Center', 'event_center', 300, 3000, 25000, 'Air-conditioned hall for grand events, weddings, and corporate meetings.'),
-        ('Garden Pavilion', 'pavilion', 150, 2000, 15000, 'Open-air pavilion surrounded by lush tropical gardens.'),
-        ('Cabana Suite A', 'cabana', 20, 800, 5000, 'Private cabana with dedicated pool access and concierge service.'),
-        ('Cabana Suite B', 'cabana', 20, 800, 5000, 'Private cabana with beach view and personal butler.'),
-        ('Conference Room', 'event_center', 50, 1200, 8000, 'Fully-equipped conference room with AV system.'),
+        ('Main Pool Area', 'pool', 80, 8000, 'Large swimming pool with lounge area and poolside bar.'),
+        ('Grand Event Center', 'event_center', 300, 25000, 'Air-conditioned hall for grand events, weddings, and corporate meetings.'),
+        ('Garden Pavilion', 'pavilion', 150, 15000, 'Open-air pavilion surrounded by lush tropical gardens.'),
+        ('Cabana Suite A', 'cabana', 20, 5000, 'Private cabana with dedicated pool access and concierge service.'),
+        ('Cabana Suite B', 'cabana', 20, 5000, 'Private cabana with beach view and personal butler.'),
+        ('Conference Room', 'event_center', 50, 8000, 'Fully-equipped conference room with AV system.'),
     ]
 
     facilities = []
-    for name, ftype, cap, hourly, daily, desc in facilities_data:
+    for name, ftype, cap, base, desc in facilities_data:
         f = Facility(
-            name=name, facility_type=ftype, capacity=cap,
-            price_per_hour=hourly, price_whole_day=daily, description=desc,
-            status='available'
+            id=str(uuid.uuid4()),
+            facility_name=name, facility_type=ftype, capacity=cap,
+            base_price=base, description=desc,
+            is_available=True
         )
         db.session.add(f)
         facilities.append(f)
@@ -111,7 +124,7 @@ with app.app_context():
         pay_status = 'paid' if status == 'confirmed' else 'pending'
         pay = Payment(
             reservation_id=res.id,
-            amount=facility.price_per_hour * 4,
+            amount=facility.base_price,
             payment_mode=random.choice(payment_modes),
             status=pay_status,
             receipt_number=random_receipt(),
@@ -136,7 +149,7 @@ with app.app_context():
         db.session.flush()
         pay = Payment(
             reservation_id=res.id,
-            amount=facility.price_per_hour * 4,
+            amount=facility.base_price,
             payment_mode='gcash',
             status='paid',
             receipt_number=random_receipt(),

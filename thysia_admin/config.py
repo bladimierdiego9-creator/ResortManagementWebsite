@@ -81,15 +81,20 @@ def get_database_url():
 
 _db_url = get_database_url()
 
+# SQLite doesn't support connect_timeout — only pass it for Postgres
+_is_sqlite = _db_url.startswith('sqlite')
+_engine_options = {
+    'pool_pre_ping': True,
+    'pool_recycle': 1800,
+}
+if not _is_sqlite:
+    _engine_options['connect_args'] = {'connect_timeout': 10}
+
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'thysia-dev-secret-key-change-in-production'
     SQLALCHEMY_DATABASE_URI = _db_url
-    SQLALCHEMY_ENGINE_OPTIONS = {
-        'pool_pre_ping': True,
-        'pool_recycle': 1800,
-        'connect_args': {'connect_timeout': 10},
-    }
+    SQLALCHEMY_ENGINE_OPTIONS = _engine_options
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     WTF_CSRF_ENABLED = True
 

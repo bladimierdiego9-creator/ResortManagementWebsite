@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Booking #{{ booking.id[:8] }} — A&D Thysia{% endblock %}
+{% block breadcrumb %}Booking Details{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Guest Booking</h1>
+        <p class="page-subtitle">Booking #{{ booking.id[:8].upper() }} — {{ guest_name }}</p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('reservations.index') }}" class="btn btn-secondary">← Back to List</a>
+    </div>
+</div>
+
+<div class="grid-2-1">
+    <!-- Booking Info -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Booking Information</div>
+        </div>
+        <div class="card-body" style="padding:20px;">
+            <div class="detail-grid">
+                <div class="detail-row">
+                    <span class="detail-label">Guest Name</span>
+                    <span class="detail-value">{{ guest_name }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Email</span>
+                    <span class="detail-value">{{ booking.account.email if booking.account else '—' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Facility Type</span>
+                    <span class="detail-value">{{ booking.facility_type.replace('_', ' ').title() }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Check-In</span>
+                    <span class="detail-value">{{ booking.check_in.strftime('%B %d, %Y') }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Check-Out</span>
+                    <span class="detail-value">{{ booking.check_out.strftime('%B %d, %Y') }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Number of Guests</span>
+                    <span class="detail-value">{{ booking.guests }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Total Amount</span>
+                    <span class="detail-value font-semibold" style="font-size:18px;">₱{{ "{:,.2f}".format(booking.total_amount) }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Payment Method</span>
+                    <span class="detail-value">{{ booking.payment_method.title() }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Booked On</span>
+                    <span class="detail-value">{{ booking.created_at.strftime('%B %d, %Y %I:%M %p') if booking.created_at else '—' }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Update -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Booking Status</div>
+        </div>
+        <div class="card-body" style="padding:20px;">
+            <form method="POST" style="display:flex;flex-direction:column;gap:16px;">
+                <input type="hidden" name="action" value="update_status">
+                
+                <div>
+                    <label class="form-label">Current Status</label>
+                    <div style="margin-top:6px;">
+                        <span class="badge badge-{{ booking.status }}" style="font-size:14px;padding:8px 16px;">{{ booking.status.title() }}</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="form-label">Update Status</label>
+                    <select name="status" class="form-select" style="margin-top:6px;">
+                        <option value="pending" {% if booking.status == 'pending' %}selected{% endif %}>Pending</option>
+                        <option value="confirmed" {% if booking.status == 'confirmed' %}selected{% endif %}>Confirmed</option>
+                        <option value="cancelled" {% if booking.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                    </select>
+                </div>
+
+                <div id="cancellationReasonField" style="display:none;">
+                    <label class="form-label">Cancellation Reason</label>
+                    <textarea name="cancellation_reason" class="form-input" rows="3" placeholder="Enter reason for cancellation..." style="margin-top:6px;"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:fit-content;">
+                    Update Status
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Inclusions & Notes -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Inclusions</div>
+    </div>
+    <div class="card-body" style="padding:20px;">
+        {% if booking.inclusions %}
+        <ul style="list-style:disc;padding-left:20px;margin:0;">
+            {% for item in booking.inclusions %}
+            <li style="margin-bottom:6px;">{{ item }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-muted">No inclusions listed.</p>
+        {% endif %}
+    </div>
+
+    {% if booking.cancellation_reason %}
+    <div class="card-header" style="border-top:1px solid var(--border);">
+        <div class="card-title">Cancellation</div>
+    </div>
+    <div class="card-body" style="padding:20px;">
+        <div class="detail-row">
+            <span class="detail-label">Reason</span>
+            <span class="detail-value">{{ booking.cancellation_reason }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Cancelled At</span>
+            <span class="detail-value">{{ booking.cancelled_at.strftime('%B %d, %Y %I:%M %p') if booking.cancelled_at else '—' }}</span>
+        </div>
+    </div>
+    {% endif %}
+</div>
+</div>
+
+<style>
+.detail-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-light);
+}
+.detail-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.detail-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+.detail-value {
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: right;
+}
+</style>
+
+<script>
+// Show/hide cancellation reason field based on status selection
+document.querySelector('select[name="status"]').addEventListener('change', function() {
+    const cancelField = document.getElementById('cancellationReasonField');
+    if (this.value === 'cancelled') {
+        cancelField.style.display = 'block';
+    } else {
+        cancelField.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}
