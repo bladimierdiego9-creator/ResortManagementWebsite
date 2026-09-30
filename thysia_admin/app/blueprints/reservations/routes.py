@@ -288,45 +288,6 @@ def detail(id):
                            facilities_map={str(f.id): f.facility_name for f in facilities})
 
 
-@reservations_bp.route('/<int:id>/edit', methods=['GET', 'POST'])
-@login_required
-@admin_required
-def edit(id):
-    reservation = Reservation.query.get_or_404(id)
-    facilities = Facility.query.filter_by(is_available=True).order_by(Facility.facility_name).all()
-    guests = Guest.query.order_by(Guest.full_name).all()
-
-    if request.method == 'POST':
-        try:
-            reservation.guest_id = int(request.form.get('guest_id')) if request.form.get('guest_id') else None
-            reservation.facility_id = request.form.get('facility_id')
-            reservation.event_date = datetime.strptime(request.form.get('event_date'), '%Y-%m-%d').date()
-            reservation.start_time = datetime.strptime(request.form.get('start_time'), '%H:%M').time()
-            reservation.end_time = datetime.strptime(request.form.get('end_time'), '%H:%M').time()
-            reservation.guest_count = int(request.form.get('guest_count', 1))
-            reservation.notes = request.form.get('notes', '')
-            
-            # Update payment if exists
-            if reservation.payment:
-                reservation.payment.amount = float(request.form.get('amount', 0))
-                reservation.payment.payment_mode = request.form.get('payment_mode', 'cash')
-            
-            db.session.commit()
-            log_action('Updated reservation', 'Reservation', id)
-            flash('Booking updated successfully.', 'success')
-            return redirect(url_for('reservations.detail', id=id))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error updating booking: {str(e)}', 'error')
-
-    return render_template('reservations/detail.html',
-                           mode='edit',
-                           reservation=reservation,
-                           facilities=facilities,
-                           guests=guests,
-                           facilities_map={str(f.id): f.facility_name for f in facilities})
-
-
 @reservations_bp.route('/<int:id>/delete', methods=['POST'])
 @login_required
 @admin_required
@@ -367,34 +328,6 @@ def restore(id):
     log_action('Restored reservation', 'Reservation', id)
     flash('Booking restored.', 'success')
     return redirect(url_for('reservations.index', archived='true'))
-
-
-@reservations_bp.route('/book-<booking_id>/edit', methods=['GET', 'POST'])
-@login_required
-@admin_required
-def edit_booking(booking_id):
-    booking = Booking.query.get_or_404(booking_id)
-    
-    if request.method == 'POST':
-        try:
-            booking.facility_type = request.form.get('facility_type', booking.facility_type)
-            booking.check_in = datetime.strptime(request.form.get('check_in'), '%Y-%m-%d').date()
-            booking.check_out = datetime.strptime(request.form.get('check_out'), '%Y-%m-%d').date()
-            booking.guests = int(request.form.get('guests', booking.guests))
-            booking.total_amount = float(request.form.get('total_amount', booking.total_amount))
-            
-            db.session.commit()
-            log_action('Updated booking', 'Booking', str(booking.id))
-            flash('Booking updated successfully.', 'success')
-            return redirect(url_for('reservations.detail', id=f'book-{booking.id}'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error updating booking: {str(e)}', 'error')
-    
-    # Render edit form
-    return render_template('reservations/booking_edit.html',
-                           booking=booking,
-                           guest_name=f"{booking.account.first_name} {booking.account.last_name}" if booking.account else 'Unknown')
 
 
 @reservations_bp.route('/book-<booking_id>/archive', methods=['POST'])

@@ -72,16 +72,14 @@
                     <td>
                         <div style="display:flex; gap:6px; align-items:center;">
                             {% if not view_archived %}
-                                {# Active bookings: View, Edit, Archive #}
+                                {# Active bookings: View, Archive #}
                                 {% if res['type'] == 'reservation' %}
                                     <a href="{{ url_for('reservations.detail', id=res['id']) }}" class="btn btn-xs btn-info">View</a>
-                                    <a href="{{ url_for('reservations.edit', id=res['id']) }}" class="btn btn-xs btn-primary">Edit</a>
                                     <form method="POST" action="{{ url_for('reservations.archive', id=res['id']) }}" style="display:inline; margin:0;">
                                         <button type="submit" class="btn btn-xs btn-warning">Archive</button>
                                     </form>
                                 {% elif res['type'] == 'booking' %}
                                     <a href="{{ url_for('reservations.detail', id='book-' ~ res['id']) }}" class="btn btn-xs btn-info">View</a>
-                                    <a href="{{ url_for('reservations.edit_booking', booking_id=res['id']) }}" class="btn btn-xs btn-primary">Edit</a>
                                     <form method="POST" action="{{ url_for('reservations.archive_booking', booking_id=res['id']) }}" style="display:inline; margin:0;">
                                         <button type="submit" class="btn btn-xs btn-warning">Archive</button>
                                     </form>
