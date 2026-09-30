@@ -16,81 +16,27 @@
     </div>
 </div>
 
-{% if edit_facility %}
-<!-- EDIT FORM -->
-<div class="card mb-24" style="max-width:680px;">
-    <div class="card-header">
-        <span class="card-title">Edit: {{ edit_facility.name }}</span>
-        <a href="{{ url_for('facilities.index') }}" class="btn btn-sm btn-secondary">Cancel</a>
-    </div>
-    <div class="card-body">
-        <form method="POST" action="{{ url_for('facilities.edit', id=edit_facility.id) }}">
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Name *</label>
-                    <input type="text" name="name" class="form-input" value="{{ edit_facility.name }}" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Type *</label>
-                    <select name="facility_type" class="form-select" required>
-                        <option value="pool" {% if edit_facility.facility_type == 'pool' %}selected{% endif %}>Pool</option>
-                        <option value="event_center" {% if edit_facility.facility_type == 'event_center' %}selected{% endif %}>Event Center</option>
-                        <option value="pavilion" {% if edit_facility.facility_type == 'pavilion' %}selected{% endif %}>Pavilion</option>
-                        <option value="cabana" {% if edit_facility.facility_type == 'cabana' %}selected{% endif %}>Cabana</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Capacity *</label>
-                    <input type="number" name="capacity" class="form-input" value="{{ edit_facility.capacity }}" min="1" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Status</label>
-                    <select name="status" class="form-select">
-                        <option value="available" {% if edit_facility.status == 'available' %}selected{% endif %}>Available</option>
-                        <option value="maintenance" {% if edit_facility.status == 'maintenance' %}selected{% endif %}>Maintenance</option>
-                        <option value="blocked" {% if edit_facility.status == 'blocked' %}selected{% endif %}>Blocked</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Price / Hour (₱) *</label>
-                    <input type="number" name="price_per_hour" class="form-input" value="{{ edit_facility.price_per_hour }}" step="0.01" min="0" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Price Whole Day (₱)</label>
-                    <input type="number" name="price_whole_day" class="form-input" value="{{ edit_facility.price_whole_day or '' }}" step="0.01" min="0">
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Description</label>
-                <textarea name="description" class="form-textarea">{{ edit_facility.description or '' }}</textarea>
-            </div>
-            <div class="modal-actions">
-                <a href="{{ url_for('facilities.index') }}" class="btn btn-secondary">Cancel</a>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
-            </div>
-        </form>
-    </div>
-</div>
-{% endif %}
+
 
 <!-- FACILITY GRID -->
 <div class="facility-grid">
     {% for f in facilities %}
     <div class="facility-card">
         <div class="facility-card-img">
-            {% if f.facility_type == 'pool' %}🏊
-            {% elif f.facility_type == 'event_center' %}🎉
-            {% elif f.facility_type == 'pavilion' %}🌿
-            {% else %}🏕️{% endif %}
+            {% if f.image_url %}
+                <img src="{{ f.image_url }}" alt="{{ f.name }}" style="width:100%;height:100%;object-fit:cover;">
+            {% else %}
+                {% if f.facility_type == 'pool' %}🏊
+                {% elif f.facility_type == 'pavilion' %}🌿
+                {% elif f.facility_type == 'full_resort' %}🏖️
+                {% elif f.facility_type == 'room' %}🏠
+                {% else %}🏕️{% endif %}
+            {% endif %}
         </div>
         <div class="facility-card-body">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px;">
                 <div class="facility-card-name">{{ f.name }}</div>
-                <span class="badge badge-{{ f.status }}" style="flex-shrink:0;">{{ f.status.title() }}</span>
+                <span class="badge badge-{{ 'success' if f.is_available else 'warning' }}" style="flex-shrink:0;">{{ 'Available' if f.is_available else 'Unavailable' }}</span>
             </div>
             <div class="facility-card-meta">
                 {{ f.facility_type.replace('_', ' ').title() }} · Capacity: {{ f.capacity }} pax
@@ -109,9 +55,9 @@
             <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;">{{ f.description[:80] }}{% if f.description|length > 80 %}…{% endif %}</p>
             {% endif %}
             <div class="facility-card-actions">
-                <a href="{{ url_for('facilities.edit', id=f.id) }}" class="btn btn-sm btn-secondary" style="flex:1;justify-content:center;">Edit</a>
+                <button onclick="openEditModal('{{ f.id }}')" class="btn btn-sm btn-secondary" style="flex:1;justify-content:center;">Edit</button>
                 <form method="POST" action="{{ url_for('facilities.delete', id=f.id) }}"
-                      data-confirm="Delete '{{ f.name }}'? All associated data may be affected.">
+                      onsubmit="return confirm('Delete \'{{ f.name }}\'? All associated data may be affected.')">
                     <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                 </form>
             </div>
@@ -131,19 +77,38 @@
         <h2 class="modal-title">Add New Facility</h2>
         <button class="modal-close" onclick="closeModal('addFacilityModal')" aria-label="Close">×</button>
         <div class="divider"></div>
-        <form method="POST" action="{{ url_for('facilities.new') }}">
+        <form method="POST" action="{{ url_for('facilities.new') }}" enctype="multipart/form-data">
+            <!-- Image Upload -->
+            <div class="form-group">
+                <label class="form-label">Facility Image</label>
+                <div class="file-upload-wrapper">
+                    <input type="file" name="image" id="newImageInput" accept="image/*" onchange="previewImage(this, 'newPreview')" style="display:none;">
+                    <button type="button" class="btn btn-secondary btn-upload" onclick="document.getElementById('newImageInput').click()">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" style="margin-right:8px;">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Choose Image
+                    </button>
+                    <span id="newFileName" style="margin-left:12px;font-size:13px;color:var(--text-muted);">No file chosen</span>
+                </div>
+                <small class="form-help">Accepted: JPG, PNG, GIF, WEBP (max 5MB)</small>
+                <div id="newPreview" style="margin-top:12px;display:none;">
+                    <img src="" alt="Preview" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border);">
+                </div>
+            </div>
+            
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Name *</label>
-                    <input type="text" name="name" class="form-input" required>
+                    <input type="text" name="facility_name" class="form-input" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Type *</label>
                     <select name="facility_type" class="form-select" required>
                         <option value="pool">Pool</option>
-                        <option value="event_center">Event Center</option>
                         <option value="pavilion">Pavilion</option>
-                        <option value="cabana">Cabana</option>
+                        <option value="full_resort">Full Resort</option>
+                        <option value="room">Room</option>
                     </select>
                 </div>
             </div>
@@ -153,23 +118,16 @@
                     <input type="number" name="capacity" class="form-input" min="1" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Status</label>
-                    <select name="status" class="form-select">
-                        <option value="available">Available</option>
-                        <option value="maintenance">Maintenance</option>
-                        <option value="blocked">Blocked</option>
+                    <label class="form-label">Available?</label>
+                    <select name="is_available" class="form-select">
+                        <option value="true" selected>Yes</option>
+                        <option value="false">No</option>
                     </select>
                 </div>
             </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Price / Hour (₱) *</label>
-                    <input type="number" name="price_per_hour" class="form-input" step="0.01" min="0" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Price Whole Day (₱)</label>
-                    <input type="number" name="price_whole_day" class="form-input" step="0.01" min="0">
-                </div>
+            <div class="form-group">
+                <label class="form-label">Base Price (₱) *</label>
+                <input type="number" name="base_price" class="form-input" step="0.01" min="0" required>
             </div>
             <div class="form-group">
                 <label class="form-label">Description</label>
@@ -182,4 +140,165 @@
         </form>
     </div>
 </div>
+
+<!-- EDIT FACILITY MODAL -->
+<div class="modal-overlay" id="editFacilityModal">
+    <div class="modal">
+        <h2 class="modal-title">Edit Facility</h2>
+        <button class="modal-close" onclick="closeModal('editFacilityModal')" aria-label="Close">×</button>
+        <div class="divider"></div>
+        <form method="POST" id="editFacilityForm" enctype="multipart/form-data">
+            <!-- Current Image Display -->
+            <div class="form-group" id="currentImageSection" style="display:none;">
+                <label class="form-label">Current Image</label>
+                <div style="margin-top:8px;">
+                    <img id="currentImage" src="" alt="Current" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border);">
+                </div>
+            </div>
+            
+            <!-- Image Upload -->
+            <div class="form-group">
+                <label class="form-label">Change Image</label>
+                <div class="file-upload-wrapper">
+                    <input type="file" name="image" id="editImageInput" accept="image/*" onchange="previewImage(this, 'editPreview')" style="display:none;">
+                    <button type="button" class="btn btn-secondary btn-upload" onclick="document.getElementById('editImageInput').click()">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" style="margin-right:8px;">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Choose Image
+                    </button>
+                    <span id="editFileName" style="margin-left:12px;font-size:13px;color:var(--text-muted);">No file chosen</span>
+                </div>
+                <small class="form-help">Accepted: JPG, PNG, GIF, WEBP (max 5MB)</small>
+                <div id="editPreview" style="margin-top:12px;display:none;">
+                    <img src="" alt="Preview" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border);">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Name *</label>
+                    <input type="text" name="facility_name" id="edit_name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Type *</label>
+                    <select name="facility_type" id="edit_type" class="form-select" required>
+                        <option value="pool">Pool</option>
+                        <option value="pavilion">Pavilion</option>
+                        <option value="full_resort">Full Resort</option>
+                        <option value="room">Room</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Capacity *</label>
+                    <input type="number" name="capacity" id="edit_capacity" class="form-input" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Available?</label>
+                    <select name="is_available" id="edit_available" class="form-select">
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Base Price (₱) *</label>
+                <input type="number" name="base_price" id="edit_price" class="form-input" step="0.01" min="0" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea name="description" id="edit_description" class="form-textarea"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('editFacilityModal')" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const facilities = [
+    {% for f in facilities %}
+    {
+        id: "{{ f.id }}",
+        facility_name: "{{ f.facility_name | safe }}",
+        facility_type: "{{ f.facility_type }}",
+        capacity: {{ f.capacity or 0 }},
+        base_price: {{ f.base_price or 0 }},
+        is_available: {{ 'true' if f.is_available else 'false' }},
+        description: {{ f.description | tojson if f.description else '""' }},
+        image_url: {{ f.image_url | tojson if f.image_url else 'null' }}
+    }{{ ',' if not loop.last else '' }}
+    {% endfor %}
+];
+
+function openEditModal(facilityId) {
+    const facility = facilities.find(f => f.id === facilityId);
+    if (!facility) return;
+    
+    // Populate form fields
+    document.getElementById('edit_name').value = facility.facility_name || '';
+    document.getElementById('edit_type').value = facility.facility_type || 'pool';
+    document.getElementById('edit_capacity').value = facility.capacity || '';
+    document.getElementById('edit_available').value = facility.is_available ? 'true' : 'false';
+    document.getElementById('edit_price').value = facility.base_price || '';
+    document.getElementById('edit_description').value = facility.description || '';
+    
+    // Show current image if exists
+    if (facility.image_url) {
+        document.getElementById('currentImage').src = facility.image_url;
+        document.getElementById('currentImageSection').style.display = 'block';
+    } else {
+        document.getElementById('currentImageSection').style.display = 'none';
+    }
+    
+    // Reset file input and preview
+    document.getElementById('editImageInput').value = '';
+    document.getElementById('editFileName').textContent = 'No file chosen';
+    document.getElementById('editFileName').style.color = 'var(--text-muted)';
+    document.getElementById('editPreview').style.display = 'none';
+    
+    // Set form action
+    document.getElementById('editFacilityForm').action = `/facilities/${facilityId}/edit`;
+    
+    // Open modal
+    openModal('editFacilityModal');
+}
+
+function previewImage(input, previewId) {
+    const preview = document.getElementById(previewId);
+    const img = preview.querySelector('img');
+    
+    // Update filename display
+    const fileNameId = previewId === 'newPreview' ? 'newFileName' : 'editFileName';
+    const fileNameSpan = document.getElementById(fileNameId);
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Show filename
+        if (fileNameSpan) {
+            fileNameSpan.textContent = file.name;
+            fileNameSpan.style.color = 'var(--text-primary)';
+        }
+        
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            img.src = e.target.result;
+            preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        if (fileNameSpan) {
+            fileNameSpan.textContent = 'No file chosen';
+            fileNameSpan.style.color = 'var(--text-muted)';
+        }
+        preview.style.display = 'none';
+    }
+}
+</script>
 {% endblock %}

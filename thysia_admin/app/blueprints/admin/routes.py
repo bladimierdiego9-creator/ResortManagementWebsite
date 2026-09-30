@@ -34,6 +34,10 @@ def api_bookings():
 
     reservations = query.order_by(Reservation.event_date).all()
 
+    # Get facilities map
+    facilities = Facility.query.all()
+    facilities_map = {str(f.id): f.facility_name for f in facilities}
+
     events = []
     for r in reservations:
         if r.status == 'confirmed':
@@ -52,7 +56,7 @@ def api_bookings():
             'textColor': '#ffffff',
             'extendedProps': {
                 'status':     r.status,
-                'facility':   r.facility.name if r.facility else '—',
+                'facility':   facilities_map.get(r.facility_id, 'Unknown Facility') if r.facility_id else '—',
                 'guest':      r.guest.full_name if r.guest else '—',
                 'phone':      r.guest.phone if r.guest else '—',
                 'start_time': r.start_time.strftime('%I:%M %p') if r.start_time else '—',

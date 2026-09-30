@@ -91,7 +91,7 @@
         <div class="card-header">
             <div>
                 <div class="card-title">Booking activity</div>
-                <div style="font-size:11.5px;color:var(--text-muted);">Reservations across all facilities</div>
+                <div style="font-size:11.5px;color:var(--text-muted);">Bookings across all facilities</div>
             </div>
             <div class="flex gap-8">
                 <button class="btn btn-sm btn-secondary btn-pill" style="font-size:11.5px;" onclick="switchBookingChart('month')">This month</button>
@@ -158,7 +158,7 @@
     <div class="card">
         <div class="card-header">
             <div>
-                <div class="card-title">Recent reservations</div>
+                <div class="card-title">Recent bookings</div>
                 <div style="font-size:11.5px;color:var(--text-muted);">Latest activity from your guests</div>
             </div>
             <a href="{{ url_for('reservations.index') }}" class="btn btn-sm btn-secondary">View all →</a>
@@ -193,7 +193,7 @@
                         <td><span class="badge badge-{{ res.status }}">{{ res.status.title() }}</span></td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="5" class="text-center text-muted" style="padding:28px;">No reservations yet.</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted" style="padding:28px;">No bookings yet.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

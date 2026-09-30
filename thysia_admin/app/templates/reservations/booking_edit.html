@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Edit Booking #{{ booking.id[:8] }} — A&D Thysia{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('reservations.index') }}" class="breadcrumb-home">Reservations</a> <span class="breadcrumb-sep">/</span> Edit Booking{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Edit Guest Booking</h1>
+        <p class="page-subtitle">Booking #{{ booking.id[:8].upper() }} — {{ guest_name }}</p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('reservations.detail', id='book-' ~ booking.id) }}" class="btn btn-secondary">← Back</a>
+    </div>
+</div>
+
+<div class="card" style="max-width:720px;">
+    <div class="card-header"><span class="card-title">Booking Details</span></div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('reservations.edit_booking', booking_id=booking.id) }}">
+            <!-- Guest Info (Read-only) -->
+            <div class="form-group">
+                <label class="form-label">Guest</label>
+                <input type="text" class="form-input" value="{{ guest_name }}" disabled>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-input" value="{{ booking.account.email if booking.account else '—' }}" disabled>
+            </div>
+
+            <!-- Facility Type (Read-only - cannot change type of existing booking) -->
+            <div class="form-group">
+                <label class="form-label">Facility Type</label>
+                <input type="text" class="form-input" value="{{ booking.facility_type.replace('_', ' ').title() }}" disabled>
+                <input type="hidden" name="facility_type" value="{{ booking.facility_type }}">
+            </div>
+
+            <!-- Check-in / Check-out -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Check-In Date *</label>
+                    <input type="date" name="check_in" class="form-input" value="{{ booking.check_in.isoformat() }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Check-Out Date *</label>
+                    <input type="date" name="check_out" class="form-input" value="{{ booking.check_out.isoformat() }}" required>
+                </div>
+            </div>
+
+            <!-- Guests & Amount -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Number of Guests *</label>
+                    <input type="number" name="guests" class="form-input" min="1" value="{{ booking.guests }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Total Amount (₱)</label>
+                    <input type="number" name="total_amount" class="form-input" step="0.01" min="0" value="{{ booking.total_amount }}" required>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <a href="{{ url_for('reservations.detail', id='book-' ~ booking.id) }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Update Booking</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

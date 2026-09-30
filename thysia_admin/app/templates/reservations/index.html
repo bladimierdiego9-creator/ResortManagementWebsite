@@ -1,34 +1,36 @@
 {% extends "base.html" %}
-{% block title %}Reservations — A&amp;D Thysia Admin{% endblock %}
-{% block breadcrumb %}Reservations{% endblock %}
+{% block title %}Bookings — A&amp;D Thysia Admin{% endblock %}
+{% block breadcrumb %}Bookings{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div class="page-header-left">
-        <h1 class="page-title">Reservations</h1>
-        <p class="page-subtitle">Manage all event and facility bookings</p>
-    </div>
-    <div class="page-actions">
-        <a href="{{ url_for('reservations.new') }}" class="btn btn-primary">
-            <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
-            New Reservation
-        </a>
+        <h1 class="page-title">Bookings</h1>
+        <p class="page-subtitle">Manage guest bookings - guests book through website</p>
     </div>
 </div>
 
 <!-- FILTERS -->
-<form method="GET" action="{{ url_for('reservations.index') }}" class="filter-bar">
-    <select name="status" class="form-select" onchange="this.form.submit()">
-        <option value="">All Statuses</option>
-        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
-        <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Confirmed</option>
-        <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
-    </select>
-    <input type="date" name="date_from" class="form-input" value="{{ date_from }}" placeholder="From date">
-    <input type="date" name="date_to" class="form-input" value="{{ date_to }}" placeholder="To date">
-    <button type="submit" class="btn btn-secondary">Filter</button>
-    <a href="{{ url_for('reservations.index') }}" class="btn btn-secondary">Reset</a>
-</form>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:16px;">
+    <form method="GET" action="{{ url_for('reservations.index') }}" class="filter-bar" style="flex:1;margin:0;">
+        <select name="status" class="form-select" onchange="this.form.submit()">
+            <option value="">All Statuses</option>
+            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+            <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Confirmed</option>
+            <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+        </select>
+        <input type="date" name="date_from" class="form-input" value="{{ date_from }}" placeholder="From date">
+        <input type="date" name="date_to" class="form-input" value="{{ date_to }}" placeholder="To date">
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </form>
+    
+    <!-- View Archived Button on the Right -->
+    {% if view_archived %}
+        <a href="{{ url_for('reservations.index') }}" class="btn btn-primary" style="white-space:nowrap;">View Active</a>
+    {% else %}
+        <a href="{{ url_for('reservations.index', archived='true') }}" class="btn btn-primary" style="white-space:nowrap;">View Archived</a>
+    {% endif %}
+</div>
 
 <!-- TABLE -->
 <div class="card">
@@ -68,15 +70,43 @@
                         {% else %}—{% endif %}
                     </td>
                     <td>
-                        <div class="flex gap-8">
-                            {% if res['detail_url'] %}
-                            <a href="{{ res['detail_url'] }}" class="btn btn-xs btn-secondary">View</a>
-                            {% endif %}
-                            {% if res['delete_url'] %}
-                            <form method="POST" action="{{ res['delete_url'] }}"
-                                  data-confirm="Delete this reservation? This cannot be undone.">
-                                <button type="submit" class="btn btn-xs btn-danger">Del</button>
-                            </form>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            {% if not view_archived %}
+                                {# Active bookings: View, Edit, Archive #}
+                                {% if res['type'] == 'reservation' %}
+                                    <a href="{{ url_for('reservations.detail', id=res['id']) }}" class="btn btn-xs btn-info">View</a>
+                                    <a href="{{ url_for('reservations.edit', id=res['id']) }}" class="btn btn-xs btn-primary">Edit</a>
+                                    <form method="POST" action="{{ url_for('reservations.archive', id=res['id']) }}" style="display:inline; margin:0;">
+                                        <button type="submit" class="btn btn-xs btn-warning">Archive</button>
+                                    </form>
+                                {% elif res['type'] == 'booking' %}
+                                    <a href="{{ url_for('reservations.detail', id='book-' ~ res['id']) }}" class="btn btn-xs btn-info">View</a>
+                                    <a href="{{ url_for('reservations.edit_booking', booking_id=res['id']) }}" class="btn btn-xs btn-primary">Edit</a>
+                                    <form method="POST" action="{{ url_for('reservations.archive_booking', booking_id=res['id']) }}" style="display:inline; margin:0;">
+                                        <button type="submit" class="btn btn-xs btn-warning">Archive</button>
+                                    </form>
+                                {% endif %}
+                            {% else %}
+                                {# Archived bookings: View, Restore, Delete #}
+                                {% if res['type'] == 'reservation' %}
+                                    <a href="{{ url_for('reservations.detail', id=res['id']) }}" class="btn btn-xs btn-info">View</a>
+                                    <form method="POST" action="{{ url_for('reservations.restore', id=res['id']) }}" style="display:inline; margin:0;">
+                                        <button type="submit" class="btn btn-xs btn-success">Restore</button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('reservations.delete', id=res['id']) }}" 
+                                          onsubmit="return confirm('Permanently delete this booking? This cannot be undone.')" style="display:inline; margin:0;">
+                                        <button type="submit" class="btn btn-xs btn-danger">Delete</button>
+                                    </form>
+                                {% elif res['type'] == 'booking' %}
+                                    <a href="{{ url_for('reservations.detail', id='book-' ~ res['id']) }}" class="btn btn-xs btn-info">View</a>
+                                    <form method="POST" action="{{ url_for('reservations.restore_booking', booking_id=res['id']) }}" style="display:inline; margin:0;">
+                                        <button type="submit" class="btn btn-xs btn-success">Restore</button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('reservations.delete_booking', booking_id=res['id']) }}" 
+                                          onsubmit="return confirm('Permanently delete this booking? This cannot be undone.')" style="display:inline; margin:0;">
+                                        <button type="submit" class="btn btn-xs btn-danger">Delete</button>
+                                    </form>
+                                {% endif %}
                             {% endif %}
                         </div>
                     </td>
