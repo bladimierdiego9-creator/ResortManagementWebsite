@@ -70,6 +70,27 @@
     <style>
         ::-webkit-scrollbar { display: none; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        /* OTP Input Styling */
+        .otp-input {
+            width: 50px;
+            height: 60px;
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            margin: 0 5px;
+            border-radius: 12px;
+            border: 2px solid #203a2f;
+            background: #152f24;
+            color: #4edea3;
+            transition: all 0.2s;
+        }
+        .otp-input:focus {
+            outline: none;
+            border-color: #4edea3;
+            background: #203a2f;
+            box-shadow: 0 0 0 3px rgba(78, 222, 163, 0.2);
+        }
     </style>
 </head>
 <body class="bg-surface text-on-surface antialiased min-h-screen">
@@ -109,10 +130,10 @@
 
             <div class="space-y-4 max-w-lg flex flex-col items-center text-center mx-auto drop-shadow-md my-auto pt-16 mt-10">
                 <h1 class="text-4xl text-on-surface font-bold leading-tight">
-                    Create New Password
+                    Verify Your Identity
                 </h1>
                 <p class="text-base text-on-surface-variant max-w-md mx-auto leading-relaxed">
-                    Set a strong password to protect your administrative access to the resort management system.
+                    Enter the 6-digit OTP code sent to your registered email address to continue.
                 </p>
             </div>
         </div>
@@ -127,7 +148,7 @@
         </div>
     </div>
 
-    <!-- RIGHT PANEL: Reset Password Form -->
+    <!-- RIGHT PANEL: OTP Verification -->
     <div class="relative w-full lg:w-7/12 xl:w-1/2 flex items-center justify-center p-6 sm:p-12 lg:p-16 bg-surface-container-lowest my-auto min-h-screen">
         
         <!-- Ambient Lighting Blobs -->
@@ -140,8 +161,8 @@
                 <!-- Card Top Bar -->
                 <div class="flex items-center justify-between gap-2 pb-6">
                     <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-high/90 text-on-surface">
-                        <span class="material-symbols-outlined text-secondary text-[18px]">shield</span>
-                        <span class="text-xs tracking-wide font-medium">Secure Password Reset</span>
+                        <span class="material-symbols-outlined text-secondary text-[18px]">pin</span>
+                        <span class="text-xs tracking-wide font-medium">OTP Verification</span>
                     </div>
                     <div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-container text-tertiary text-[10px] font-bold">
                         <span class="w-1.5 h-1.5 rounded-full bg-primary animate-ping"></span>
@@ -151,9 +172,9 @@
 
                 <!-- Section Heading -->
                 <div class="space-y-1 mb-8">
-                    <h2 class="text-3xl text-on-surface font-bold tracking-tight">Reset Password</h2>
+                    <h2 class="text-3xl text-on-surface font-bold tracking-tight">Enter OTP</h2>
                     <p class="text-sm text-on-surface-variant">
-                        Choose a strong password that you haven't used elsewhere.
+                        We sent a 6-digit code to <span class="text-primary font-semibold">{{ email }}</span>
                     </p>
                 </div>
 
@@ -180,69 +201,28 @@
                     {% endif %}
                 {% endwith %}
 
-                <!-- Reset Form -->
-                <form method="POST" action="{{ url_for('auth.reset_password') }}" class="space-y-5">
-                    <!-- New Password -->
-                    <div class="space-y-2">
-                        <div class="flex items-center justify-between">
-                            <label class="text-sm text-on-surface font-semibold" for="password">
-                                New Password
-                            </label>
+                <!-- OTP Form -->
+                <form method="POST" action="{{ url_for('auth.verify_otp') }}" class="space-y-6" id="otpForm">
+                    <!-- OTP Input -->
+                    <div class="space-y-4">
+                        <div class="flex justify-center items-center">
+                            <input type="text" maxlength="1" class="otp-input" id="otp1" data-index="0" />
+                            <input type="text" maxlength="1" class="otp-input" id="otp2" data-index="1" />
+                            <input type="text" maxlength="1" class="otp-input" id="otp3" data-index="2" />
+                            <input type="text" maxlength="1" class="otp-input" id="otp4" data-index="3" />
+                            <input type="text" maxlength="1" class="otp-input" id="otp5" data-index="4" />
+                            <input type="text" maxlength="1" class="otp-input" id="otp6" data-index="5" />
                         </div>
-                        <div class="relative flex items-center">
-                            <span class="material-symbols-outlined absolute left-3.5 text-on-surface-variant pointer-events-none text-[16px]">key</span>
-                            <input class="w-full pl-11 pr-12 py-3.5 rounded-xl bg-surface-container-high text-on-surface text-sm placeholder:text-outline/50 focus:outline-none focus:bg-surface-container-highest transition-all duration-200" 
-                                   id="password" 
-                                   name="password" 
-                                   placeholder="Enter new password" 
-                                   required 
-                                   type="password"
-                                   autocomplete="new-password"
-                                   minlength="8">
-                            <button type="button" 
-                                    class="absolute right-3.5 p-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center" 
-                                    onclick="togglePassword('password', 'eyeIcon1')">
-                                <span class="material-symbols-outlined text-[16px]" id="eyeIcon1">visibility</span>
-                            </button>
-                        </div>
+                        <input type="hidden" name="otp" id="otpValue" required />
                     </div>
 
-                    <!-- Confirm Password -->
-                    <div class="space-y-2">
-                        <div class="flex items-center justify-between">
-                            <label class="text-sm text-on-surface font-semibold" for="confirm_password">
-                                Confirm Password
-                            </label>
-                        </div>
-                        <div class="relative flex items-center">
-                            <span class="material-symbols-outlined absolute left-3.5 text-on-surface-variant pointer-events-none text-[16px]">key</span>
-                            <input class="w-full pl-11 pr-12 py-3.5 rounded-xl bg-surface-container-high text-on-surface text-sm placeholder:text-outline/50 focus:outline-none focus:bg-surface-container-highest transition-all duration-200" 
-                                   id="confirm_password" 
-                                   name="confirm_password" 
-                                   placeholder="Confirm new password" 
-                                   required 
-                                   type="password"
-                                   autocomplete="new-password"
-                                   minlength="8">
-                            <button type="button" 
-                                    class="absolute right-3.5 p-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-colors flex items-center justify-center" 
-                                    onclick="togglePassword('confirm_password', 'eyeIcon2')">
-                                <span class="material-symbols-outlined text-[16px]" id="eyeIcon2">visibility</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Password Requirements -->
+                    <!-- Info Box -->
                     <div class="p-4 rounded-lg bg-surface-container-high/50 border border-outline-variant/30">
                         <div class="flex items-start gap-3">
-                            <span class="material-symbols-outlined text-secondary text-[20px] mt-0.5">lock</span>
+                            <span class="material-symbols-outlined text-secondary text-[20px] mt-0.5">schedule</span>
                             <div class="text-xs text-on-surface-variant space-y-1">
-                                <p class="font-semibold text-on-surface">Password Requirements:</p>
-                                <ul class="list-disc list-inside space-y-0.5 pl-1">
-                                    <li>At least 8 characters long</li>
-                                    <li>Use a unique password you haven't used before</li>
-                                    <li>Consider using a mix of letters, numbers, and symbols</li>
-                                </ul>
+                                <p class="font-semibold text-on-surface">OTP expires in 15 minutes</p>
+                                <p>Didn't receive the code? Check your spam folder or request a new one.</p>
                             </div>
                         </div>
                     </div>
@@ -251,17 +231,21 @@
                     <div class="pt-2">
                         <button type="submit" 
                                 class="w-full py-4 px-6 rounded-xl text-sm font-bold text-on-primary bg-gradient-to-r from-primary-container via-primary to-primary-container shadow-lg shadow-primary-container/25 hover:shadow-primary-container/40 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 tracking-wide">
-                            <span class="material-symbols-outlined text-[18px]">check_circle</span>
-                            Reset Password
+                            <span class="material-symbols-outlined text-[18px]">verified</span>
+                            Verify OTP
                         </button>
                     </div>
 
-                    <!-- Back to Login -->
-                    <div class="pt-2 text-center">
-                        <a href="{{ url_for('auth.login') }}" 
-                           class="inline-flex items-center gap-1.5 text-sm text-secondary hover:text-secondary-fixed transition-colors">
+                    <!-- Resend / Back Links -->
+                    <div class="pt-2 flex items-center justify-between text-sm">
+                        <a href="{{ url_for('auth.forgot_password') }}" 
+                           class="inline-flex items-center gap-1.5 text-secondary hover:text-secondary-fixed transition-colors">
                             <span class="material-symbols-outlined text-[16px]">arrow_back</span>
-                            <span>Back to Sign In</span>
+                            <span>Request New OTP</span>
+                        </a>
+                        <a href="{{ url_for('auth.login') }}" 
+                           class="text-on-surface-variant hover:text-on-surface transition-colors">
+                            Back to Login
                         </a>
                     </div>
                 </form>
@@ -282,17 +266,69 @@
 </div>
 
 <script>
-function togglePassword(inputId, iconId) {
-    const input = document.getElementById(inputId);
-    const icon = document.getElementById(iconId);
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.textContent = 'visibility_off';
-    } else {
-        input.type = 'password';
-        icon.textContent = 'visibility';
-    }
+// OTP Input Auto-focus and Navigation
+const inputs = document.querySelectorAll('.otp-input');
+const form = document.getElementById('otpForm');
+const otpValue = document.getElementById('otpValue');
+
+inputs.forEach((input, index) => {
+    input.addEventListener('input', (e) => {
+        const value = e.target.value;
+        
+        // Only allow numbers
+        if (!/^\d$/.test(value)) {
+            e.target.value = '';
+            return;
+        }
+        
+        // Move to next input if there is one
+        if (value && index < inputs.length - 1) {
+            inputs[index + 1].focus();
+        }
+        
+        // Update hidden input with complete OTP
+        updateOTP();
+    });
+    
+    input.addEventListener('keydown', (e) => {
+        // Move to previous input on backspace if current is empty
+        if (e.key === 'Backspace' && !e.target.value && index > 0) {
+            inputs[index - 1].focus();
+        }
+        
+        // Allow arrow keys for navigation
+        if (e.key === 'ArrowLeft' && index > 0) {
+            inputs[index - 1].focus();
+        }
+        if (e.key === 'ArrowRight' && index < inputs.length - 1) {
+            inputs[index + 1].focus();
+        }
+    });
+    
+    // Handle paste
+    input.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const paste = e.clipboardData.getData('text').replace(/\D/g, '');
+        
+        if (paste.length === 6) {
+            paste.split('').forEach((char, i) => {
+                if (inputs[i]) {
+                    inputs[i].value = char;
+                }
+            });
+            inputs[5].focus();
+            updateOTP();
+        }
+    });
+});
+
+function updateOTP() {
+    const otp = Array.from(inputs).map(input => input.value).join('');
+    otpValue.value = otp;
 }
+
+// Focus first input on load
+inputs[0].focus();
 </script>
 
 </body>

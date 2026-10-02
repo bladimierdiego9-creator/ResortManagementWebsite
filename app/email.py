@@ -63,22 +63,17 @@ def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] =
         return False
 
 
-def send_password_reset_email(user_email: str, reset_token: str) -> bool:
+def send_password_reset_email(user_email: str, reset_otp: str) -> bool:
     """
-    Send a password reset email with a reset link.
+    Send a password reset email with a 6-digit OTP.
     
     Args:
         user_email: Email address of the user requesting password reset
-        reset_token: Token to include in the reset URL
+        reset_otp: 6-digit OTP code
     
     Returns:
         True if email sent successfully, False otherwise
     """
-    from flask import url_for
-    
-    # Generate reset URL
-    reset_url = url_for('auth.reset_password', token=reset_token, _external=True)
-    
     # HTML email body
     html_body = f"""
     <!DOCTYPE html>
@@ -112,15 +107,17 @@ def send_password_reset_email(user_email: str, reset_token: str) -> bool:
                 border-radius: 6px;
                 box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             }}
-            .button {{
-                display: inline-block;
-                padding: 12px 30px;
-                background-color: #4edea3;
-                color: white !important;
-                text-decoration: none;
-                border-radius: 6px;
-                margin: 20px 0;
-                font-weight: 500;
+            .otp-box {{
+                background: linear-gradient(135deg, #4edea3 0%, #10b981 100%);
+                color: white;
+                font-size: 42px;
+                font-weight: bold;
+                letter-spacing: 8px;
+                padding: 25px;
+                border-radius: 12px;
+                text-align: center;
+                margin: 30px 0;
+                box-shadow: 0 4px 12px rgba(78, 222, 163, 0.3);
             }}
             .footer {{
                 text-align: center;
@@ -142,20 +139,20 @@ def send_password_reset_email(user_email: str, reset_token: str) -> bool:
                 <h1>A&D Thysia Resort</h1>
             </div>
             <div class="content">
-                <h2>Password Reset Request</h2>
+                <h2>Password Reset OTP</h2>
                 <p>You have requested to reset your password for your A&D Thysia admin account.</p>
-                <p>Click the button below to reset your password:</p>
-                <div style="text-align: center;">
-                    <a href="{reset_url}" class="button">Reset Password</a>
+                <p>Use this One-Time Password (OTP) to reset your password:</p>
+                
+                <div class="otp-box">
+                    {reset_otp}
                 </div>
-                <p>Or copy and paste this link into your browser:</p>
-                <p style="word-break: break-all; color: #666; font-size: 14px;">{reset_url}</p>
+                
                 <div class="warning">
                     <strong>⚠️ Security Notice:</strong>
                     <ul style="margin: 10px 0; padding-left: 20px;">
-                        <li>This link will expire in 1 hour</li>
+                        <li>This OTP will expire in 15 minutes</li>
                         <li>If you didn't request this reset, please ignore this email</li>
-                        <li>Never share this link with anyone</li>
+                        <li>Never share this OTP with anyone</li>
                     </ul>
                 </div>
             </div>
@@ -170,17 +167,18 @@ def send_password_reset_email(user_email: str, reset_token: str) -> bool:
     
     # Plain text fallback
     text_body = f"""
-    A&D Thysia Resort - Password Reset Request
+    A&D Thysia Resort - Password Reset OTP
     
     You have requested to reset your password for your A&D Thysia admin account.
     
-    Click the link below to reset your password:
-    {reset_url}
+    Your One-Time Password (OTP):
+    
+    {reset_otp}
     
     Security Notice:
-    - This link will expire in 1 hour
+    - This OTP will expire in 15 minutes
     - If you didn't request this reset, please ignore this email
-    - Never share this link with anyone
+    - Never share this OTP with anyone
     
     © 2026 A&D Thysia Resort. All rights reserved.
     This is an automated email. Please do not reply.
@@ -188,7 +186,7 @@ def send_password_reset_email(user_email: str, reset_token: str) -> bool:
     
     return send_email(
         to=user_email,
-        subject='Reset Your Password - A&D Thysia',
+        subject='Your Password Reset OTP - A&D Thysia',
         html_body=html_body,
         text_body=text_body
     )

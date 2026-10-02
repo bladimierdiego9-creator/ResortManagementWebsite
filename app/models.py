@@ -73,12 +73,13 @@ class Account(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     def generate_reset_token(self):
-        """Generate a password reset token that expires in 1 hour."""
-        import secrets
+        """Generate a 6-digit OTP that expires in 15 minutes."""
+        import random
         from datetime import timedelta
         
-        self.reset_token = secrets.token_urlsafe(32)
-        self.reset_token_expiry = datetime.utcnow() + timedelta(hours=1)
+        # Generate 6-digit OTP
+        self.reset_token = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        self.reset_token_expiry = datetime.utcnow() + timedelta(minutes=15)
         return self.reset_token
     
     def verify_reset_token(self, token):
