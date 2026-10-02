@@ -31,3 +31,17 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Database files - stored in data/ directory
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+!data/.gitkeep
+
+# Node modules (if using npm)
+node_modules/
+
+# Backup files
+*.bak
+*.backup
+*_backup_*/

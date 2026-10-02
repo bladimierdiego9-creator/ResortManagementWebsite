@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Audit Trail - {{ resort_name %}{% endblock %}
+{% block content %}
+<h1><i class="fas fa-history"></i> Audit Trail</h1>
+<div class="card mt-4">
+    <div class="card-body">
+        <table class="table table-sm">
+            <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Resource</th><th>Description</th></tr></thead>
+            <tbody>
+            {% for log in logs.items %}
+            <tr>
+                <td>{{ format_datetime(log.created_at) }}</td>
+                <td>{{ log.username }}</td>
+                <td><span class="badge bg-info">{{ log.action }}</span></td>
+                <td>{{ log.resource_type }}</td>
+                <td>{{ log.description }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
