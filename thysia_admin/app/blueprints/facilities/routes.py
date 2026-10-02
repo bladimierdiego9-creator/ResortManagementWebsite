@@ -47,27 +47,39 @@ def index():
 @admin_required
 def new():
     if request.method == 'POST':
-        # Handle image upload
-        image_url = None
-        if 'image' in request.files:
-            file = request.files['image']
-            if file.filename:
-                image_url = save_facility_image(file)
-        
-        facility = Facility(
-            facility_name=request.form.get('facility_name', '').strip(),
-            facility_type=request.form.get('facility_type', '').strip(),
-            capacity=int(request.form.get('capacity', 0)),
-            base_price=float(request.form.get('base_price', 0)),
-            description=request.form.get('description', '').strip(),
-            is_available=request.form.get('is_available', 'true') == 'true',
-            image_url=image_url
-        )
-        db.session.add(facility)
-        db.session.commit()
-        log_action('Created facility', 'Facility', facility.id)
-        flash('Facility added successfully.', 'success')
-        return redirect(url_for('facilities.index'))
+        try:
+            # Handle image upload
+            image_url = None
+            if 'image' in request.files:
+                file = request.files['image']
+                if file.filename:
+                    image_url = save_facility_image(file)
+            
+            # Check if facility name already exists
+            facility_name = request.form.get('facility_name', '').strip()
+            existing = Facility.query.filter_by(facility_name=facility_name).first()
+            if existing:
+                flash(f'Facility name "{facility_name}" already exists. Please use a different name.', 'danger')
+                return redirect(url_for('facilities.index'))
+            
+            facility = Facility(
+                facility_name=facility_name,
+                facility_type=request.form.get('facility_type', '').strip(),
+                capacity=int(request.form.get('capacity', 0)),
+                base_price=float(request.form.get('base_price', 0)),
+                description=request.form.get('description', '').strip(),
+                is_available=request.form.get('is_available', 'true') == 'true',
+                image_url=image_url
+            )
+            db.session.add(facility)
+            db.session.commit()
+            log_action('Created facility', 'Facility', facility.id)
+            flash('Facility added successfully.', 'success')
+            return redirect(url_for('facilities.index'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error adding facility: {str(e)}', 'danger')
+            return redirect(url_for('facilities.index'))
     return render_template('facilities/index.html', facilities=Facility.query.order_by(Facility.facility_name).all(), mode='new')
 
 
