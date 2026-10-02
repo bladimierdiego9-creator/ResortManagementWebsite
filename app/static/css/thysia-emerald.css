@@ -480,3 +480,45 @@ a:hover { color: #85f8c4; }
     background: linear-gradient(180deg, rgba(0, 18, 10, .99) 0%, rgba(0, 14, 9, .99) 100%) !important;
   }
 }
+
+/* ============================================================
+   FACILITIES PAGE — cards, toolbar, upload widgets
+   ============================================================ */
+.filter-bar .facility-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  padding-right: 4px;
+}
+#facilitySearch { min-width: 260px; }
+
+.facility-card-img { opacity: 1 !important; }
+.facility-card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.facility-card-img-icon { font-size: 38px; line-height: 1; opacity: .9; }
+
+.facility-card-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 8px; margin-bottom: 4px;
+}
+.facility-card-head .badge { flex-shrink: 0; }
+.facility-card-desc {
+  font-size: 12.5px; color: var(--text-secondary);
+  line-height: 1.5; margin-bottom: 12px;
+}
+.facility-card-actions form { display: contents; }
+.facility-edit-btn { flex: 1; justify-content: center; gap: 6px; }
+
+.facility-upload { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.facility-file-name { font-size: 12.5px; color: var(--text-muted); word-break: break-all; }
+.facility-file-name.chosen { color: var(--em-primary); }
+
+.facility-preview img {
+  max-width: 100%; max-height: 200px;
+  border-radius: 10px; border: 1px solid var(--border); display: block;
+}
+.facility-checkbox {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 10px; font-size: 12.5px; color: var(--text-secondary); cursor: pointer;
+}
+.facility-checkbox input { width: 15px; height: 15px; accent-color: var(--em-primary); cursor: pointer; }

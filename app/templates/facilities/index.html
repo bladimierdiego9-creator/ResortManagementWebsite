@@ -1,75 +1,130 @@
 {% extends "base.html" %}
-{% block title %}Facilities — A&amp;D Thysia Admin{% endblock %}
-{% block breadcrumb %}Facilities &amp; Menu{% endblock %}
+{% block title %}Facilities — A&D Thysia Admin{% endblock %}
+{% block breadcrumb %}Facilities & Menu{% endblock %}
+
+{% macro type_icon(facility_type) -%}
+{%- if facility_type == 'pool' %}🏊
+{%- elif facility_type == 'pavilion' %}🌿
+{%- elif facility_type == 'full_resort' %}🏖️
+{%- elif facility_type == 'room' %}🏠
+{%- elif facility_type == 'cabana' %}🛖
+{%- elif facility_type == 'event_center' %}🎪
+{%- else %}🏕️{% endif -%}
+{%- endmacro %}
 
 {% block content %}
 <div class="page-header">
     <div class="page-header-left">
         <h1 class="page-title">Facilities &amp; Menu</h1>
-        <p class="page-subtitle">Manage venue facilities, capacities, and pricing</p>
+        <p class="page-subtitle">
+            {{ total_count }} facilit{{ 'y' if total_count == 1 else 'ies' }} on record
+            · {{ available_count }} available
+        </p>
     </div>
     <div class="page-actions">
-        <button onclick="openModal('addFacilityModal')" class="btn btn-primary">
+        <button type="button" onclick="openAddModal()" class="btn btn-primary">
             <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
             Add Facility
         </button>
     </div>
 </div>
 
+{% if facilities %}
+<div class="filter-bar">
+    <input type="search" id="facilitySearch" class="form-input" placeholder="Search facilities…" autocomplete="off">
+    <select id="facilityStatusFilter" class="form-select">
+        <option value="all">All statuses</option>
+        <option value="available">Available only</option>
+        <option value="unavailable">Unavailable only</option>
+    </select>
+    <span class="facility-count" id="facilityResultCount">{{ total_count }} of {{ total_count }} shown</span>
+</div>
+{% endif %}
 
-
-<!-- FACILITY GRID -->
-<div class="facility-grid">
+<div class="facility-grid" id="facilityGrid">
     {% for f in facilities %}
-    <div class="facility-card">
+    <div class="facility-card"
+         data-facility-id="{{ f.id }}"
+         data-available="{{ 'true' if f.is_available else 'false' }}"
+         data-search="{{ (f.facility_name ~ ' ' ~ f.facility_type.replace('_', ' ') ~ ' ' ~ (f.description or ''))|lower }}">
         <div class="facility-card-img">
-            {% if f.image_url %}
-                <img src="{{ f.image_url }}" alt="{{ f.name }}" style="width:100%;height:100%;object-fit:cover;">
+            {% if f.has_image %}
+            <img src="{{ f.image_url }}" alt="{{ f.facility_name }}" loading="lazy" decoding="async">
             {% else %}
-                {% if f.facility_type == 'pool' %}🏊
-                {% elif f.facility_type == 'pavilion' %}🌿
-                {% elif f.facility_type == 'full_resort' %}🏖️
-                {% elif f.facility_type == 'room' %}🏠
-                {% else %}🏕️{% endif %}
+            <span class="facility-card-img-icon">{{ type_icon(f.facility_type) }}</span>
             {% endif %}
         </div>
         <div class="facility-card-body">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px;">
-                <div class="facility-card-name">{{ f.name }}</div>
-                <span class="badge badge-{{ 'success' if f.is_available else 'warning' }}" style="flex-shrink:0;">{{ 'Available' if f.is_available else 'Unavailable' }}</span>
+            <div class="facility-card-head">
+                <div class="facility-card-name">{{ f.facility_name }}</div>
+                <span class="badge badge-{{ 'available' if f.is_available else 'maintenance' }}">
+                    {{ 'Available' if f.is_available else 'Unavailable' }}
+                </span>
             </div>
             <div class="facility-card-meta">
-                {{ f.facility_type.replace('_', ' ').title() }} · Capacity: {{ f.capacity }} pax
+                {{ f.facility_type.replace('_', ' ').title() }}
+                · Capacity: {{ f.capacity or '—' }} pax
             </div>
             <div class="facility-card-prices">
                 <div class="facility-price-item">
-                    <strong>₱{{ "{:,.0f}".format(f.base_price) if f.base_price else '0' }}</strong>per hour
+                    <strong>₱{{ "{:,.0f}".format(f.base_price or 0) }}</strong>
+                    base rate
                 </div>
-                {% if f.base_price %}
                 <div class="facility-price-item">
-                    <strong>₱{{ "{:,.0f}".format(f.base_price * 8) }}</strong>whole day
+                    <strong>{{ 'Open' if f.is_available else 'Closed' }}</strong>
+                    booking status
                 </div>
-                {% endif %}
             </div>
             {% if f.description %}
-            <p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;">{{ f.description[:80] }}{% if f.description|length > 80 %}…{% endif %}</p>
+            <p class="facility-card-desc">
+                {{ f.description[:110] }}{% if f.description|length > 110 %}…{% endif %}
+            </p>
             {% endif %}
             <div class="facility-card-actions">
-                <button onclick="openEditModal('{{ f.id }}')" class="btn btn-sm btn-secondary" style="flex:1;justify-content:center;">Edit</button>
-                <form method="POST" action="{{ url_for('facilities.delete', id=f.id) }}"
-                      onsubmit="return confirm('Delete \'{{ f.name }}\'? All associated data may be affected.')">
-                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                <button type="button" onclick="openEditModal('{{ f.id }}')"
+                        class="btn btn-sm btn-secondary facility-edit-btn">
+                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    Edit
+                </button>
+                <form method="POST" action="{{ url_for('facilities.toggle', id=f.id) }}" data-confirm="{{ 'Mark ' ~ f.facility_name ~ ' as unavailable?' if f.is_available else 'Mark ' ~ f.facility_name ~ ' as available?' }}">
+                    <button type="submit" class="btn btn-sm btn-icon btn-info"
+                            title="{{ 'Mark as unavailable' if f.is_available else 'Mark as available' }}">
+                        {% if f.is_available %}
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8M9.9 5.2A9 9 0 0112 5c5 0 9 4.5 9 7 0 .9-.5 2-1.3 3.1M6.2 6.6C3.9 8.1 3 10.1 3 12c0 2.5 4 7 9 7 1.4 0 2.7-.4 3.8-1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        {% else %}
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M22 12c0-2.5-4-7-10-7S2 9.5 2 12s4 7 10 7 10-4.5 10-7z" stroke="currentColor" stroke-width="2"/><path d="M12 9.5l2.5 2.5M14.5 15l-2.5-2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                        {% endif %}
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('facilities.delete', id=f.id) }}" data-confirm="Delete '{{ f.facility_name }}'? This removes the facility and its photo. This cannot be undone.">
+                    <button type="submit" class="btn btn-sm btn-icon btn-danger" title="Delete facility">
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </button>
                 </form>
             </div>
         </div>
     </div>
-    {% else %}
-    <div class="empty-state">
-        <svg width="40" height="40" fill="none" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke="currentColor" stroke-width="1.5"/></svg>
-        <p>No facilities added yet. Add one to get started.</p>
-    </div>
     {% endfor %}
 </div>
+
+{% if not facilities %}
+<div class="empty-state-wrap">
+    <div class="empty-state-icon">
+        <svg width="26" height="26" fill="none" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke="currentColor" stroke-width="1.5"/></svg>
+    </div>
+    <div class="empty-state-title">No facilities yet</div>
+    <p class="empty-state-desc">
+        Everything you add here is saved in the database and shown to guests when they book.
+        Start by adding your first venue.
+    </p>
+    <button type="button" onclick="openAddModal()" class="btn btn-primary" style="margin-top:18px;">Add Facility</button>
+</div>
+{% else %}
+<div class="empty-state-wrap" id="facilityNoResults" style="display:none;">
+    <div class="empty-state-title">No facilities match your search</div>
+    <p class="empty-state-desc">Try a different keyword or clear the status filter.</p>
+</div>
+{% endif %}
 
 <!-- ADD FACILITY MODAL -->
 <div class="modal-overlay" id="addFacilityModal">
@@ -77,62 +132,67 @@
         <h2 class="modal-title">Add New Facility</h2>
         <button class="modal-close" onclick="closeModal('addFacilityModal')" aria-label="Close">×</button>
         <div class="divider"></div>
-        <form method="POST" action="{{ url_for('facilities.new') }}" enctype="multipart/form-data">
-            <!-- Image Upload -->
+        <form method="POST" action="{{ url_for('facilities.new') }}" enctype="multipart/form-data" id="addFacilityForm">
             <div class="form-group">
-                <label class="form-label">Facility Image</label>
-                <div class="file-upload-wrapper">
-                    <input type="file" name="image" id="newImageInput" accept="image/*" onchange="previewImage(this, 'newPreview')" style="display:none;">
-                    <button type="button" class="btn btn-secondary btn-upload" onclick="document.getElementById('newImageInput').click()">
+                <label class="form-label" for="newImageInput">Facility Image</label>
+                <div class="facility-upload">
+                    <input type="file" name="image" id="newImageInput" accept="image/*"
+                           onchange="previewImage(this, 'newPreview', 'newFileName')" hidden>
+                    <button type="button" class="btn btn-secondary"
+                            onclick="document.getElementById('newImageInput').click()">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" style="margin-right:8px;">
                             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         Choose Image
                     </button>
-                    <span id="newFileName" style="margin-left:12px;font-size:13px;color:var(--text-muted);">No file chosen</span>
+                    <span class="facility-file-name" id="newFileName">No file chosen</span>
                 </div>
-                <small class="form-help">Accepted: JPG, PNG, GIF, WEBP (max 5MB)</small>
-                <div id="newPreview" style="margin-top:12px;display:none;">
-                    <img src="" alt="Preview" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border);">
+                <div class="form-hint">JPG, PNG, GIF or WEBP — up to 16&nbsp;MB. The photo is saved in the database.</div>
+                <div class="facility-preview" id="newPreview" style="display:none;">
+                    <img src="" alt="Preview">
                 </div>
             </div>
-            
+
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">Name *</label>
-                    <input type="text" name="facility_name" class="form-input" required>
+                    <label class="form-label" for="new_name">Name *</label>
+                    <input type="text" name="facility_name" id="new_name" class="form-input" maxlength="120" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Type *</label>
-                    <select name="facility_type" class="form-select" required>
-                        <option value="pool">Pool</option>
-                        <option value="pavilion">Pavilion</option>
-                        <option value="full_resort">Full Resort</option>
-                        <option value="room">Room</option>
+                    <label class="form-label" for="new_type">Type *</label>
+                    <select name="facility_type" id="new_type" class="form-select" required>
+                        {% for t in facility_types %}
+                        <option value="{{ t }}">{{ t.replace('_', ' ').title() }}</option>
+                        {% endfor %}
                     </select>
                 </div>
             </div>
+
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">Capacity *</label>
-                    <input type="number" name="capacity" class="form-input" min="1" required>
+                    <label class="form-label" for="new_capacity">Capacity (pax) *</label>
+                    <input type="number" name="capacity" id="new_capacity" class="form-input" min="1" step="1" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Available?</label>
-                    <select name="is_available" class="form-select">
+                    <label class="form-label" for="new_available">Available for booking?</label>
+                    <select name="is_available" id="new_available" class="form-select">
                         <option value="true" selected>Yes</option>
                         <option value="false">No</option>
                     </select>
                 </div>
             </div>
+
             <div class="form-group">
-                <label class="form-label">Base Price (₱) *</label>
-                <input type="number" name="base_price" class="form-input" step="0.01" min="0" required>
+                <label class="form-label" for="new_price">Base Price (₱) *</label>
+                <input type="number" name="base_price" id="new_price" class="form-input" step="0.01" min="0" required>
             </div>
+
             <div class="form-group">
-                <label class="form-label">Description</label>
-                <textarea name="description" class="form-textarea"></textarea>
+                <label class="form-label" for="new_description">Description</label>
+                <textarea name="description" id="new_description" class="form-textarea" rows="3"
+                          placeholder="What the venue includes, amenities, notes…"></textarea>
             </div>
+
             <div class="modal-actions">
                 <button type="button" onclick="closeModal('addFacilityModal')" class="btn btn-secondary">Cancel</button>
                 <button type="submit" class="btn btn-primary">Add Facility</button>
@@ -148,69 +208,76 @@
         <button class="modal-close" onclick="closeModal('editFacilityModal')" aria-label="Close">×</button>
         <div class="divider"></div>
         <form method="POST" id="editFacilityForm" enctype="multipart/form-data">
-            <!-- Current Image Display -->
             <div class="form-group" id="currentImageSection" style="display:none;">
                 <label class="form-label">Current Image</label>
-                <div style="margin-top:8px;">
-                    <img id="currentImage" src="" alt="Current" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border);">
+                <div class="facility-preview" style="margin-top:8px;">
+                    <img id="currentImage" src="" alt="Current facility image">
                 </div>
+                <label class="facility-checkbox">
+                    <input type="checkbox" name="remove_image" id="edit_remove_image" value="true">
+                    Remove this image
+                </label>
             </div>
-            
-            <!-- Image Upload -->
+
             <div class="form-group">
-                <label class="form-label">Change Image</label>
-                <div class="file-upload-wrapper">
-                    <input type="file" name="image" id="editImageInput" accept="image/*" onchange="previewImage(this, 'editPreview')" style="display:none;">
-                    <button type="button" class="btn btn-secondary btn-upload" onclick="document.getElementById('editImageInput').click()">
+                <label class="form-label" for="editImageInput">Change Image</label>
+                <div class="facility-upload">
+                    <input type="file" name="image" id="editImageInput" accept="image/*"
+                           onchange="previewImage(this, 'editPreview', 'editFileName')" hidden>
+                    <button type="button" class="btn btn-secondary"
+                            onclick="document.getElementById('editImageInput').click()">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" style="margin-right:8px;">
                             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         Choose Image
                     </button>
-                    <span id="editFileName" style="margin-left:12px;font-size:13px;color:var(--text-muted);">No file chosen</span>
+                    <span class="facility-file-name" id="editFileName">No file chosen</span>
                 </div>
-                <small class="form-help">Accepted: JPG, PNG, GIF, WEBP (max 5MB)</small>
-                <div id="editPreview" style="margin-top:12px;display:none;">
-                    <img src="" alt="Preview" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border);">
+                <div class="form-hint">Leave empty to keep the current photo. JPG, PNG, GIF or WEBP — up to 16&nbsp;MB, stored in the database.</div>
+                <div class="facility-preview" id="editPreview" style="display:none;">
+                    <img src="" alt="Preview">
                 </div>
             </div>
-            
+
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">Name *</label>
-                    <input type="text" name="facility_name" id="edit_name" class="form-input" required>
+                    <label class="form-label" for="edit_name">Name *</label>
+                    <input type="text" name="facility_name" id="edit_name" class="form-input" maxlength="120" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Type *</label>
+                    <label class="form-label" for="edit_type">Type *</label>
                     <select name="facility_type" id="edit_type" class="form-select" required>
-                        <option value="pool">Pool</option>
-                        <option value="pavilion">Pavilion</option>
-                        <option value="full_resort">Full Resort</option>
-                        <option value="room">Room</option>
+                        {% for t in facility_types %}
+                        <option value="{{ t }}">{{ t.replace('_', ' ').title() }}</option>
+                        {% endfor %}
                     </select>
                 </div>
             </div>
+
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">Capacity *</label>
-                    <input type="number" name="capacity" id="edit_capacity" class="form-input" min="1" required>
+                    <label class="form-label" for="edit_capacity">Capacity (pax) *</label>
+                    <input type="number" name="capacity" id="edit_capacity" class="form-input" min="1" step="1" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Available?</label>
+                    <label class="form-label" for="edit_available">Available for booking?</label>
                     <select name="is_available" id="edit_available" class="form-select">
                         <option value="true">Yes</option>
                         <option value="false">No</option>
                     </select>
                 </div>
             </div>
+
             <div class="form-group">
-                <label class="form-label">Base Price (₱) *</label>
+                <label class="form-label" for="edit_price">Base Price (₱) *</label>
                 <input type="number" name="base_price" id="edit_price" class="form-input" step="0.01" min="0" required>
             </div>
+
             <div class="form-group">
-                <label class="form-label">Description</label>
-                <textarea name="description" id="edit_description" class="form-textarea"></textarea>
+                <label class="form-label" for="edit_description">Description</label>
+                <textarea name="description" id="edit_description" class="form-textarea" rows="3"></textarea>
             </div>
+
             <div class="modal-actions">
                 <button type="button" onclick="closeModal('editFacilityModal')" class="btn btn-secondary">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -218,87 +285,176 @@
         </form>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
+// Rows rendered on this page, straight from the `facilities` table.
 const facilities = [
     {% for f in facilities %}
     {
-        id: "{{ f.id }}",
-        facility_name: "{{ f.facility_name | safe }}",
-        facility_type: "{{ f.facility_type }}",
+        id: {{ f.id | tojson }},
+        facility_name: {{ f.facility_name | tojson }},
+        facility_type: {{ f.facility_type | tojson }},
         capacity: {{ f.capacity or 0 }},
         base_price: {{ f.base_price or 0 }},
         is_available: {{ 'true' if f.is_available else 'false' }},
-        description: {{ f.description | tojson if f.description else '""' }},
-        image_url: {{ f.image_url | tojson if f.image_url else 'null' }}
+        description: {{ (f.description or '') | tojson }}
     }{{ ',' if not loop.last else '' }}
     {% endfor %}
 ];
 
-function openEditModal(facilityId) {
-    const facility = facilities.find(f => f.id === facilityId);
-    if (!facility) return;
-    
-    // Populate form fields
-    document.getElementById('edit_name').value = facility.facility_name || '';
-    document.getElementById('edit_type').value = facility.facility_type || 'pool';
-    document.getElementById('edit_capacity').value = facility.capacity || '';
-    document.getElementById('edit_available').value = facility.is_available ? 'true' : 'false';
-    document.getElementById('edit_price').value = facility.base_price || '';
-    document.getElementById('edit_description').value = facility.description || '';
-    
-    // Show current image if exists
-    if (facility.image_url) {
-        document.getElementById('currentImage').src = facility.image_url;
-        document.getElementById('currentImageSection').style.display = 'block';
-    } else {
-        document.getElementById('currentImageSection').style.display = 'none';
-    }
-    
-    // Reset file input and preview
-    document.getElementById('editImageInput').value = '';
-    document.getElementById('editFileName').textContent = 'No file chosen';
-    document.getElementById('editFileName').style.color = 'var(--text-muted)';
-    document.getElementById('editPreview').style.display = 'none';
-    
-    // Set form action
-    document.getElementById('editFacilityForm').action = `/facilities/${facilityId}/edit`;
-    
-    // Open modal
-    openModal('editFacilityModal');
+// Set when a submit failed validation, so the modal reopens with what was typed.
+const FORM_PREFILL = {{ (form_values or {}) | tojson if form_values else 'null' }};
+const OPEN_MODAL   = {{ (open_modal or '') | tojson }};
+const EDIT_ID      = {{ (edit_id or '') | tojson }};
+
+/* ── modal helpers (window.openModal / closeModal come from main.js) ── */
+function showModal(id) {
+    if (window.openModal) { window.openModal(id); return; }
+    const el = document.getElementById(id);
+    if (el) el.classList.add('open');
 }
 
-function previewImage(input, previewId) {
-    const preview = document.getElementById(previewId);
-    const img = preview.querySelector('img');
-    
-    // Update filename display
-    const fileNameId = previewId === 'newPreview' ? 'newFileName' : 'editFileName';
-    const fileNameSpan = document.getElementById(fileNameId);
-    
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        
-        // Show filename
-        if (fileNameSpan) {
-            fileNameSpan.textContent = file.name;
-            fileNameSpan.style.color = 'var(--text-primary)';
+function fillForm(fields, values) {
+    Object.keys(fields).forEach(function (key) {
+        const el = document.getElementById(fields[key]);
+        if (!el || values[key] === undefined) return;
+        if (key === 'is_available') {
+            el.value = values.is_available ? 'true' : 'false';
+        } else {
+            el.value = values[key];
         }
-        
-        // Show preview
+    });
+}
+
+function resetUpload(inputId, fileNameId, previewId) {
+    const input = document.getElementById(inputId);
+    const nameEl = document.getElementById(fileNameId);
+    const preview = document.getElementById(previewId);
+    if (input) input.value = '';
+    if (nameEl) { nameEl.textContent = 'No file chosen'; nameEl.classList.remove('chosen'); }
+    if (preview) {
+        preview.style.display = 'none';
+        const previewImg = preview.querySelector('img');
+        if (previewImg) previewImg.src = '';
+    }
+}
+
+function openAddModal(prefill) {
+    const form = document.getElementById('addFacilityForm');
+    if (form) form.reset();
+    resetUpload('newImageInput', 'newFileName', 'newPreview');
+    if (prefill) {
+        fillForm({
+            facility_name: 'new_name',
+            facility_type: 'new_type',
+            capacity: 'new_capacity',
+            base_price: 'new_price',
+            description: 'new_description',
+            is_available: 'new_available'
+        }, prefill);
+    }
+    showModal('addFacilityModal');
+}
+
+function openEditModal(facilityId, prefill) {
+    const facility = facilities.find(f => f.id === facilityId);
+    if (!facility) { console.error('Facility not found:', facilityId); return; }
+
+    fillForm({
+        facility_name: 'edit_name',
+        facility_type: 'edit_type',
+        capacity: 'edit_capacity',
+        base_price: 'edit_price',
+        description: 'edit_description',
+        is_available: 'edit_available'
+    }, prefill || facility);
+
+    // Current photo, taken from the card that is already on screen.
+    const card = document.querySelector('.facility-card[data-facility-id="' + facilityId + '"]');
+    const cardImage = card ? card.querySelector('.facility-card-img img') : null;
+    const section = document.getElementById('currentImageSection');
+    const removeBox = document.getElementById('edit_remove_image');
+    if (cardImage) {
+        document.getElementById('currentImage').src = cardImage.getAttribute('src');
+        section.style.display = 'block';
+    } else {
+        section.style.display = 'none';
+    }
+    if (removeBox) removeBox.checked = false;
+
+    resetUpload('editImageInput', 'editFileName', 'editPreview');
+    document.getElementById('editFacilityForm').action = '/facilities/' + facilityId + '/edit';
+    showModal('editFacilityModal');
+}
+
+/* ── image preview ── */
+function previewImage(input, previewId, fileNameId) {
+    const preview = document.getElementById(previewId);
+    const img = preview ? preview.querySelector('img') : null;
+    const nameEl = document.getElementById(fileNameId);
+
+    if (input.files && input.files[0] && img) {
+        const file = input.files[0];
+        if (nameEl) { nameEl.textContent = file.name; nameEl.classList.add('chosen'); }
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             img.src = e.target.result;
             preview.style.display = 'block';
         };
         reader.readAsDataURL(file);
+        const removeBox = document.getElementById('edit_remove_image');
+        if (removeBox) removeBox.checked = false;
     } else {
-        if (fileNameSpan) {
-            fileNameSpan.textContent = 'No file chosen';
-            fileNameSpan.style.color = 'var(--text-muted)';
-        }
-        preview.style.display = 'none';
+        if (nameEl) { nameEl.textContent = 'No file chosen'; nameEl.classList.remove('chosen'); }
+        if (preview) preview.style.display = 'none';
     }
 }
+
+/* ── search + status filter (client side, no reload) ── */
+function applyFacilityFilters() {
+    const grid = document.getElementById('facilityGrid');
+    if (!grid) return;
+    const term = (document.getElementById('facilitySearch').value || '').trim().toLowerCase();
+    const status = document.getElementById('facilityStatusFilter').value;
+    const cards = Array.prototype.slice.call(grid.querySelectorAll('.facility-card'));
+    let shown = 0;
+
+    cards.forEach(function (card) {
+        const matchesTerm = !term || (card.dataset.search || '').indexOf(term) !== -1;
+        
+        // Fix: Convert filter value to match data-available attribute
+        let matchesStatus = true;
+        if (status === 'available') {
+            matchesStatus = card.dataset.available === 'true';
+        } else if (status === 'unavailable') {
+            matchesStatus = card.dataset.available === 'false';
+        }
+        // 'all' matches everything
+        
+        const visible = matchesTerm && matchesStatus;
+        card.style.display = visible ? '' : 'none';
+        if (visible) shown += 1;
+    });
+
+    const counter = document.getElementById('facilityResultCount');
+    if (counter) counter.textContent = shown + ' of ' + cards.length + ' shown';
+    const noResults = document.getElementById('facilityNoResults');
+    if (noResults) noResults.style.display = (cards.length && !shown) ? 'block' : 'none';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const search = document.getElementById('facilitySearch');
+    const statusFilter = document.getElementById('facilityStatusFilter');
+    if (search) search.addEventListener('input', applyFacilityFilters);
+    if (statusFilter) statusFilter.addEventListener('change', applyFacilityFilters);
+
+    if (OPEN_MODAL === 'editFacilityModal' && EDIT_ID) {
+        openEditModal(EDIT_ID, FORM_PREFILL);
+    } else if (OPEN_MODAL === 'addFacilityModal') {
+        openAddModal(FORM_PREFILL);
+    }
+});
 </script>
 {% endblock %}

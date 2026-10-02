@@ -106,3 +106,8 @@ class Config:
     REMEMBER_COOKIE_DURATION   = timedelta(days=7)
     REMEMBER_COOKIE_HTTPONLY   = True
     REMEMBER_COOKIE_SAMESITE   = 'Lax'
+
+    # Image upload config — photos are stored in the database as base64, so no
+    # upload folder is needed anywhere on disk.
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max request size
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}

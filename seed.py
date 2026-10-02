@@ -54,26 +54,12 @@ with app.app_context():
     db.session.commit()
 
     # Facilities
-    facilities_data = [
-        ('Main Pool Area', 'pool', 80, 8000, 'Large swimming pool with lounge area and poolside bar.'),
-        ('Grand Event Center', 'event_center', 300, 25000, 'Air-conditioned hall for grand events, weddings, and corporate meetings.'),
-        ('Garden Pavilion', 'pavilion', 150, 15000, 'Open-air pavilion surrounded by lush tropical gardens.'),
-        ('Cabana Suite A', 'cabana', 20, 5000, 'Private cabana with dedicated pool access and concierge service.'),
-        ('Cabana Suite B', 'cabana', 20, 5000, 'Private cabana with beach view and personal butler.'),
-        ('Conference Room', 'event_center', 50, 8000, 'Fully-equipped conference room with AV system.'),
-    ]
-
-    facilities = []
-    for name, ftype, cap, base, desc in facilities_data:
-        f = Facility(
-            id=str(uuid.uuid4()),
-            facility_name=name, facility_type=ftype, capacity=cap,
-            base_price=base, description=desc,
-            is_available=True
-        )
-        db.session.add(f)
-        facilities.append(f)
-    db.session.commit()
+    # No sample venues are created here any more — add your real facilities in
+    # the admin "Facilities" page. The sample reservations below are only
+    # generated when the database already contains at least one facility.
+    facilities = Facility.query.order_by(Facility.facility_name).all()
+    if not facilities:
+        print('[seed] No facilities in the database - skipping sample reservations and payments.')
 
     # Guests
     guest_data = [
@@ -96,68 +82,69 @@ with app.app_context():
         guests.append(g)
     db.session.commit()
 
-    # Reservations & Payments
-    statuses = ['confirmed', 'confirmed', 'confirmed', 'pending', 'cancelled']
-    payment_modes = ['cash', 'gcash', 'bank', 'card']
-    today = date.today()
+    # Reservations & Payments (only for facilities that exist in the database)
+    if facilities:
+        statuses = ['confirmed', 'confirmed', 'confirmed', 'pending', 'cancelled']
+        payment_modes = ['cash', 'gcash', 'bank', 'card']
+        today = date.today()
 
-    for i in range(30):
-        guest = random.choice(guests)
-        facility = random.choice(facilities)
-        event_date = today + timedelta(days=random.randint(-15, 30))
-        start_h = random.choice([8, 10, 13, 15])
-        status = random.choice(statuses)
+        for i in range(30):
+            guest = random.choice(guests)
+            facility = random.choice(facilities)
+            event_date = today + timedelta(days=random.randint(-15, 30))
+            start_h = random.choice([8, 10, 13, 15])
+            status = random.choice(statuses)
 
-        res = Reservation(
-            guest_id=guest.id,
-            facility_id=facility.id,
-            event_date=event_date,
-            start_time=time(start_h, 0),
-            end_time=time(start_h + 4, 0),
-            guest_count=random.randint(10, facility.capacity),
-            status=status,
-            notes='Sample reservation.'
-        )
-        db.session.add(res)
-        db.session.flush()
+            res = Reservation(
+                guest_id=guest.id,
+                facility_id=facility.id,
+                event_date=event_date,
+                start_time=time(start_h, 0),
+                end_time=time(start_h + 4, 0),
+                guest_count=random.randint(10, facility.capacity),
+                status=status,
+                notes='Sample reservation.'
+            )
+            db.session.add(res)
+            db.session.flush()
 
-        pay_status = 'paid' if status == 'confirmed' else 'pending'
-        pay = Payment(
-            reservation_id=res.id,
-            amount=facility.base_price,
-            payment_mode=random.choice(payment_modes),
-            status=pay_status,
-            receipt_number=random_receipt(),
-            paid_at=datetime.utcnow() if pay_status == 'paid' else None
-        )
-        db.session.add(pay)
+            pay_status = 'paid' if status == 'confirmed' else 'pending'
+            pay = Payment(
+                reservation_id=res.id,
+                amount=facility.base_price,
+                payment_mode=random.choice(payment_modes),
+                status=pay_status,
+                receipt_number=random_receipt(),
+                paid_at=datetime.utcnow() if pay_status == 'paid' else None
+            )
+            db.session.add(pay)
 
-    # Today's reservations
-    for i in range(3):
-        guest = random.choice(guests)
-        facility = random.choice(facilities)
-        res = Reservation(
-            guest_id=guest.id,
-            facility_id=facility.id,
-            event_date=today,
-            start_time=time(9, 0),
-            end_time=time(13, 0),
-            guest_count=random.randint(20, 80),
-            status='confirmed'
-        )
-        db.session.add(res)
-        db.session.flush()
-        pay = Payment(
-            reservation_id=res.id,
-            amount=facility.base_price,
-            payment_mode='gcash',
-            status='paid',
-            receipt_number=random_receipt(),
-            paid_at=datetime.utcnow()
-        )
-        db.session.add(pay)
+        # Today's reservations
+        for i in range(3):
+            guest = random.choice(guests)
+            facility = random.choice(facilities)
+            res = Reservation(
+                guest_id=guest.id,
+                facility_id=facility.id,
+                event_date=today,
+                start_time=time(9, 0),
+                end_time=time(13, 0),
+                guest_count=random.randint(20, 80),
+                status='confirmed'
+            )
+            db.session.add(res)
+            db.session.flush()
+            pay = Payment(
+                reservation_id=res.id,
+                amount=facility.base_price,
+                payment_mode='gcash',
+                status='paid',
+                receipt_number=random_receipt(),
+                paid_at=datetime.utcnow()
+            )
+            db.session.add(pay)
 
-    db.session.commit()
+        db.session.commit()
 
     # Staff
     staff_data = [

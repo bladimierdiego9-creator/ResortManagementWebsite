@@ -100,15 +100,20 @@ class Guest(db.Model):
 class Facility(db.Model):
     __tablename__ = 'facilities'
     id = db.Column(GUID(), primary_key=True, default=lambda: str(uuid.uuid4()))
-    facility_name = db.Column(db.String(120), nullable=False)
+    facility_name = db.Column(db.String(120), nullable=False, unique=True)
     facility_type = db.Column(db.String(64), nullable=False)
     description = db.Column(db.Text, nullable=True)
     capacity = db.Column(db.Integer, nullable=True)
-    base_price = db.Column(db.Float, nullable=False)
+    base_price = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     is_available = db.Column(db.Boolean, default=True)
-    image_url = db.Column(db.String(256), nullable=True)
-    created_at = db.Column(db.DateTime, nullable=True)
-    updated_at = db.Column(db.DateTime, nullable=True)
+    # Photo stored straight in the database as base64 — nothing is written to disk.
+    # image_data is deferred, so listing facilities never downloads the base64
+    # payloads: they are fetched only when a photo is actually served.
+    image_filename = db.Column(db.String(256), nullable=True)
+    image_mimetype = db.Column(db.String(64), nullable=True)
+    image_data = db.deferred(db.Column(db.Text, nullable=True))
+    created_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     @property
     def name(self):
@@ -119,6 +124,46 @@ class Facility(db.Model):
     def status(self):
         """Map is_available to status string for compatibility."""
         return 'available' if self.is_available else 'maintenance'
+
+    @property
+    def has_image(self):
+        """True when a photo is stored in the database for this facility.
+
+        Reads only the mimetype column so listing facilities stays cheap — the
+        base64 payload itself is deferred until it is served.
+        """
+        return bool(self.image_mimetype)
+
+    @property
+    def image_url(self):
+        """URL that streams the photo out of the database (facilities.image).
+
+        Use it anywhere a photo has to be shown, e.g.::
+
+            <img src="{{ facility.image_url }}">
+        """
+        if not self.has_image:
+            return None
+        version = ''
+        if getattr(self, 'updated_at', None):
+            version = '?v=' + str(int(self.updated_at.timestamp()))
+        try:
+            from flask import url_for
+            return url_for('facilities.image', id=self.id) + version
+        except (RuntimeError, ImportError):
+            # No request/app context (scripts, background jobs).
+            return f'/facilities/{self.id}/image' + version
+
+    @property
+    def image_bytes(self):
+        """Raw image bytes decoded from the stored base64 payload."""
+        if not self.has_image:
+            return None
+        import base64
+        try:
+            return base64.b64decode(self.image_data)
+        except Exception:
+            return None
 
 
 class Reservation(db.Model):
@@ -243,7 +288,10 @@ class FacilityAvailability(db.Model):
     slot_end = db.Column(db.Time, nullable=False)
     status = db.Column(db.String(16), default='available')  # available, booked, blocked
     reservation_id = db.Column(db.Integer, db.ForeignKey('reservations.id'), nullable=True)
-    facility = db.relationship('Facility', backref='availability_slots')
+    # passive_deletes: the ORM must not try to load/null slot rows when a
+    # facility is removed — "facility_availability" is cleared explicitly in the
+    # facilities blueprint (its facility_id column has no FK to facilities).
+    facility = db.relationship('Facility', backref=db.backref('availability_slots', passive_deletes=True))
 
 
 class AIChatLog(db.Model):
