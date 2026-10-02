@@ -61,7 +61,7 @@
                             <button onclick="openEditAccount({{ acct.id }}, '{{ acct.full_name|e }}', '{{ acct.email|e }}', '{{ acct.role }}', '{{ acct.status }}', '{{ acct.rfid_tag or '' }}')"
                                     class="btn btn-xs btn-secondary">Edit</button>
                             <form method="POST" action="{{ url_for('accounts.delete_account', id=acct.id) }}"
-                                  data-confirm="Delete account '{{ acct.username }}'? This cannot be undone.">
+                                  data-confirm="Delete admin account '{{ acct.full_name|e }}' (@{{ acct.username }})? This cannot be undone.">
                                 <button type="submit" class="btn btn-xs btn-danger">Del</button>
                             </form>
                         </div>
@@ -98,26 +98,28 @@
                 </tr>
             </thead>
             <tbody>
-                {% for s in staff_accounts.items %}
+                {% for row in staff_accounts.items %}
+                {% set acc = row[0] %}
+                {% set staff = row[1] %}
                 <tr>
                     <td>
                         <div style="display:flex;align-items:center;gap:8px;">
-                            <div class="guest-chip" style="font-size:11px;">{{ s.full_name[:2].upper() }}</div>
-                            <span class="font-semibold">{{ s.full_name }}</span>
+                            <div class="guest-chip" style="font-size:11px;">{{ acc.full_name[:2].upper() }}</div>
+                            <span class="font-semibold">{{ acc.full_name }}</span>
                         </div>
                     </td>
-                    <td>{{ s.role.replace('_', ' ').title() }}</td>
-                    <td><span class="badge badge-info">{{ s.shift.title() if s.shift else '—' }}</span></td>
-                    <td class="text-muted" style="font-size:12px;">{{ s.rfid_tag or '—' }}</td>
-                    <td class="text-muted">{{ s.email or '—' }}</td>
-                    <td class="text-muted">{{ s.phone or '—' }}</td>
-                    <td><span class="badge badge-{{ s.status }}">{{ s.status.title() }}</span></td>
+                    <td>{{ staff.role.replace('_', ' ').title() if staff else 'Staff' }}</td>
+                    <td><span class="badge badge-info">{{ staff.shift.title() if staff and staff.shift else '—' }}</span></td>
+                    <td class="text-muted" style="font-size:12px;">{{ acc.rfid_tag or '—' }}</td>
+                    <td class="text-muted">{{ acc.email or '—' }}</td>
+                    <td class="text-muted">{{ staff.phone if staff else '—' }}</td>
+                    <td><span class="badge badge-{{ acc.status }}">{{ acc.status.title() }}</span></td>
                     <td>
                         <div class="flex gap-8">
-                            <button onclick="openEditStaff({{ s.id }}, '{{ s.full_name|e }}', '{{ s.role|e }}', '{{ s.shift or 'morning' }}', '{{ s.email or '' }}', '{{ s.phone or '' }}', '{{ s.rfid_tag or '' }}', '{{ s.status }}')"
+                            <button onclick="openEditStaff({{ acc.id }}, '{{ acc.full_name|e }}', '{{ staff.role|e if staff else 'staff' }}', '{{ staff.shift if staff and staff.shift else 'morning' }}', '{{ acc.email or '' }}', '{{ staff.phone if staff else '' }}', '{{ acc.rfid_tag or '' }}', '{{ acc.status }}')"
                                     class="btn btn-xs btn-secondary">Edit</button>
-                            <form method="POST" action="{{ url_for('accounts.delete_staff', id=s.id) }}"
-                                  data-confirm="Remove {{ s.full_name }}? This cannot be undone.">
+                            <form method="POST" action="{{ url_for('accounts.delete_staff', id=acc.id) }}"
+                                  data-confirm="Remove staff member '{{ acc.full_name|e }}'? This cannot be undone.">
                                 <button type="submit" class="btn btn-xs btn-danger">Del</button>
                             </form>
                         </div>
@@ -145,13 +147,15 @@
                 </tr>
             </thead>
             <tbody>
-                {% for g in guest_accounts.items %}
+                {% for row in guest_accounts.items %}
+                {% set acc = row[0] %}
+                {% set guest = row[1] %}
                 <tr>
-                    <td class="font-semibold">{{ g[0].first_name }} {{ g[0].last_name }}</td>
-                    <td>{{ g[0].email or '—' }}</td>
-                    <td>{{ g[0].phone or '—' }}</td>
-                    <td class="text-muted">{{ g[1].address if g[1] else '—' }}</td>
-                    <td class="text-muted" style="font-size:12px;">{{ g[0].created_at.strftime('%b %d, %Y') if g[0].created_at else '—' }}</td>
+                    <td class="font-semibold">{{ acc.first_name }} {{ acc.last_name }}</td>
+                    <td>{{ acc.email or '—' }}</td>
+                    <td>{{ acc.phone or '—' }}</td>
+                    <td class="text-muted">{{ guest.address if guest else '—' }}</td>
+                    <td class="text-muted" style="font-size:12px;">{{ acc.created_at.strftime('%b %d, %Y') if acc.created_at else '—' }}</td>
                 </tr>
                 {% else %}
                 <tr><td colspan="5" class="text-center text-muted" style="padding:36px;">No guests found.</td></tr>
@@ -236,11 +240,21 @@
         <h2 class="modal-title">Add Staff Member</h2>
         <button class="modal-close" onclick="closeModal('addStaffModal')" aria-label="Close">×</button>
         <div class="divider"></div>
-        <form method="POST" action="{{ url_for('accounts.new_staff') }}">
+        <form method="POST" action="{{ url_for('accounts.new_staff') }}" onsubmit="return validateStaffPassword()">
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">Full Name *</label>
-                    <input type="text" name="full_name" class="form-input" required placeholder="e.g. Juan dela Cruz">
+                    <label class="form-label">First Name *</label>
+                    <input type="text" name="first_name" class="form-input" required placeholder="e.g. Juan">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Surname *</label>
+                    <input type="text" name="last_name" class="form-input" required placeholder="e.g. dela Cruz">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Username *</label>
+                    <input type="text" name="username" class="form-input" required placeholder="e.g. juandelacruz">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Role *</label>
@@ -254,6 +268,16 @@
                         <option value="maintenance">Maintenance</option>
                         <option value="staff">General Staff</option>
                     </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Password *</label>
+                    <input type="password" name="password" id="staffPassword" class="form-input" required placeholder="Minimum 6 characters">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Confirm Password *</label>
+                    <input type="password" name="confirm_password" id="staffConfirmPassword" class="form-input" required placeholder="Re-enter password">
                 </div>
             </div>
             <div class="form-row">
@@ -404,6 +428,23 @@
 
 {% block scripts %}
 <script>
+function validateStaffPassword() {
+    const password = document.getElementById('staffPassword').value;
+    const confirmPassword = document.getElementById('staffConfirmPassword').value;
+    
+    if (password.length < 6) {
+        alert('Password must be at least 6 characters long.');
+        return false;
+    }
+    
+    if (password !== confirmPassword) {
+        alert('Passwords do not match. Please try again.');
+        return false;
+    }
+    
+    return true;
+}
+
 function openEditAccount(id, fullName, email, role, status, rfid) {
     document.getElementById('editAccountForm').action = `/accounts/${id}/edit`;
     document.getElementById('editAccFullName').value = fullName;

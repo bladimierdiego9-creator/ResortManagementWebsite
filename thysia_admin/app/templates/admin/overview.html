@@ -175,22 +175,24 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for res in recent_reservations %}
+                    {% for item in recent_bookings %}
                     <tr>
                         <td>
                             <div style="display:flex;align-items:center;gap:8px;">
-                                <div class="guest-chip">{{ (res.guest.full_name[:2].upper() if res.guest and res.guest.full_name else 'UN') }}</div>
-                                <span class="font-semibold">{{ res.guest.full_name if res.guest else '(Guest removed)' }}</span>
+                                <div class="guest-chip">{{ item.guest_name[:2].upper() }}</div>
+                                <span class="font-semibold">{{ item.guest_name }}</span>
                             </div>
                         </td>
-                        <td style="color:var(--text-secondary);">{{ facilities_map.get(res.facility_id, 'Unknown Facility') if res.facility_id else '—' }}</td>
+                        <td style="color:var(--text-secondary);">{{ item.facility }}</td>
                         <td style="color:var(--text-secondary);">
-                            {{ res.event_date.strftime('%d %b %Y') }} · {{ res.start_time.strftime('%I:%M %p') }}
+                            {% if item.type == 'reservation' %}
+                                {{ item.event_date.strftime('%d %b %Y') }} · {{ item.start_time.strftime('%I:%M %p') if item.start_time else '—' }}
+                            {% else %}
+                                {{ item.event_date.strftime('%d %b %Y') }} · Check-in
+                            {% endif %}
                         </td>
-                        <td class="font-semibold">
-                            {% if res.payment %}₱{{ "{:,.0f}".format(res.payment.amount) }}{% else %}—{% endif %}
-                        </td>
-                        <td><span class="badge badge-{{ res.status }}">{{ res.status.title() }}</span></td>
+                        <td class="font-semibold">₱{{ "{:,.0f}".format(item.amount) }}</td>
+                        <td><span class="badge badge-{{ item.status }}">{{ item.status.title() }}</span></td>
                     </tr>
                     {% else %}
                     <tr><td colspan="5" class="text-center text-muted" style="padding:28px;">No bookings yet.</td></tr>

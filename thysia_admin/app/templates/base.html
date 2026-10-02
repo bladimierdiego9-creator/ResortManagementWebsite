@@ -144,7 +144,7 @@
         <ul class="nav-list">
             <li>
                 <a href="{{ url_for('accounts.index', tab='admins') }}"
-                   class="nav-item {% if request.blueprint == 'accounts' and request.args.get('tab') != 'staff' and request.args.get('tab') != 'guests' %}active{% endif %}">
+                   class="nav-item {% if request.blueprint == 'accounts' %}active{% endif %}">
                     <span class="nav-icon">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                             <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -152,19 +152,7 @@
                             <path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         </svg>
                     </span>
-                    Admin Accounts
-                </a>
-            </li>
-            <li>
-                <a href="{{ url_for('accounts.index', tab='staff') }}"
-                   class="nav-item {% if request.blueprint == 'accounts' and request.args.get('tab') == 'staff' %}active{% endif %}">
-                    <span class="nav-icon">
-                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
-                            <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
-                            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </span>
-                    Staff Management
+                    Account Management
                 </a>
             </li>
             <li>
@@ -204,8 +192,7 @@
             <span class="user-name">{{ current_user.full_name }}</span>
             <span class="user-role">{{ current_user.role.replace('_', ' ').title() }}</span>
         </div>
-        <a href="{{ url_for('auth.logout') }}" class="user-menu-btn" title="Sign out"
-           onclick="return confirm('Are you sure you want to sign out?')"
+        <a href="#" onclick="showLogoutModal(); return false;" class="user-menu-btn" title="Sign out"
            style="text-decoration:none;">
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                 <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
@@ -266,6 +253,40 @@
     <main class="main-content">
         {% block content %}{% endblock %}
     </main>
+</div>
+
+<!-- GLOBAL CONFIRMATION MODAL -->
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal modal-confirm">
+        <div class="modal-confirm-icon">
+            <svg width="48" height="48" fill="none" viewBox="0 0 24 24">
+                <path d="M12 9v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <h3 class="modal-confirm-title">Confirm Action</h3>
+        <p class="modal-confirm-message" id="confirmMessage">Are you sure you want to proceed?</p>
+        <div class="modal-confirm-actions">
+            <button type="button" onclick="cancelAction()" class="btn btn-secondary btn-lg">Cancel</button>
+            <button type="button" onclick="confirmAction()" class="btn btn-danger btn-lg">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- LOGOUT CONFIRMATION MODAL -->
+<div class="modal-overlay" id="logoutModal">
+    <div class="modal modal-confirm">
+        <div class="modal-confirm-icon modal-confirm-icon-info">
+            <svg width="48" height="48" fill="none" viewBox="0 0 24 24">
+                <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <h3 class="modal-confirm-title">Sign Out</h3>
+        <p class="modal-confirm-message">Are you sure you want to sign out?</p>
+        <div class="modal-confirm-actions">
+            <button type="button" onclick="closeModal('logoutModal')" class="btn btn-secondary btn-lg">Cancel</button>
+            <button type="button" onclick="confirmLogout()" class="btn btn-primary btn-lg">OK</button>
+        </div>
+    </div>
 </div>
 
 {% else %}

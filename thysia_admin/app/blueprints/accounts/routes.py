@@ -132,8 +132,7 @@ def index():
 @login_required
 @admin_required
 def new_account():
-    first_name = request.form.get('first_name', '').strip()
-    last_name  = request.form.get('last_name', '').strip()
+    full_name  = request.form.get('full_name', '').strip()
     username   = request.form.get('username', '').strip()
     email      = request.form.get('email', '').strip()
     role       = request.form.get('role', 'admin')
@@ -143,9 +142,12 @@ def new_account():
     if role not in ('admin', 'super_admin'):
         role = 'admin'
 
-    if not first_name or not last_name or not username or not email or not password:
-        flash('All required fields must be filled in.', 'error')
+    if not full_name or not username or not email or not password:
+        flash('First name, last name, username, and password are required.', 'error')
         return redirect(url_for('accounts.index', tab='admins'))
+    
+    # Split full name into first and last
+    first_name, last_name = _split_name(full_name)
 
     if Account.query.filter_by(username=username).first():
         flash(f'Username "{username}" is already taken.', 'error')
@@ -179,8 +181,13 @@ def new_account():
 @admin_required
 def edit_account(id):
     account = Account.query.get_or_404(id)
-    account.first_name = request.form.get('first_name', account.first_name).strip()
-    account.last_name  = request.form.get('last_name', account.last_name).strip()
+    full_name = request.form.get('full_name', '').strip()
+    
+    if full_name:
+        first_name, last_name = _split_name(full_name)
+        account.first_name = first_name
+        account.last_name = last_name
+    
     account.email      = request.form.get('email', account.email).strip()
     account.role       = request.form.get('role', account.role)
     account.rfid_tag   = request.form.get('rfid_tag', '').strip() or None
@@ -219,15 +226,28 @@ def new_staff():
     first_name = request.form.get('first_name', '').strip()
     last_name  = request.form.get('last_name', '').strip()
     username   = request.form.get('username', '').strip()
-    email      = request.form.get('email', '').strip()
     password   = request.form.get('password', '')
-    rfid_tag   = request.form.get('rfid_tag', '').strip() or None
-    job_role   = request.form.get('job_role', 'staff').strip()
+    confirm_password = request.form.get('confirm_password', '')
+    job_role   = request.form.get('role', 'staff').strip()
     shift      = request.form.get('shift', 'morning')
+    rfid_tag   = request.form.get('rfid_tag', '').strip() or None
+    email      = request.form.get('email', '').strip()
     phone      = request.form.get('phone', '').strip() or None
 
-    if not first_name or not last_name or not username or not password:
-        flash('First name, last name, username, and password are required.', 'error')
+    if not first_name or not last_name or not username or not job_role:
+        flash('First name, surname, username, and role are required.', 'error')
+        return redirect(url_for('accounts.index', tab='staff'))
+    
+    if not password:
+        flash('Password is required.', 'error')
+        return redirect(url_for('accounts.index', tab='staff'))
+    
+    if len(password) < 6:
+        flash('Password must be at least 6 characters long.', 'error')
+        return redirect(url_for('accounts.index', tab='staff'))
+    
+    if password != confirm_password:
+        flash('Passwords do not match.', 'error')
         return redirect(url_for('accounts.index', tab='staff'))
 
     if Account.query.filter_by(username=username).first():
@@ -286,8 +306,12 @@ def edit_staff(id):
         flash('Account is not a staff member.', 'error')
         return redirect(url_for('accounts.index', tab='staff'))
 
-    account.first_name = request.form.get('first_name', account.first_name).strip()
-    account.last_name  = request.form.get('last_name', account.last_name).strip()
+    full_name = request.form.get('full_name', '').strip()
+    if full_name:
+        first_name, last_name = _split_name(full_name)
+        account.first_name = first_name
+        account.last_name = last_name
+
     account.email      = request.form.get('email', account.email).strip()
     account.rfid_tag   = request.form.get('rfid_tag', '').strip() or None
     account.status     = request.form.get('status', account.status)
@@ -299,7 +323,7 @@ def edit_staff(id):
     if account.staff_profile:
         sp = account.staff_profile
         sp.full_name = account.full_name
-        sp.role      = request.form.get('job_role', sp.role).strip()
+        sp.role      = request.form.get('role', sp.role).strip()  # Changed from job_role to role
         sp.shift     = request.form.get('shift', sp.shift)
         sp.phone     = request.form.get('phone', '').strip() or None
         sp.rfid_tag  = account.rfid_tag

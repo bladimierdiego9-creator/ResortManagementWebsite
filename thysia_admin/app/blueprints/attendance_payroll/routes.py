@@ -18,7 +18,7 @@ def index():
 
     attendance_logs = AttendanceLog.query.order_by(
         AttendanceLog.time_in.desc()
-    ).paginate(page=page, per_page=20, error_out=False)
+    ).paginate(page=page, per_page=8, error_out=False)
 
     staff_list = Staff.query.filter_by(status='active').all()
     payrolls = Payroll.query.order_by(Payroll.created_at.desc()).limit(20).all()

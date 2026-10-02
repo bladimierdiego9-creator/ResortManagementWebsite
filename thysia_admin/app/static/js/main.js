@@ -108,13 +108,59 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 
+// ── CUSTOM CONFIRMATION MODAL ───────────────────────────────
+let confirmCallback = null;
+
+function showConfirmModal(message, onConfirm) {
+  const modal = document.getElementById('confirmModal');
+  const messageEl = document.getElementById('confirmMessage');
+  if (modal && messageEl) {
+    messageEl.textContent = message;
+    modal.classList.add('open');
+    confirmCallback = onConfirm;
+  }
+}
+window.showConfirmModal = showConfirmModal;
+
+function confirmAction() {
+  const modal = document.getElementById('confirmModal');
+  if (modal) modal.classList.remove('open');
+  if (confirmCallback) {
+    confirmCallback();
+    confirmCallback = null;
+  }
+}
+window.confirmAction = confirmAction;
+
+function cancelAction() {
+  const modal = document.getElementById('confirmModal');
+  if (modal) modal.classList.remove('open');
+  confirmCallback = null;
+}
+window.cancelAction = cancelAction;
+
+// ── LOGOUT MODAL ────────────────────────────────────────────
+function showLogoutModal() {
+  const modal = document.getElementById('logoutModal');
+  if (modal) modal.classList.add('open');
+}
+window.showLogoutModal = showLogoutModal;
+
+function confirmLogout() {
+  window.location.href = '/auth/logout';
+}
+window.confirmLogout = confirmLogout;
+
 // ── CONFIRM DELETES ─────────────────────────────────────────
 document.addEventListener('submit', function (e) {
   const form = e.target;
   if (form.dataset.confirm) {
-    if (!confirm(form.dataset.confirm)) {
-      e.preventDefault();
-    }
+    e.preventDefault();
+    showConfirmModal(form.dataset.confirm, function() {
+      // Remove the confirm attribute to avoid infinite loop
+      form.removeAttribute('data-confirm');
+      form.submit();
+    });
   }
 });
 
