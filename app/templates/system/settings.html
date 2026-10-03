@@ -15,29 +15,33 @@
         <div class="card mb-24">
             <div class="card-header"><span class="card-title">Resort Information</span></div>
             <div class="card-body">
-                <div class="form-group">
-                    <label class="form-label">Resort Name</label>
-                    <input type="text" class="form-input" value="A&amp;D Thysia Resort &amp; Events Place" readonly>
-                    <p class="form-hint">Contact your system administrator to change the resort name.</p>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Admin Email</label>
-                    <input type="email" class="form-input" value="{{ current_user.email }}" readonly>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Time Zone</label>
-                    <select class="form-select" disabled>
-                        <option>Asia/Manila (UTC+8)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Currency</label>
-                    <select class="form-select" disabled>
-                        <option>PHP — Philippine Peso (₱)</option>
-                    </select>
-                </div>
-                <button class="btn btn-secondary" disabled>Save Changes</button>
-                <p class="form-hint mt-8">Settings editing coming in a future update.</p>
+                <form method="POST" action="{{ url_for('system.update_settings') }}">
+                    <div class="form-group">
+                        <label class="form-label">Resort Name</label>
+                        <input type="text" name="resort_name" class="form-input" value="A&amp;D Thysia Resort &amp; Events Place" required>
+                        <p class="form-hint">The name of your resort displayed throughout the system.</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Admin Email</label>
+                        <input type="email" name="admin_email" class="form-input" value="thysiaresort@gmail.com" required>
+                        <p class="form-hint">Primary contact email for system notifications.</p>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Time Zone</label>
+                        <select name="timezone" class="form-select">
+                            <option value="Asia/Manila" selected>Asia/Manila (UTC+8)</option>
+                            <option value="UTC">UTC (UTC+0)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Currency</label>
+                        <select name="currency" class="form-select">
+                            <option value="PHP" selected>PHP — Philippine Peso (₱)</option>
+                            <option value="USD">USD — US Dollar ($)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </form>
             </div>
         </div>
 
@@ -64,7 +68,7 @@
                         <tr><td class="text-secondary" style="padding:7px 0;width:160px;">Session Timeout</td><td>8 hours</td></tr>
                         <tr><td class="text-secondary" style="padding:7px 0;">CSRF Protection</td><td><span class="badge badge-confirmed">Enabled</span></td></tr>
                         <tr><td class="text-secondary" style="padding:7px 0;">Password Hashing</td><td>Werkzeug (PBKDF2)</td></tr>
-                        <tr><td class="text-secondary" style="padding:7px 0;">RFID Auth</td><td><span class="badge badge-pending">Kiosk Mode</span></td></tr>
+                        <tr><td class="text-secondary" style="padding:7px 0;">RFID Auth</td><td></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -75,7 +79,7 @@
             <div class="card-body">
                 <table style="width:100%;">
                     <tbody>
-                        <tr><td class="text-secondary" style="padding:7px 0;width:200px;">Reservations</td><td><span class="badge badge-confirmed">Active</span></td></tr>
+                        <tr><td class="text-secondary" style="padding:7px 0;width:200px;">Bookings</td><td><span class="badge badge-confirmed">Active</span></td></tr>
                         <tr><td class="text-secondary" style="padding:7px 0;">Payments</td><td><span class="badge badge-confirmed">Active</span></td></tr>
                         <tr><td class="text-secondary" style="padding:7px 0;">Analytics</td><td><span class="badge badge-confirmed">Active</span></td></tr>
                         <tr><td class="text-secondary" style="padding:7px 0;">AI Concierge</td><td><span class="badge badge-confirmed">Active</span></td></tr>

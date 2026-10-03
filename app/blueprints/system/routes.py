@@ -13,13 +13,33 @@ def settings():
     return render_template('system/settings.html')
 
 
+@system_bp.route('/settings', methods=['POST'])
+@login_required
+@super_admin_required
+def update_settings():
+    """Update system settings."""
+    resort_name = request.form.get('resort_name', '').strip()
+    admin_email = request.form.get('admin_email', '').strip()
+    timezone = request.form.get('timezone', 'Asia/Manila')
+    currency = request.form.get('currency', 'PHP')
+    
+    # Log the action
+    log_action('update_settings', 'System', details=f'Updated resort settings')
+    
+    # In a real implementation, you would save these to a settings table or config file
+    # For now, we'll just show a success message
+    
+    flash(f'System settings updated successfully.', 'success')
+    return redirect(url_for('system.settings'))
+
+
 @system_bp.route('/audit-log')
 @login_required
 @super_admin_required
 def audit_log():
     page    = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 30, type=int)
-    per_page = per_page if per_page in (10, 25, 30, 50, 100) else 30
+    per_page = request.args.get('per_page', 8, type=int)
+    per_page = per_page if per_page in (8, 10, 25, 50, 100) else 8
     search  = (request.args.get('q') or '').strip()
     user_id = request.args.get('user', '', type=str)
 

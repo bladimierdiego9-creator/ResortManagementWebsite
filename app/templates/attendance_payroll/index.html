@@ -6,7 +6,7 @@
 <div class="page-header">
     <div class="page-header-left">
         <h1 class="page-title">Attendance &amp; Payroll</h1>
-        <p class="page-subtitle">RFID attendance tracking, payroll generation, and shift handovers</p>
+        <p class="page-subtitle">RFID attendance tracking and payroll generation</p>
     </div>
 </div>
 
@@ -33,8 +33,6 @@
        class="tab {% if tab == 'attendance' %}active{% endif %}">Attendance Logs</a>
     <a href="{{ url_for('attendance_payroll.index', tab='payroll') }}"
        class="tab {% if tab == 'payroll' %}active{% endif %}">Payroll</a>
-    <a href="{{ url_for('attendance_payroll.index', tab='handovers') }}"
-       class="tab {% if tab == 'handovers' %}active{% endif %}">Shift Handovers</a>
 </div>
 
 <!-- ATTENDANCE TAB -->
@@ -160,46 +158,6 @@
                 </div>
             </form>
         </div>
-    </div>
-</div>
-
-<!-- HANDOVERS TAB -->
-{% elif tab == 'handovers' %}
-<div class="card">
-    <div class="card-header"><span class="card-title">Shift Handover Logs</span></div>
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Outgoing Staff</th>
-                    <th>Incoming Staff</th>
-                    <th>Notes</th>
-                    <th>Pending Tasks</th>
-                    <th>Acknowledged</th>
-                    <th>Time</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for h in handovers %}
-                <tr>
-                    <td class="font-semibold">{{ h.outgoing_staff.full_name }}</td>
-                    <td>{{ h.incoming_staff.full_name if h.incoming_staff else '—' }}</td>
-                    <td style="max-width:200px;">{{ h.notes[:80] }}{% if h.notes|length > 80 %}…{% endif %}</td>
-                    <td class="text-secondary" style="font-size:12.5px;">{{ h.pending_tasks or '—' }}</td>
-                    <td>
-                        {% if h.acknowledged %}
-                        <span class="badge badge-confirmed">Yes</span>
-                        {% else %}
-                        <span class="badge badge-pending">No</span>
-                        {% endif %}
-                    </td>
-                    <td class="text-muted" style="font-size:12px;">{{ h.created_at.strftime('%b %d, %H:%M') }}</td>
-                </tr>
-                {% else %}
-                <tr><td colspan="6" class="text-center text-muted" style="padding:36px;">No shift handovers logged.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
     </div>
 </div>
 {% endif %}
