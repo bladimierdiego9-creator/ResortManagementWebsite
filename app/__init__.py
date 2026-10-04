@@ -31,6 +31,7 @@ def create_app(config_class=Config):
     from app.blueprints.attendance_payroll import attendance_payroll_bp
     from app.blueprints.accounts import accounts_bp
     from app.blueprints.system import system_bp
+    from app.blueprints.announcements import announcements_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
@@ -42,6 +43,7 @@ def create_app(config_class=Config):
     app.register_blueprint(attendance_payroll_bp)
     app.register_blueprint(accounts_bp)
     app.register_blueprint(system_bp)
+    app.register_blueprint(announcements_bp, url_prefix='/announcements')
 
     @app.context_processor
     def inject_frontend_globals():

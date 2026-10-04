@@ -142,12 +142,30 @@ def new_account():
     if role not in ('admin', 'super_admin'):
         role = 'admin'
 
+    # Validation
     if not full_name or not username or not email or not password:
-        flash('First name, last name, username, and password are required.', 'error')
+        flash('Full name, username, email, and password are required.', 'error')
+        return redirect(url_for('accounts.index', tab='admins'))
+    
+    if len(username) < 3:
+        flash('Username must be at least 3 characters long.', 'error')
+        return redirect(url_for('accounts.index', tab='admins'))
+    
+    if len(password) < 8:
+        flash('Password must be at least 8 characters long.', 'error')
+        return redirect(url_for('accounts.index', tab='admins'))
+    
+    # Email validation
+    if '@' not in email or '.' not in email:
+        flash('Please enter a valid email address.', 'error')
         return redirect(url_for('accounts.index', tab='admins'))
     
     # Split full name into first and last
     first_name, last_name = _split_name(full_name)
+    
+    if not first_name:
+        flash('Please enter at least a first name.', 'error')
+        return redirect(url_for('accounts.index', tab='admins'))
 
     if Account.query.filter_by(username=username).first():
         flash(f'Username "{username}" is already taken.', 'error')
@@ -225,19 +243,26 @@ def delete_account(id):
 def new_staff():
     first_name = request.form.get('first_name', '').strip()
     last_name  = request.form.get('last_name', '').strip()
-    username   = request.form.get('username', '').strip()
-    password   = request.form.get('password', '')
-    confirm_password = request.form.get('confirm_password', '')
+    username   = request.form.get('username', '').strip().lower()  # Normalize to lowercase
+    password   = request.form.get('password', '').strip()
+    confirm_password = request.form.get('confirm_password', '').strip()
     job_role   = request.form.get('role', 'staff').strip()
     shift      = request.form.get('shift', 'morning')
     rfid_tag   = request.form.get('rfid_tag', '').strip() or None
-    email      = request.form.get('email', '').strip()
-    phone      = request.form.get('phone', '').strip() or None
+    email      = request.form.get('email', '').strip().lower()  # Required and lowercase
+    phone      = request.form.get('phone', '').strip()  # Required
 
-    if not first_name or not last_name or not username or not job_role:
-        flash('First name, surname, username, and role are required.', 'error')
+    # Validation - Required fields
+    if not first_name or not last_name or not username or not job_role or not email or not phone:
+        flash('First name, surname, username, role, email, and phone number are required.', 'error')
         return redirect(url_for('accounts.index', tab='staff'))
     
+    # Username validation
+    if len(username) < 3:
+        flash('Username must be at least 3 characters long.', 'error')
+        return redirect(url_for('accounts.index', tab='staff'))
+    
+    # Password validation
     if not password:
         flash('Password is required.', 'error')
         return redirect(url_for('accounts.index', tab='staff'))
@@ -246,16 +271,61 @@ def new_staff():
         flash('Password must be at least 6 characters long.', 'error')
         return redirect(url_for('accounts.index', tab='staff'))
     
+    # Password must contain at least one letter and one number
+    if not any(c.isalpha() for c in password):
+        flash('Password must contain at least one letter.', 'error')
+        return redirect(url_for('accounts.index', tab='staff'))
+    
+    if not any(c.isdigit() for c in password):
+        flash('Password must contain at least one number.', 'error')
+        return redirect(url_for('accounts.index', tab='staff'))
+    
     if password != confirm_password:
         flash('Passwords do not match.', 'error')
         return redirect(url_for('accounts.index', tab='staff'))
+    
+    # Email validation - must be lowercase and end with specific domains
+    import re
+    email_pattern = r'^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$'
+    if not re.match(email_pattern, email):
+        flash('Please enter a valid email address.', 'error')
+        return redirect(url_for('accounts.index', tab='staff'))
+    
+    if not (email.endswith('@gmail.com') or email.endswith('@yahoo.com') or email.endswith('.edu.ph')):
+        flash('Email must end with @gmail.com, @yahoo.com, or .edu.ph', 'error')
+        return redirect(url_for('accounts.index', tab='staff'))
+    
+    if Account.query.filter_by(email=email).first():
+        flash(f'Email "{email}" is already in use.', 'error')
+        return redirect(url_for('accounts.index', tab='staff'))
+    
+    # Phone number validation - must be 11 digits starting with 09 or +63
+    phone_clean = phone.replace(' ', '').replace('-', '')
+    
+    if phone_clean.startswith('+63'):
+        phone_clean = '0' + phone_clean[3:]  # Convert +63 to 09 format
+    
+    if not phone_clean.startswith('09'):
+        flash('Phone number must start with 09 or +63.', 'error')
+        return redirect(url_for('accounts.index', tab='staff'))
+    
+    if len(phone_clean) != 11:
+        flash('Phone number must be exactly 11 digits.', 'error')
+        return redirect(url_for('accounts.index', tab='staff'))
+    
+    if not phone_clean.isdigit():
+        flash('Phone number must contain only numbers.', 'error')
+        return redirect(url_for('accounts.index', tab='staff'))
+    
+    # Check for more than 2 consecutive same digits
+    for i in range(len(phone_clean) - 2):
+        if phone_clean[i] == phone_clean[i+1] == phone_clean[i+2]:
+            flash('Phone number cannot have more than 2 consecutive same digits.', 'error')
+            return redirect(url_for('accounts.index', tab='staff'))
 
+    # Check username uniqueness
     if Account.query.filter_by(username=username).first():
         flash(f'Username "{username}" is already taken.', 'error')
-        return redirect(url_for('accounts.index', tab='staff'))
-
-    if email and Account.query.filter_by(email=email).first():
-        flash(f'Email "{email}" is already in use.', 'error')
         return redirect(url_for('accounts.index', tab='staff'))
 
     try:
@@ -264,7 +334,7 @@ def new_staff():
             first_name=first_name,
             last_name=last_name,
             username=username,
-            email=email or f'{username}@thysia.local',
+            email=email,
             role='staff',
             rfid_tag=rfid_tag,
             status='active',
@@ -278,8 +348,8 @@ def new_staff():
             account_id=account.id,
             full_name=account.full_name,
             role=job_role,
-            email=email or None,
-            phone=phone,
+            email=email,
+            phone=phone_clean,  # Store normalized phone
             rfid_tag=rfid_tag,
             shift=shift,
             status='active',

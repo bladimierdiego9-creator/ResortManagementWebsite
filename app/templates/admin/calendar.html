@@ -97,9 +97,41 @@
 .fc .fc-daygrid-day-number { font-size: 11.5px; color: #9ab9aa; text-decoration: none; padding: 4px 6px; }
 .fc .fc-day-today { background: rgba(78,222,163,.08) !important; }
 .fc .fc-day-today .fc-daygrid-day-number { color: #4edea3; font-weight: 800; }
+
+/* Disable ALL hover effects on day cells */
+.fc .fc-daygrid-day,
+.fc .fc-daygrid-day:hover,
+.fc .fc-daygrid-day-frame,
+.fc .fc-daygrid-day-frame:hover,
+.fc .fc-daygrid-day-bg,
+.fc .fc-daygrid-day-bg:hover,
+.fc .fc-daygrid-day-top,
+.fc .fc-daygrid-day-top:hover,
+.fc-theme-standard td:hover,
+.fc-theme-standard .fc-scrollgrid tbody tr:hover,
+.fc .fc-col-header-cell:hover {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+/* Keep today's background even on hover */
+.fc .fc-day-today,
+.fc .fc-day-today:hover {
+    background: rgba(78,222,163,.08) !important;
+}
 .fc-theme-standard td, .fc-theme-standard th { border-color: #1d3a2e; }
 .fc-theme-standard .fc-scrollgrid { border-color: #1d3a2e; }
-.fc .fc-daygrid-day-frame { min-height: 90px; position: relative; }  /* Reduced from 110px */
+.fc .fc-daygrid-day-frame { 
+    min-height: 100px; 
+    height: 100px;
+    position: relative; 
+}
+.fc .fc-daygrid-day {
+    aspect-ratio: 1 / 1;
+}
+.fc-theme-standard td {
+    position: relative;
+}
 .fc .fc-daygrid-day-events { 
     padding-bottom: 4px; 
     margin-bottom: 2px;
@@ -237,15 +269,24 @@
     display: flex; 
     flex-direction: column; 
     gap: 1px;
-    border-radius: 4px;  /* Reduced from 5px */
-    padding: 2px 5px;  /* Reduced from 3px 6px */
-    margin: 0 1px;  /* Reduced from 0 2px */
+    border-radius: 4px;
+    padding: 2px 5px;
+    margin: 0 1px;
     cursor: pointer; 
     overflow: hidden;
-    min-height: 20px;  /* Reduced from 24px */
-    max-height: 26px;  /* Reduced from 30px */
+    min-height: 20px;
+    max-height: 26px;
     position: relative;
     z-index: 2;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.cal-event-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    z-index: 10;
+}
+.cal-event-card:active {
+    transform: scale(0.98);
 }
 .cal-event-guest {
     font-size: 9.5px;  /* Reduced from 10.5px */
@@ -287,7 +328,7 @@ document.addEventListener('DOMContentLoaded', function () {
             right:  'dayGridMonth,listMonth'
         },
         buttonText: { today: 'Today', month: 'Month', list: 'List' },
-        height: 'calc(100vh - 240px)',  // Fixed height to fit viewport
+        height: 'calc(100vh - 300px)',  // Reduced height to fit viewport better
         contentHeight: 'auto',
         dayMaxEvents: 3,  // Limit events per day
         moreLinkText: 'more',

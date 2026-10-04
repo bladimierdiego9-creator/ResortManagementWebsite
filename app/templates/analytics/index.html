@@ -10,9 +10,9 @@
     </div>
     <div class="page-actions">
         <form method="GET" action="{{ url_for('analytics.index') }}" class="flex gap-8 items-center">
-            <input type="date" name="date_from" class="form-input" value="{{ date_from }}" style="width:auto;">
+            <input type="date" name="date_from" class="form-input date-input" value="{{ date_from }}">
             <span class="text-muted">—</span>
-            <input type="date" name="date_to" class="form-input" value="{{ date_to }}" style="width:auto;">
+            <input type="date" name="date_to" class="form-input date-input" value="{{ date_to }}">
             <button type="submit" class="btn btn-secondary">Apply</button>
         </form>
     </div>

@@ -348,3 +348,38 @@ class AuditLog(db.Model):
     ip_address = db.Column(db.String(64), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     account = db.relationship('Account', backref='audit_logs')
+
+
+class Announcement(db.Model):
+    """Announcements stored in database instead of Firebase"""
+    __tablename__ = 'announcements'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    target_audience = db.Column(db.String(20), nullable=False)  # 'staff', 'guest', or 'all'
+    created_by_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=False)
+    created_by_name = db.Column(db.String(128), nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relationship to creator
+    created_by = db.relationship('Account', backref='announcements', foreign_keys=[created_by_id])
+    
+    def __repr__(self):
+        return f'<Announcement {self.title}>'
+    
+    def to_dict(self):
+        """Convert to dictionary for API responses"""
+        return {
+            'id': str(self.id),
+            'title': self.title,
+            'content': self.content,
+            'target_audience': self.target_audience,
+            'created_by_id': self.created_by_id,
+            'created_by_name': self.created_by_name,
+            'is_active': self.is_active,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at
+        }

@@ -195,20 +195,23 @@
         <h2 class="modal-title">Add Admin Account</h2>
         <button class="modal-close" onclick="closeModal('addAccountModal')" aria-label="Close">×</button>
         <div class="divider"></div>
-        <form method="POST" action="{{ url_for('accounts.new_account') }}">
+        <form method="POST" action="{{ url_for('accounts.new_account') }}" id="addAdminForm" onsubmit="return validateAdminForm()">
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Full Name *</label>
-                    <input type="text" name="full_name" class="form-input" required>
+                    <input type="text" name="full_name" id="admin_full_name" class="form-input" required placeholder="e.g. Juan dela Cruz">
+                    <span class="form-error" id="error_admin_full_name"></span>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Username *</label>
-                    <input type="text" name="username" class="form-input" required>
+                    <input type="text" name="username" id="admin_username" class="form-input" required placeholder="e.g. juandelacruz">
+                    <span class="form-error" id="error_admin_username"></span>
                 </div>
             </div>
             <div class="form-group">
                 <label class="form-label">Email *</label>
-                <input type="email" name="email" class="form-input" required>
+                <input type="email" name="email" id="admin_email" class="form-input" required placeholder="user@gmail.com">
+                <span class="form-error" id="error_admin_email"></span>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -222,9 +225,17 @@
                     <input type="text" name="rfid_tag" class="form-input" placeholder="Optional">
                 </div>
             </div>
-            <div class="form-group">
-                <label class="form-label">Password *</label>
-                <input type="password" name="password" class="form-input" required>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Password *</label>
+                    <input type="password" name="password" id="admin_password" class="form-input" required placeholder="Min 8 chars, 1 letter, 1 number">
+                    <span class="form-error" id="error_admin_password"></span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Confirm Password *</label>
+                    <input type="password" name="confirm_password" id="admin_confirm_password" class="form-input" required placeholder="Re-enter password">
+                    <span class="form-error" id="error_admin_confirm_password"></span>
+                </div>
             </div>
             <div class="modal-actions">
                 <button type="button" onclick="closeModal('addAccountModal')" class="btn btn-secondary">Cancel</button>
@@ -240,25 +251,28 @@
         <h2 class="modal-title">Add Staff Member</h2>
         <button class="modal-close" onclick="closeModal('addStaffModal')" aria-label="Close">×</button>
         <div class="divider"></div>
-        <form method="POST" action="{{ url_for('accounts.new_staff') }}" onsubmit="return validateStaffPassword()">
+        <form method="POST" action="{{ url_for('accounts.new_staff') }}" id="addStaffForm" onsubmit="return validateStaffForm()">
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">First Name *</label>
-                    <input type="text" name="first_name" class="form-input" required placeholder="e.g. Juan">
+                    <input type="text" name="first_name" id="staff_first_name" class="form-input" required placeholder="e.g. Juan">
+                    <span class="form-error" id="error_first_name"></span>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Surname *</label>
-                    <input type="text" name="last_name" class="form-input" required placeholder="e.g. dela Cruz">
+                    <label class="form-label">Last Name *</label>
+                    <input type="text" name="last_name" id="staff_last_name" class="form-input" required placeholder="e.g. dela Cruz">
+                    <span class="form-error" id="error_last_name"></span>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Username *</label>
-                    <input type="text" name="username" class="form-input" required placeholder="e.g. juandelacruz">
+                    <input type="text" name="username" id="staff_username" class="form-input" required placeholder="e.g. juandelacruz">
+                    <span class="form-error" id="error_username"></span>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Role *</label>
-                    <select name="role" class="form-select" required>
+                    <select name="role" id="staff_role" class="form-select" required>
                         <option value="">— Select role —</option>
                         <option value="front_desk">Front Desk</option>
                         <option value="security">Security</option>
@@ -268,16 +282,31 @@
                         <option value="maintenance">Maintenance</option>
                         <option value="staff">General Staff</option>
                     </select>
+                    <span class="form-error" id="error_role"></span>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Password *</label>
-                    <input type="password" name="password" id="staffPassword" class="form-input" required placeholder="Minimum 6 characters">
+                    <input type="password" name="password" id="staff_password" class="form-input" required placeholder="Min 6 chars, 1 letter, 1 number">
+                    <span class="form-error" id="error_password"></span>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Confirm Password *</label>
-                    <input type="password" name="confirm_password" id="staffConfirmPassword" class="form-input" required placeholder="Re-enter password">
+                    <input type="password" name="confirm_password" id="staff_confirm_password" class="form-input" required placeholder="Re-enter password">
+                    <span class="form-error" id="error_confirm_password"></span>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Email *</label>
+                    <input type="email" name="email" id="staff_email" class="form-input" required placeholder="user@gmail.com">
+                    <span class="form-error" id="error_email"></span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone *</label>
+                    <input type="text" name="phone" id="staff_phone" class="form-input" required placeholder="09XXXXXXXXX">
+                    <span class="form-error" id="error_phone"></span>
                 </div>
             </div>
             <div class="form-row">
@@ -292,16 +321,6 @@
                 <div class="form-group">
                     <label class="form-label">RFID Tag</label>
                     <input type="text" name="rfid_tag" class="form-input" placeholder="Optional">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" name="email" class="form-input" placeholder="Optional">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Phone</label>
-                    <input type="text" name="phone" class="form-input" placeholder="Optional">
                 </div>
             </div>
             <div class="modal-actions">
@@ -427,23 +446,321 @@
 </div>
 
 {% block scripts %}
-<script>
-function validateStaffPassword() {
-    const password = document.getElementById('staffPassword').value;
-    const confirmPassword = document.getElementById('staffConfirmPassword').value;
-    
-    if (password.length < 6) {
-        alert('Password must be at least 6 characters long.');
-        return false;
-    }
-    
-    if (password !== confirmPassword) {
-        alert('Passwords do not match. Please try again.');
-        return false;
-    }
-    
-    return true;
+<style>
+.form-error {
+    display: block;
+    color: #ffb4ab;
+    font-size: 11px;
+    margin-top: 4px;
+    min-height: 16px;
+    font-weight: 500;
 }
+.form-input.error, .form-select.error {
+    border-color: #ffb4ab !important;
+}
+</style>
+
+<script>
+function clearAdminError(fieldId) {
+    document.getElementById('error_admin_' + fieldId).textContent = '';
+    document.getElementById('admin_' + fieldId).classList.remove('error');
+}
+
+function showAdminError(fieldId, message) {
+    document.getElementById('error_admin_' + fieldId).textContent = message;
+    document.getElementById('admin_' + fieldId).classList.add('error');
+}
+
+function validateAdminForm() {
+    // Clear all previous errors
+    ['full_name', 'username', 'email', 'password', 'confirm_password'].forEach(clearAdminError);
+    
+    let isValid = true;
+    
+    // Get values
+    const fullName = document.getElementById('admin_full_name').value.trim();
+    const username = document.getElementById('admin_username').value.trim().toLowerCase();
+    const email = document.getElementById('admin_email').value.trim().toLowerCase();
+    const password = document.getElementById('admin_password').value.trim();
+    const confirmPassword = document.getElementById('admin_confirm_password').value.trim();
+    
+    // Validate full name
+    if (!fullName) {
+        showAdminError('full_name', 'Full name is required');
+        isValid = false;
+    }
+    
+    // Validate username
+    if (!username) {
+        showAdminError('username', 'Username is required');
+        isValid = false;
+    } else if (username.length < 3) {
+        showAdminError('username', 'Username must be at least 3 characters');
+        isValid = false;
+    }
+    
+    // Validate email (REQUIRED)
+    if (!email) {
+        showAdminError('email', 'Email is required');
+        isValid = false;
+    } else {
+        const emailPattern = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+        if (!emailPattern.test(email)) {
+            showAdminError('email', 'Please enter a valid email address');
+            isValid = false;
+        } else if (!(email.endsWith('@gmail.com') || email.endsWith('@yahoo.com') || email.endsWith('.edu.ph'))) {
+            showAdminError('email', 'Email must end with @gmail.com, @yahoo.com, or .edu.ph');
+            isValid = false;
+        }
+    }
+    
+    // Validate password
+    if (!password) {
+        showAdminError('password', 'Password is required');
+        isValid = false;
+    } else if (password.length < 8) {
+        showAdminError('password', 'Password must be at least 8 characters');
+        isValid = false;
+    } else if (!/[a-zA-Z]/.test(password)) {
+        showAdminError('password', 'Password must contain at least one letter');
+        isValid = false;
+    } else if (!/[0-9]/.test(password)) {
+        showAdminError('password', 'Password must contain at least one number');
+        isValid = false;
+    }
+    
+    // Validate confirm password
+    if (!confirmPassword) {
+        showAdminError('confirm_password', 'Please confirm your password');
+        isValid = false;
+    } else if (password !== confirmPassword) {
+        showAdminError('confirm_password', 'Passwords do not match');
+        isValid = false;
+    }
+    
+    return isValid;
+}
+
+function clearError(fieldId) {
+    document.getElementById('error_' + fieldId).textContent = '';
+    document.getElementById('staff_' + fieldId).classList.remove('error');
+}
+
+function showError(fieldId, message) {
+    document.getElementById('error_' + fieldId).textContent = message;
+    document.getElementById('staff_' + fieldId).classList.add('error');
+}
+
+function validateStaffForm() {
+    // Clear all previous errors
+    ['first_name', 'last_name', 'username', 'role', 'password', 'confirm_password', 'email', 'phone'].forEach(clearError);
+    
+    let isValid = true;
+    
+    // Get values
+    const firstName = document.getElementById('staff_first_name').value.trim();
+    const lastName = document.getElementById('staff_last_name').value.trim();
+    const username = document.getElementById('staff_username').value.trim().toLowerCase();
+    const role = document.getElementById('staff_role').value;
+    const password = document.getElementById('staff_password').value.trim();
+    const confirmPassword = document.getElementById('staff_confirm_password').value.trim();
+    const email = document.getElementById('staff_email').value.trim().toLowerCase();
+    const phone = document.getElementById('staff_phone').value.trim();
+    
+    // Validate first name
+    if (!firstName) {
+        showError('first_name', 'First name is required');
+        isValid = false;
+    }
+    
+    // Validate last name
+    if (!lastName) {
+        showError('last_name', 'Last name is required');
+        isValid = false;
+    }
+    
+    // Validate username
+    if (!username) {
+        showError('username', 'Username is required');
+        isValid = false;
+    } else if (username.length < 3) {
+        showError('username', 'Username must be at least 3 characters');
+        isValid = false;
+    }
+    
+    // Validate role
+    if (!role) {
+        showError('role', 'Please select a role');
+        isValid = false;
+    }
+    
+    // Validate password
+    if (!password) {
+        showError('password', 'Password is required');
+        isValid = false;
+    } else if (password.length < 6) {
+        showError('password', 'Password must be at least 6 characters');
+        isValid = false;
+    } else if (!/[a-zA-Z]/.test(password)) {
+        showError('password', 'Password must contain at least one letter');
+        isValid = false;
+    } else if (!/[0-9]/.test(password)) {
+        showError('password', 'Password must contain at least one number');
+        isValid = false;
+    }
+    
+    // Validate confirm password
+    if (!confirmPassword) {
+        showError('confirm_password', 'Please confirm your password');
+        isValid = false;
+    } else if (password !== confirmPassword) {
+        showError('confirm_password', 'Passwords do not match');
+        isValid = false;
+    }
+    
+    // Validate email (REQUIRED)
+    if (!email) {
+        showError('email', 'Email is required');
+        isValid = false;
+    } else {
+        const emailPattern = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+        if (!emailPattern.test(email)) {
+            showError('email', 'Please enter a valid email address');
+            isValid = false;
+        } else if (!(email.endsWith('@gmail.com') || email.endsWith('@yahoo.com') || email.endsWith('.edu.ph'))) {
+            showError('email', 'Email must end with @gmail.com, @yahoo.com, or .edu.ph');
+            isValid = false;
+        }
+    }
+    
+    // Validate phone (REQUIRED)
+    if (!phone) {
+        showError('phone', 'Phone number is required');
+        isValid = false;
+    } else {
+        let phoneClean = phone.replace(/[\s-]/g, '');
+        
+        if (phoneClean.startsWith('+63')) {
+            phoneClean = '0' + phoneClean.substring(3);
+        }
+        
+        if (!phoneClean.startsWith('09')) {
+            showError('phone', 'Phone must start with 09 or +63');
+            isValid = false;
+        } else if (phoneClean.length !== 11) {
+            showError('phone', 'Phone must be exactly 11 digits');
+            isValid = false;
+        } else if (!/^\d+$/.test(phoneClean)) {
+            showError('phone', 'Phone must contain only numbers');
+            isValid = false;
+        } else {
+            // Check for more than 2 consecutive same digits
+            for (let i = 0; i < phoneClean.length - 2; i++) {
+                if (phoneClean[i] === phoneClean[i+1] && phoneClean[i+1] === phoneClean[i+2]) {
+                    showError('phone', 'Phone cannot have more than 2 consecutive same digits');
+                    isValid = false;
+                    break;
+                }
+            }
+        }
+    }
+    
+    return isValid;
+}
+
+// Add real-time validation on blur
+document.addEventListener('DOMContentLoaded', function() {
+    // Admin Form Validation
+    const adminForm = document.getElementById('addAdminForm');
+    if (adminForm) {
+        // Full Name: auto-capitalize first letter
+        const adminFullName = document.getElementById('admin_full_name');
+        if (adminFullName) {
+            adminFullName.addEventListener('input', function(e) {
+                let value = e.target.value;
+                // Capitalize first letter of each word
+                e.target.value = value.split(' ').map(word => {
+                    if (word.length > 0) {
+                        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+                    }
+                    return word;
+                }).join(' ');
+            });
+        }
+        
+        // Username: auto-lowercase
+        const adminUsername = document.getElementById('admin_username');
+        if (adminUsername) {
+            adminUsername.addEventListener('input', function(e) {
+                e.target.value = e.target.value.toLowerCase();
+            });
+        }
+        
+        // Email: auto-lowercase
+        const adminEmail = document.getElementById('admin_email');
+        if (adminEmail) {
+            adminEmail.addEventListener('input', function(e) {
+                e.target.value = e.target.value.toLowerCase();
+            });
+        }
+        
+        // Add blur validation for admin fields
+        ['full_name', 'username', 'email', 'password', 'confirm_password'].forEach(field => {
+            const input = document.getElementById('admin_' + field);
+            if (input) {
+                input.addEventListener('blur', function() {
+                    if (input.value.trim()) {
+                        validateAdminForm();
+                    }
+                });
+            }
+        });
+    }
+    
+    // Staff Form Validation
+    const form = document.getElementById('addStaffForm');
+    if (form) {
+        // First Name & Last Name: auto-capitalize first letter
+        ['staff_first_name', 'staff_last_name'].forEach(fieldId => {
+            const input = document.getElementById(fieldId);
+            if (input) {
+                input.addEventListener('input', function(e) {
+                    let value = e.target.value;
+                    // Capitalize first letter of each word
+                    e.target.value = value.split(' ').map(word => {
+                        if (word.length > 0) {
+                            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+                        }
+                        return word;
+                    }).join(' ');
+                });
+            }
+        });
+        
+        // Username: auto-lowercase
+        document.getElementById('staff_username').addEventListener('input', function(e) {
+            e.target.value = e.target.value.toLowerCase();
+        });
+        
+        // Email: auto-lowercase
+        document.getElementById('staff_email').addEventListener('input', function(e) {
+            e.target.value = e.target.value.toLowerCase();
+        });
+        
+        // Add blur validation for all fields
+        ['first_name', 'last_name', 'username', 'password', 'confirm_password', 'email', 'phone'].forEach(field => {
+            const input = document.getElementById('staff_' + field);
+            if (input) {
+                input.addEventListener('blur', function() {
+                    // Only validate if field has value
+                    if (input.value.trim()) {
+                        validateStaffForm();
+                    }
+                });
+            }
+        });
+    }
+});
 
 function openEditAccount(id, fullName, email, role, status, rfid) {
     document.getElementById('editAccountForm').action = `/accounts/${id}/edit`;

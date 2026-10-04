@@ -301,6 +301,45 @@ select.form-select option { background: #0a271b; color: #ecfdf5; }
 input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(.75) sepia(.3) hue-rotate(90deg); cursor: pointer; }
 input[type="checkbox"] { accent-color: var(--em-primary); }
 
+/* Date Input Enhancements */
+input[type="date"].date-input {
+  min-width: 160px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #d5e8dd !important;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+input[type="date"].date-input::-webkit-datetime-edit-fields-wrapper {
+  padding: 2px 0;
+}
+input[type="date"].date-input::-webkit-datetime-edit-text {
+  color: #6f8e7d;
+  padding: 0 2px;
+}
+input[type="date"].date-input::-webkit-datetime-edit-month-field,
+input[type="date"].date-input::-webkit-datetime-edit-day-field,
+input[type="date"].date-input::-webkit-datetime-edit-year-field {
+  color: #d5e8dd;
+  padding: 0 2px;
+}
+input[type="date"].date-input::-webkit-calendar-picker-indicator {
+  filter: invert(.65) sepia(.4) hue-rotate(90deg) saturate(1.2);
+  cursor: pointer;
+  padding: 4px;
+  margin-left: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+input[type="date"].date-input::-webkit-calendar-picker-indicator:hover {
+  filter: invert(.8) sepia(.5) hue-rotate(90deg) saturate(1.4);
+  background: rgba(78, 222, 163, 0.1);
+}
+input[type="date"].date-input:focus::-webkit-calendar-picker-indicator {
+  filter: invert(.9) sepia(.6) hue-rotate(85deg) saturate(1.5);
+}
+
 /* Focus-visible accessibility ring */
 a:focus-visible, button:focus-visible, .btn:focus-visible, input:focus-visible,
 select:focus-visible, textarea:focus-visible {

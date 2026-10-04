@@ -1,0 +1,780 @@
+{% extends "base.html" %}
+{% block title %}Edit Announcement — A&D Thysia Admin{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('announcements.index') }}">Announcements</a> / Edit{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Edit Announcement</h1>
+        <p class="page-subtitle">Update announcement details and preview changes</p>
+    </div>
+</div>
+
+<div class="announcement-edit-container">
+    <!-- Form Section -->
+    <div class="announcement-form-section">
+        <form method="POST" action="{{ url_for('announcements.edit', announcement_id=announcement.id) }}" id="editAnnouncementForm">
+            <div class="form-card">
+                <!-- Basic Information -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        <div>
+                            <h3>Basic Information</h3>
+                            <p>Update the announcement title and content</p>
+                        </div>
+                    </div>
+
+                    <label class="form-label">
+                        <span class="label-text">Announcement Title <span class="required">*</span></span>
+                        <input 
+                            type="text" 
+                            name="title" 
+                            id="announcementTitle"
+                            value="{{ announcement.title }}" 
+                            placeholder="e.g., Pool Maintenance Schedule, New Operating Hours" 
+                            required 
+                            maxlength="200"
+                            class="form-input">
+                        <span class="helper-text">Keep it clear and concise (max 200 characters)</span>
+                    </label>
+
+                    <label class="form-label">
+                        <span class="label-text">Content <span class="required">*</span></span>
+                        <textarea 
+                            name="content" 
+                            id="announcementContent"
+                            placeholder="Write your announcement here..." 
+                            required 
+                            rows="8"
+                            class="form-textarea">{{ announcement.content }}</textarea>
+                        <div class="textarea-footer">
+                            <span class="helper-text">Provide detailed information about the announcement</span>
+                            <span id="charCount" class="char-count">{{ announcement.content|length }} characters</span>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Target Audience -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        <div>
+                            <h3>Target Audience</h3>
+                            <p>Choose who will receive this announcement</p>
+                        </div>
+                    </div>
+
+                    <div class="radio-cards">
+                        <label class="radio-card {% if announcement.target_audience == 'all' %}active{% endif %}">
+                            <input type="radio" name="target_audience" value="all" {% if announcement.target_audience == 'all' %}checked{% endif %} required>
+                            <div class="radio-card-content">
+                                <div class="radio-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    </svg>
+                                </div>
+                                <div class="radio-text">
+                                    <div class="radio-title">Everyone</div>
+                                    <div class="radio-description">Staff & Guests</div>
+                                </div>
+                            </div>
+                            <div class="radio-checkmark">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                        </label>
+
+                        <label class="radio-card {% if announcement.target_audience == 'staff' %}active{% endif %}">
+                            <input type="radio" name="target_audience" value="staff" {% if announcement.target_audience == 'staff' %}checked{% endif %}>
+                            <div class="radio-card-content">
+                                <div class="radio-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="12" cy="7" r="4"/>
+                                    </svg>
+                                </div>
+                                <div class="radio-text">
+                                    <div class="radio-title">Staff Only</div>
+                                    <div class="radio-description">Internal team members</div>
+                                </div>
+                            </div>
+                            <div class="radio-checkmark">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                        </label>
+
+                        <label class="radio-card {% if announcement.target_audience == 'guest' %}active{% endif %}">
+                            <input type="radio" name="target_audience" value="guest" {% if announcement.target_audience == 'guest' %}checked{% endif %}>
+                            <div class="radio-card-content">
+                                <div class="radio-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3"/>
+                                        <circle cx="12" cy="10" r="3"/>
+                                        <circle cx="12" cy="12" r="10"/>
+                                    </svg>
+                                </div>
+                                <div class="radio-text">
+                                    <div class="radio-title">Guests Only</div>
+                                    <div class="radio-description">Resort visitors</div>
+                                </div>
+                            </div>
+                            <div class="radio-checkmark">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Status Toggle -->
+                <div class="form-section">
+                    <div class="section-header">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <div>
+                            <h3>Announcement Status</h3>
+                            <p>Control announcement visibility</p>
+                        </div>
+                    </div>
+
+                    <label class="toggle-switch">
+                        <input type="checkbox" name="is_active" {% if announcement.is_active %}checked{% endif %}>
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label">Active (visible to users)</span>
+                    </label>
+                </div>
+
+                <!-- Actions -->
+                <div class="form-actions">
+                    <a href="{{ url_for('announcements.index') }}" class="btn btn-soft btn-lg">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                        Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        Save Changes
+                    </button>
+                    
+                    <!-- Navigation Buttons -->
+                    {% if prev_announcement %}
+                    <a href="{{ url_for('announcements.edit', announcement_id=prev_announcement.id) }}" 
+                       class="nav-btn" 
+                       title="Previous: {{ prev_announcement.title }}">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"/>
+                        </svg>
+                    </a>
+                    {% else %}
+                    <button type="button" class="nav-btn" disabled title="No previous announcement">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"/>
+                        </svg>
+                    </button>
+                    {% endif %}
+                    
+                    {% if next_announcement %}
+                    <a href="{{ url_for('announcements.edit', announcement_id=next_announcement.id) }}" 
+                       class="nav-btn" 
+                       title="Next: {{ next_announcement.title }}">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                    </a>
+                    {% else %}
+                    <button type="button" class="nav-btn" disabled title="No next announcement">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9 18 15 12 9 6"/>
+                        </svg>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Preview Section -->
+    <div class="announcement-preview-section">
+        <div class="preview-card sticky">
+            <div class="preview-header">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <h3>Live Preview</h3>
+            </div>
+            
+            <div class="preview-content">
+                <div class="preview-announcement">
+                    <div class="preview-badge" id="previewBadge">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        <span id="previewAudience">Everyone</span>
+                    </div>
+                    <h2 id="previewTitle">{{ announcement.title }}</h2>
+                    <p id="previewContent">{{ announcement.content }}</p>
+                    <div class="preview-meta">
+                        <div class="preview-author">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                            <span>{{ announcement.created_by_name }}</span>
+                        </div>
+                        <div class="preview-date">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                            <span>Updated just now</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="preview-note">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="16" x2="12" y2="12"/>
+                    <line x1="12" y1="8" x2="12.01" y2="8"/>
+                </svg>
+                <span>This is how your announcement will appear to users</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.announcement-edit-container {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 24px;
+    align-items: start;
+}
+
+@media (max-width: 1200px) {
+    .announcement-edit-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .announcement-preview-section {
+        order: -1;
+    }
+}
+
+/* Form Section */
+.announcement-form-section {
+    min-width: 0;
+}
+
+.form-card {
+    background: var(--surface-container);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.form-section {
+    padding: 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.form-section:last-child {
+    border-bottom: none;
+}
+
+.section-header {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.section-header svg {
+    flex-shrink: 0;
+    color: var(--primary);
+    margin-top: 2px;
+}
+
+.section-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 4px 0;
+}
+
+.section-header p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.form-label {
+    display: block;
+}
+
+.form-label + .form-label {
+    margin-top: 20px;
+}
+
+.label-text {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.required {
+    color: var(--danger);
+}
+
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-container-high);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 120px;
+    line-height: 1.6;
+}
+
+.helper-text {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 6px;
+}
+
+.textarea-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 6px;
+    gap: 12px;
+}
+
+.char-count {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Radio Cards */
+.radio-cards {
+    display: grid;
+    gap: 12px;
+}
+
+.radio-card {
+    position: relative;
+    display: block;
+    padding: 16px;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    background: var(--surface-container-high);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.radio-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.radio-card:hover {
+    border-color: var(--primary);
+    background: var(--surface-container-highest);
+}
+
+.radio-card.active {
+    border-color: var(--primary);
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.radio-card-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.radio-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--surface-container);
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.radio-card.active .radio-icon {
+    background: var(--primary);
+    color: white;
+}
+
+.radio-text {
+    flex: 1;
+}
+
+.radio-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.radio-description {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.radio-checkmark {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: transparent;
+    transition: all 0.2s ease;
+}
+
+.radio-card.active .radio-checkmark {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: white;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.toggle-switch input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.toggle-slider {
+    position: relative;
+    width: 48px;
+    height: 26px;
+    background: var(--surface-container-highest);
+    border-radius: 13px;
+    border: 2px solid var(--border);
+    transition: all 0.3s ease;
+}
+
+.toggle-slider::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: var(--text-secondary);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.toggle-switch input:checked + .toggle-slider::after {
+    left: 24px;
+    background: white;
+}
+
+.toggle-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* Form Actions */
+.form-actions {
+    padding: 20px 24px;
+    background: var(--surface-container-low);
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.btn-lg {
+    padding: 14px 24px;
+    font-size: 15px;
+}
+
+/* Navigation Buttons */
+.nav-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    margin-left: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-container-high);
+    color: var(--text-secondary);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nav-btn:hover:not(:disabled) {
+    background: var(--surface-container-highest);
+    border-color: var(--primary);
+    color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.nav-btn svg {
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .form-actions {
+        flex-wrap: wrap;
+    }
+    
+    .form-actions .btn-lg {
+        flex: 1;
+    }
+    
+    .nav-btn {
+        margin-left: 0;
+    }
+}
+
+/* Preview Section */
+.announcement-preview-section {
+    position: relative;
+}
+
+.preview-card {
+    background: var(--surface-container);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+
+.preview-card.sticky {
+    position: sticky;
+    top: 24px;
+}
+
+.preview-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    background: var(--surface-container-high);
+    border-bottom: 1px solid var(--border);
+}
+
+.preview-header svg {
+    color: var(--primary);
+}
+
+.preview-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.preview-content {
+    padding: 24px 20px;
+}
+
+.preview-announcement {
+    background: var(--surface-container-high);
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid var(--border);
+}
+
+.preview-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 12px;
+}
+
+.preview-badge svg {
+    width: 14px;
+    height: 14px;
+}
+
+.preview-announcement h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 12px 0;
+    line-height: 1.4;
+}
+
+.preview-announcement p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin: 0 0 16px 0;
+    white-space: pre-wrap;
+}
+
+.preview-meta {
+    display: flex;
+    gap: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+}
+
+.preview-author,
+.preview-date {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.preview-author svg,
+.preview-date svg {
+    width: 16px;
+    height: 16px;
+}
+
+.preview-note {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    background: rgba(16, 185, 129, 0.08);
+    border-top: 1px solid var(--border);
+}
+
+.preview-note svg {
+    flex-shrink: 0;
+    color: var(--primary);
+}
+
+.preview-note span {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+</style>
+
+<script>
+// Live preview updates
+const titleInput = document.getElementById('announcementTitle');
+const contentInput = document.getElementById('announcementContent');
+const previewTitle = document.getElementById('previewTitle');
+const previewContent = document.getElementById('previewContent');
+const charCount = document.getElementById('charCount');
+const previewBadge = document.getElementById('previewBadge');
+const previewAudience = document.getElementById('previewAudience');
+
+// Update title
+titleInput.addEventListener('input', function() {
+    previewTitle.textContent = this.value || 'Announcement Title';
+});
+
+// Update content
+contentInput.addEventListener('input', function() {
+    previewContent.textContent = this.value || 'Your announcement content will appear here...';
+    charCount.textContent = this.value.length + ' characters';
+});
+
+// Update audience
+document.querySelectorAll('input[name="target_audience"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const audienceMap = {
+            'all': { text: 'Everyone', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>' },
+            'staff': { text: 'Staff Only', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
+            'guest': { text: 'Guests Only', icon: '<path d="M5.52 19c.64-2.2 1.84-3 3.22-3h6.52c1.38 0 2.58.8 3.22 3"/><circle cx="12" cy="10" r="3"/><circle cx="12" cy="12" r="10"/>' }
+        };
+        
+        const selected = audienceMap[this.value];
+        previewAudience.textContent = selected.text;
+        previewBadge.querySelector('svg').innerHTML = selected.icon;
+        
+        // Update active state on radio cards
+        document.querySelectorAll('.radio-card').forEach(card => {
+            card.classList.remove('active');
+        });
+        this.closest('.radio-card').classList.add('active');
+    });
+});
+</script>
+{% endblock %}

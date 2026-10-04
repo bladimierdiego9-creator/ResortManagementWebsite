@@ -119,3 +119,6 @@ class Config:
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or os.environ.get('MAIL_USERNAME')
+
+    # Firebase configuration for announcements
+    FIREBASE_CREDENTIALS = os.environ.get('FIREBASE_CREDENTIALS') or os.path.join(basedir, 'firebase-credentials.json')
