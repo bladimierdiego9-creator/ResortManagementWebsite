@@ -1,196 +1,271 @@
 """
-Firebase service for Thysia announcements
+Firebase service for Firestore operations
+Handles SSL certificate issues on Windows by using REST API
 """
 import os
+import json
+import requests
 from datetime import datetime
+from flask import current_app
+from google.oauth2 import service_account
+from google.auth.transport.requests import Request
+import urllib3
 
-# Fix SSL certificate issues on Windows
-os.environ['GRPC_DEFAULT_SSL_ROOTS_FILE_PATH'] = ''
-os.environ['REQUESTS_CA_BUNDLE'] = ''
-os.environ['SSL_CERT_FILE'] = ''
+# Disable SSL warnings (for development only)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-import firebase_admin
-from firebase_admin import credentials, firestore
 
-# Initialize Firebase
-_firebase_initialized = False
-
-def init_firebase(app):
-    """Initialize Firebase with the Flask app"""
-    global _firebase_initialized
+class FirebaseService:
+    def __init__(self):
+        self.project_id = None
+        self.credentials = None
+        self.base_url = None
+        self._initialize()
     
-    if _firebase_initialized:
-        return
-    
-    try:
-        cred_path = app.config.get('FIREBASE_CREDENTIALS')
-        if cred_path and os.path.exists(cred_path):
-            cred = credentials.Certificate(cred_path)
-            firebase_admin.initialize_app(cred)
-            _firebase_initialized = True
-            print("[Firebase] Initialized successfully")
-        else:
-            print(f"[Firebase] Credentials file not found at {cred_path}")
-    except Exception as e:
-        print(f"[Firebase] Initialization failed: {e}")
-
-def get_firestore_db():
-    """Get Firestore database instance"""
-    if not _firebase_initialized:
-        raise Exception("Firebase not initialized. Call init_firebase() first.")
-    return firestore.client()
-
-class AnnouncementService:
-    """Service for managing announcements in Firestore"""
-    
-    @staticmethod
-    def create_announcement(title, content, target_audience, created_by_id, created_by_name):
-        """
-        Create a new announcement in Firestore
-        
-        Args:
-            title: Announcement title
-            content: Announcement content
-            target_audience: 'staff', 'guest', or 'all'
-            created_by_id: ID of admin who created it
-            created_by_name: Name of admin who created it
-        
-        Returns:
-            dict: Created announcement with ID
-        """
+    def _initialize(self):
+        """Initialize Firebase credentials"""
         try:
-            db = get_firestore_db()
+            cred_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'firebase-credentials.json')
             
-            announcement_data = {
-                'title': title,
-                'content': content,
-                'target_audience': target_audience,
-                'created_by_id': created_by_id,
-                'created_by_name': created_by_name,
-                'created_at': firestore.SERVER_TIMESTAMP,
-                'updated_at': firestore.SERVER_TIMESTAMP,
-                'is_active': True
+            if not os.path.exists(cred_path):
+                print(f"Warning: Firebase credentials not found at {cred_path}")
+                return
+            
+            with open(cred_path, 'r') as f:
+                cred_data = json.load(f)
+            
+            self.project_id = cred_data.get('project_id')
+            self.credentials = service_account.Credentials.from_service_account_file(
+                cred_path,
+                scopes=['https://www.googleapis.com/auth/datastore']
+            )
+            self.base_url = f'https://firestore.googleapis.com/v1/projects/{self.project_id}/databases/(default)/documents'
+            
+            print(f"Firebase initialized successfully for project: {self.project_id}")
+        
+        except Exception as e:
+            print(f"Error initializing Firebase: {str(e)}")
+    
+    def _get_auth_token(self):
+        """Get fresh authentication token"""
+        if not self.credentials:
+            return None
+        
+        # Create custom request adapter that bypasses SSL verification
+        import google.auth.transport.requests
+        
+        class CustomRequest(google.auth.transport.requests.Request):
+            def __call__(self, *args, **kwargs):
+                kwargs['verify'] = False  # Bypass SSL verification
+                return super().__call__(*args, **kwargs)
+        
+        if not self.credentials.valid:
+            try:
+                auth_request = CustomRequest()
+                self.credentials.refresh(auth_request)
+            except Exception as e:
+                print(f"Error refreshing credentials: {str(e)}")
+                return None
+        
+        return self.credentials.token
+    
+    def _firestore_to_dict(self, doc_data):
+        """Convert Firestore document format to Python dict"""
+        result = {}
+        
+        if 'fields' not in doc_data:
+            return result
+        
+        for key, value in doc_data['fields'].items():
+            if 'stringValue' in value:
+                result[key] = value['stringValue']
+            elif 'integerValue' in value:
+                result[key] = int(value['integerValue'])
+            elif 'booleanValue' in value:
+                result[key] = value['booleanValue']
+            elif 'timestampValue' in value:
+                result[key] = value['timestampValue']
+            elif 'nullValue' in value:
+                result[key] = None
+        
+        # Extract ID from document name
+        if 'name' in doc_data:
+            doc_id = doc_data['name'].split('/')[-1]
+            result['id'] = doc_id
+        
+        return result
+    
+    def _dict_to_firestore(self, data):
+        """Convert Python dict to Firestore document format"""
+        fields = {}
+        
+        for key, value in data.items():
+            if value is None:
+                fields[key] = {'nullValue': None}
+            elif isinstance(value, bool):
+                fields[key] = {'booleanValue': value}
+            elif isinstance(value, int):
+                fields[key] = {'integerValue': str(value)}
+            elif isinstance(value, str):
+                fields[key] = {'stringValue': value}
+            elif isinstance(value, datetime):
+                fields[key] = {'timestampValue': value.isoformat() + 'Z'}
+        
+        return {'fields': fields}
+    
+    def create_announcement(self, data):
+        """Create a new announcement in Firestore"""
+        try:
+            token = self._get_auth_token()
+            if not token:
+                return {'success': False, 'message': 'Not authenticated'}
+            
+            headers = {
+                'Authorization': f'Bearer {token}',
+                'Content-Type': 'application/json'
             }
             
-            # Add to Firestore
-            doc_ref = db.collection('announcements').add(announcement_data)
-            announcement_id = doc_ref[1].id
+            # Add timestamps
+            now = datetime.utcnow()
+            data['created_at'] = now
+            data['updated_at'] = now
             
-            return {
-                'id': announcement_id,
-                **announcement_data,
-                'created_at': datetime.now(),
-                'updated_at': datetime.now()
-            }
+            # Convert to Firestore format
+            doc_data = self._dict_to_firestore(data)
+            
+            # Create document
+            response = requests.post(
+                self.base_url + '/announcements',
+                headers=headers,
+                json=doc_data,
+                verify=False  # Bypass SSL verification
+            )
+            
+            if response.status_code in [200, 201]:
+                doc = response.json()
+                return {
+                    'success': True,
+                    'id': doc['name'].split('/')[-1],
+                    'data': self._firestore_to_dict(doc)
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': f'Error creating announcement: {response.text}'
+                }
+        
         except Exception as e:
-            print(f"[Firebase] Error creating announcement: {e}")
-            raise
+            return {'success': False, 'message': str(e)}
     
-    @staticmethod
-    def get_all_announcements():
-        """Get all announcements ordered by creation date"""
-        try:
-            db = get_firestore_db()
-            announcements = []
-            
-            docs = db.collection('announcements').order_by('created_at', direction=firestore.Query.DESCENDING).stream()
-            
-            for doc in docs:
-                data = doc.to_dict()
-                data['id'] = doc.id
-                announcements.append(data)
-            
-            return announcements
-        except Exception as e:
-            print(f"[Firebase] Error getting announcements: {e}")
-            return []
-    
-    @staticmethod
-    def get_announcements_by_audience(target_audience):
-        """Get announcements for specific audience"""
-        try:
-            db = get_firestore_db()
-            announcements = []
-            
-            # Get announcements for specific audience or 'all'
-            docs = db.collection('announcements')\
-                .where('target_audience', 'in', [target_audience, 'all'])\
-                .where('is_active', '==', True)\
-                .order_by('created_at', direction=firestore.Query.DESCENDING)\
-                .stream()
-            
-            for doc in docs:
-                data = doc.to_dict()
-                data['id'] = doc.id
-                announcements.append(data)
-            
-            return announcements
-        except Exception as e:
-            print(f"[Firebase] Error getting announcements by audience: {e}")
-            return []
-    
-    @staticmethod
-    def get_announcement_by_id(announcement_id):
+    def get_announcement(self, announcement_id):
         """Get a single announcement by ID"""
         try:
-            db = get_firestore_db()
-            doc = db.collection('announcements').document(announcement_id).get()
+            token = self._get_auth_token()
+            if not token:
+                return None
             
-            if doc.exists:
-                data = doc.to_dict()
-                data['id'] = doc.id
-                return data
+            headers = {'Authorization': f'Bearer {token}'}
+            
+            response = requests.get(
+                f'{self.base_url}/announcements/{announcement_id}',
+                headers=headers,
+                verify=False  # Bypass SSL verification
+            )
+            
+            if response.status_code == 200:
+                return self._firestore_to_dict(response.json())
+            
             return None
+        
         except Exception as e:
-            print(f"[Firebase] Error getting announcement: {e}")
+            print(f"Error getting announcement: {str(e)}")
             return None
     
-    @staticmethod
-    def update_announcement(announcement_id, title=None, content=None, target_audience=None, is_active=None):
+    def get_all_announcements(self):
+        """Get all announcements"""
+        try:
+            token = self._get_auth_token()
+            if not token:
+                return []
+            
+            headers = {'Authorization': f'Bearer {token}'}
+            
+            response = requests.get(
+                self.base_url + '/announcements',
+                headers=headers,
+                verify=False  # Bypass SSL verification
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                documents = data.get('documents', [])
+                return [self._firestore_to_dict(doc) for doc in documents]
+            
+            return []
+        
+        except Exception as e:
+            print(f"Error getting announcements: {str(e)}")
+            return []
+    
+    def update_announcement(self, announcement_id, data):
         """Update an announcement"""
         try:
-            db = get_firestore_db()
-            doc_ref = db.collection('announcements').document(announcement_id)
+            token = self._get_auth_token()
+            if not token:
+                return {'success': False, 'message': 'Not authenticated'}
             
-            update_data = {'updated_at': firestore.SERVER_TIMESTAMP}
+            headers = {
+                'Authorization': f'Bearer {token}',
+                'Content-Type': 'application/json'
+            }
             
-            if title is not None:
-                update_data['title'] = title
-            if content is not None:
-                update_data['content'] = content
-            if target_audience is not None:
-                update_data['target_audience'] = target_audience
-            if is_active is not None:
-                update_data['is_active'] = is_active
+            # Add updated timestamp
+            data['updated_at'] = datetime.utcnow()
             
-            doc_ref.update(update_data)
-            return True
+            # Convert to Firestore format
+            doc_data = self._dict_to_firestore(data)
+            
+            # Update document
+            response = requests.patch(
+                f'{self.base_url}/announcements/{announcement_id}',
+                headers=headers,
+                json=doc_data,
+                verify=False  # Bypass SSL verification
+            )
+            
+            if response.status_code == 200:
+                return {'success': True, 'data': self._firestore_to_dict(response.json())}
+            else:
+                return {'success': False, 'message': response.text}
+        
         except Exception as e:
-            print(f"[Firebase] Error updating announcement: {e}")
-            return False
+            return {'success': False, 'message': str(e)}
     
-    @staticmethod
-    def delete_announcement(announcement_id):
+    def delete_announcement(self, announcement_id):
         """Delete an announcement (soft delete by setting is_active to False)"""
-        try:
-            db = get_firestore_db()
-            doc_ref = db.collection('announcements').document(announcement_id)
-            doc_ref.update({
-                'is_active': False,
-                'updated_at': firestore.SERVER_TIMESTAMP
-            })
-            return True
-        except Exception as e:
-            print(f"[Firebase] Error deleting announcement: {e}")
-            return False
+        return self.update_announcement(announcement_id, {'is_active': False})
     
-    @staticmethod
-    def hard_delete_announcement(announcement_id):
-        """Permanently delete an announcement from Firestore"""
+    def get_announcements_by_audience(self, audience):
+        """Get announcements filtered by target audience"""
         try:
-            db = get_firestore_db()
-            db.collection('announcements').document(announcement_id).delete()
-            return True
+            all_announcements = self.get_all_announcements()
+            
+            # Filter by audience and active status
+            filtered = [
+                ann for ann in all_announcements
+                if ann.get('is_active', True) and 
+                (ann.get('target_audience') == audience or ann.get('target_audience') == 'all')
+            ]
+            
+            # Sort by created_at descending
+            filtered.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+            
+            return filtered
+        
         except Exception as e:
-            print(f"[Firebase] Error hard deleting announcement: {e}")
-            return False
+            print(f"Error getting announcements by audience: {str(e)}")
+            return []
+
+
+# Global instance
+firebase_service = FirebaseService()

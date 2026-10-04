@@ -13,12 +13,48 @@
 <!-- FILTERS -->
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:16px;">
     <form method="GET" action="{{ url_for('reservations.index') }}" class="filter-bar" style="flex:1;margin:0;">
-        <select name="status" class="form-select" onchange="this.form.submit()">
-            <option value="">All Statuses</option>
-            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
-            <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Confirmed</option>
-            <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
-        </select>
+        <!-- Custom Status Dropdown -->
+        <div class="custom-dropdown" id="statusDropdown">
+            <button type="button" class="dropdown-trigger">
+                <span class="dropdown-value">
+                    {% if status_filter == 'pending' %}Pending
+                    {% elif status_filter == 'confirmed' %}Confirmed
+                    {% elif status_filter == 'cancelled' %}Cancelled
+                    {% else %}All Statuses{% endif %}
+                </span>
+                <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="6 9 12 15 18 9"/>
+                </svg>
+            </button>
+            <div class="dropdown-menu">
+                <div class="dropdown-item {% if not status_filter %}active{% endif %}" data-value="">
+                    <span class="dropdown-item-text">All Statuses</span>
+                    <svg class="dropdown-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+                <div class="dropdown-item {% if status_filter == 'pending' %}active{% endif %}" data-value="pending">
+                    <span class="dropdown-item-text">Pending</span>
+                    <svg class="dropdown-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+                <div class="dropdown-item {% if status_filter == 'confirmed' %}active{% endif %}" data-value="confirmed">
+                    <span class="dropdown-item-text">Confirmed</span>
+                    <svg class="dropdown-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+                <div class="dropdown-item {% if status_filter == 'cancelled' %}active{% endif %}" data-value="cancelled">
+                    <span class="dropdown-item-text">Cancelled</span>
+                    <svg class="dropdown-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        <input type="hidden" name="status" id="statusInput" value="{{ status_filter or '' }}">
+        
         <input type="date" name="date_from" class="form-input" value="{{ date_from }}" placeholder="From date">
         <input type="date" name="date_to" class="form-input" value="{{ date_to }}" placeholder="To date">
         <button type="submit" class="btn btn-primary">Filter</button>
@@ -146,4 +182,175 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Initialize custom dropdown
+document.addEventListener('DOMContentLoaded', function() {
+    const dropdown = document.getElementById('statusDropdown');
+    if (!dropdown) return;
+    
+    const trigger = dropdown.querySelector('.dropdown-trigger');
+    const menu = dropdown.querySelector('.dropdown-menu');
+    const items = dropdown.querySelectorAll('.dropdown-item');
+    const hiddenInput = document.getElementById('statusInput');
+    const valueDisplay = dropdown.querySelector('.dropdown-value');
+    
+    // Toggle dropdown
+    trigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        dropdown.classList.toggle('open');
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!dropdown.contains(e.target)) {
+            dropdown.classList.remove('open');
+        }
+    });
+    
+    // Handle item selection
+    items.forEach(function(item) {
+        item.addEventListener('click', function() {
+            const value = this.getAttribute('data-value');
+            const text = this.querySelector('.dropdown-item-text').textContent;
+            
+            // Update active state
+            items.forEach(i => i.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Update display
+            valueDisplay.textContent = text;
+            
+            // Update hidden input
+            hiddenInput.value = value;
+            
+            // Close dropdown
+            dropdown.classList.remove('open');
+        });
+    });
+});
+</script>
+
+<style>
+/* Custom Dropdown Styles */
+.custom-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #09241a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 140px;
+    justify-content: space-between;
+    height: 38px;
+}
+
+.dropdown-trigger:hover {
+    background: var(--surface-container-high);
+    border-color: var(--primary);
+}
+
+.dropdown-value {
+    flex: 1;
+    text-align: left;
+}
+
+.dropdown-arrow {
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.custom-dropdown.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #09241a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all 0.2s ease;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.custom-dropdown.open .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.dropdown-item:hover {
+    background: var(--surface-container-high);
+}
+
+.dropdown-item.active {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--primary);
+}
+
+.dropdown-item-text {
+    flex: 1;
+}
+
+.dropdown-check {
+    flex-shrink: 0;
+    opacity: 0;
+    color: var(--primary);
+}
+
+.dropdown-item.active .dropdown-check {
+    opacity: 1;
+}
+
+/* Scrollbar styling for dropdown */
+.dropdown-menu::-webkit-scrollbar {
+    width: 8px;
+}
+
+.dropdown-menu::-webkit-scrollbar-track {
+    background: var(--surface-container);
+    border-radius: 4px;
+}
+
+.dropdown-menu::-webkit-scrollbar-thumb {
+    background: var(--surface-container-high);
+    border-radius: 4px;
+}
+
+.dropdown-menu::-webkit-scrollbar-thumb:hover {
+    background: var(--border);
+}
+</style>
 {% endblock %}

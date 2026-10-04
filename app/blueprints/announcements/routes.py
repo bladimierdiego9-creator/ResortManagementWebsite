@@ -1,8 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from app.decorators import admin_required
-from app.extensions import db
-from app.models import Announcement
+from app.firebase_service import firebase_service
 from datetime import datetime
 from . import announcements_bp
 
@@ -13,7 +12,9 @@ from . import announcements_bp
 def index():
     """Display all announcements"""
     try:
-        announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
+        announcements = firebase_service.get_all_announcements()
+        # Sort by created_at descending
+        announcements.sort(key=lambda x: x.get('created_at', ''), reverse=True)
         return render_template('announcements/index.html', announcements=announcements)
     except Exception as e:
         flash(f'Error loading announcements: {str(e)}', 'danger')
@@ -44,49 +45,57 @@ def create():
             return render_template('announcements/create.html')
         
         try:
-            # Create announcement
-            announcement = Announcement(
-                title=title,
-                content=content,
-                target_audience=target_audience,
-                created_by_id=current_user.id,
-                created_by_name=current_user.full_name
-            )
+            # Create announcement in Firebase
+            result = firebase_service.create_announcement({
+                'title': title,
+                'content': content,
+                'target_audience': target_audience,
+                'created_by_id': current_user.id,
+                'created_by_name': current_user.full_name,
+                'is_active': True
+            })
             
-            db.session.add(announcement)
-            db.session.commit()
-            
-            flash(f'Announcement "{title}" created successfully!', 'success')
-            return redirect(url_for('announcements.index'))
+            if result.get('success'):
+                flash(f'Announcement "{title}" created successfully!', 'success')
+                return redirect(url_for('announcements.index'))
+            else:
+                flash(f'Error creating announcement: {result.get("message")}', 'danger')
+                return render_template('announcements/create.html')
         
         except Exception as e:
-            db.session.rollback()
             flash(f'Error creating announcement: {str(e)}', 'danger')
             return render_template('announcements/create.html')
     
     return render_template('announcements/create.html')
 
 
-@announcements_bp.route('/<int:announcement_id>')
+@announcements_bp.route('/<announcement_id>')
 @login_required
 @admin_required
 def detail(announcement_id):
     """View announcement details"""
     try:
-        announcement = Announcement.query.get_or_404(announcement_id)
+        announcement = firebase_service.get_announcement(announcement_id)
+        if not announcement:
+            flash('Announcement not found', 'danger')
+            return redirect(url_for('announcements.index'))
+        
         return render_template('announcements/detail.html', announcement=announcement)
     except Exception as e:
         flash(f'Error loading announcement: {str(e)}', 'danger')
         return redirect(url_for('announcements.index'))
 
 
-@announcements_bp.route('/<int:announcement_id>/edit', methods=['GET', 'POST'])
+@announcements_bp.route('/<announcement_id>/edit', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def edit(announcement_id):
     """Edit an announcement"""
     try:
-        announcement = Announcement.query.get_or_404(announcement_id)
+        announcement = firebase_service.get_announcement(announcement_id)
+        if not announcement:
+            flash('Announcement not found', 'danger')
+            return redirect(url_for('announcements.index'))
         
         if request.method == 'POST':
             title = request.form.get('title', '').strip()
@@ -107,21 +116,25 @@ def edit(announcement_id):
                 flash('Invalid target audience', 'danger')
                 return render_template('announcements/edit.html', announcement=announcement)
             
-            # Update announcement
-            announcement.title = title
-            announcement.content = content
-            announcement.target_audience = target_audience
-            announcement.is_active = is_active
-            announcement.updated_at = datetime.utcnow()
+            # Update announcement in Firebase
+            result = firebase_service.update_announcement(announcement_id, {
+                'title': title,
+                'content': content,
+                'target_audience': target_audience,
+                'is_active': is_active
+            })
             
-            db.session.commit()
-            
-            flash('Announcement updated successfully!', 'success')
-            return redirect(url_for('announcements.detail', announcement_id=announcement_id))
+            if result.get('success'):
+                flash('Announcement updated successfully!', 'success')
+                return redirect(url_for('announcements.detail', announcement_id=announcement_id))
+            else:
+                flash(f'Error updating announcement: {result.get("message")}', 'danger')
         
         # Get previous and next announcements for navigation
-        all_announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
-        current_index = next((i for i, a in enumerate(all_announcements) if a.id == announcement_id), None)
+        all_announcements = firebase_service.get_all_announcements()
+        all_announcements.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
+        current_index = next((i for i, a in enumerate(all_announcements) if a.get('id') == announcement_id), None)
         
         prev_announcement = all_announcements[current_index + 1] if current_index is not None and current_index + 1 < len(all_announcements) else None
         next_announcement = all_announcements[current_index - 1] if current_index is not None and current_index > 0 else None
@@ -132,47 +145,49 @@ def edit(announcement_id):
                              next_announcement=next_announcement)
     
     except Exception as e:
-        db.session.rollback()
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('announcements.index'))
 
 
-@announcements_bp.route('/<int:announcement_id>/delete', methods=['POST'])
+@announcements_bp.route('/<announcement_id>/delete', methods=['POST'])
 @login_required
 @admin_required
 def delete(announcement_id):
     """Delete an announcement (soft delete)"""
     try:
-        announcement = Announcement.query.get_or_404(announcement_id)
-        announcement.is_active = False
-        announcement.updated_at = datetime.utcnow()
-        db.session.commit()
-        flash('Announcement deleted successfully', 'success')
+        result = firebase_service.delete_announcement(announcement_id)
+        if result.get('success'):
+            flash('Announcement deleted successfully', 'success')
+        else:
+            flash(f'Error deleting announcement: {result.get("message")}', 'danger')
     except Exception as e:
-        db.session.rollback()
         flash(f'Error: {str(e)}', 'danger')
     
     return redirect(url_for('announcements.index'))
 
 
-@announcements_bp.route('/<int:announcement_id>/toggle', methods=['POST'])
+@announcements_bp.route('/<announcement_id>/toggle', methods=['POST'])
 @login_required
 @admin_required
 def toggle_active(announcement_id):
     """Toggle announcement active status"""
     try:
-        announcement = Announcement.query.get_or_404(announcement_id)
-        announcement.is_active = not announcement.is_active
-        announcement.updated_at = datetime.utcnow()
-        db.session.commit()
+        announcement = firebase_service.get_announcement(announcement_id)
+        if not announcement:
+            return jsonify({'success': False, 'message': 'Announcement not found'}), 404
         
-        return jsonify({
-            'success': True,
-            'is_active': announcement.is_active,
-            'message': f'Announcement {"activated" if announcement.is_active else "deactivated"}'
-        })
+        new_status = not announcement.get('is_active', True)
+        result = firebase_service.update_announcement(announcement_id, {'is_active': new_status})
+        
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'is_active': new_status,
+                'message': f'Announcement {"activated" if new_status else "deactivated"}'
+            })
+        else:
+            return jsonify({'success': False, 'message': result.get('message')}), 500
     except Exception as e:
-        db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
@@ -182,14 +197,11 @@ def toggle_active(announcement_id):
 def api_staff_announcements():
     """Get announcements for staff"""
     try:
-        announcements = Announcement.query.filter(
-            Announcement.is_active == True,
-            Announcement.target_audience.in_(['staff', 'all'])
-        ).order_by(Announcement.created_at.desc()).all()
+        announcements = firebase_service.get_announcements_by_audience('staff')
         
         return jsonify({
             'success': True,
-            'announcements': [a.to_dict() for a in announcements]
+            'announcements': announcements
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -199,14 +211,12 @@ def api_staff_announcements():
 def api_guest_announcements():
     """Get announcements for guests (public endpoint)"""
     try:
-        announcements = Announcement.query.filter(
-            Announcement.is_active == True,
-            Announcement.target_audience.in_(['guest', 'all'])
-        ).order_by(Announcement.created_at.desc()).all()
+        announcements = firebase_service.get_announcements_by_audience('guest')
         
         return jsonify({
             'success': True,
-            'announcements': [a.to_dict() for a in announcements]
+            'announcements': announcements
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+

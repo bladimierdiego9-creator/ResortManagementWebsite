@@ -28,11 +28,11 @@
         <div class="custom-dropdown" data-name="status" data-value="{{ status_filter or '' }}">
             <div class="dropdown-selected">
                 {% if status_filter == 'pending' %}
-                    <span class="dropdown-icon">⏳</span> Pending
+                    Pending
                 {% elif status_filter == 'paid' %}
-                    <span class="dropdown-icon">✅</span> Paid
+                    Paid
                 {% elif status_filter == 'refunded' %}
-                    <span class="dropdown-icon">💸</span> Refunded
+                    Refunded
                 {% else %}
                     All Statuses
                 {% endif %}
@@ -42,13 +42,13 @@
                     All Statuses
                 </div>
                 <div class="dropdown-option" data-value="pending">
-                    <span class="dropdown-icon">⏳</span> Pending
+                    Pending
                 </div>
                 <div class="dropdown-option" data-value="paid">
-                    <span class="dropdown-icon">✅</span> Paid
+                    Paid
                 </div>
                 <div class="dropdown-option" data-value="refunded">
-                    <span class="dropdown-icon">💸</span> Refunded
+                    Refunded
                 </div>
             </div>
         </div>
@@ -63,9 +63,9 @@
         <div class="custom-dropdown" data-name="mode" data-value="{{ mode_filter or '' }}">
             <div class="dropdown-selected">
                 {% if mode_filter == 'cash' %}
-                    <span class="dropdown-icon">💵</span> Cash
+                    Cash
                 {% elif mode_filter == 'gcash' %}
-                    <img src="/static/images/gcash-logo.svg" alt="GCash" class="dropdown-icon-img"> GCash
+                    GCash
                 {% else %}
                     All Modes
                 {% endif %}
@@ -75,10 +75,10 @@
                     All Modes
                 </div>
                 <div class="dropdown-option" data-value="cash">
-                    <span class="dropdown-icon">💵</span> Cash
+                    Cash
                 </div>
                 <div class="dropdown-option" data-value="gcash">
-                    <img src="/static/images/gcash-logo.svg" alt="GCash" class="dropdown-icon-img"> GCash
+                    GCash
                 </div>
             </div>
         </div>
@@ -216,17 +216,18 @@
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 10px 40px 10px 14px;
+    padding: 6px 40px 6px 12px;
     background: rgba(21, 47, 36, 0.72);
     border: 1px solid var(--border);
     border-radius: 8px;
     color: var(--text-primary);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     user-select: none;
+    height: 36px;
 }
 
 .dropdown-selected:hover {
@@ -384,7 +385,9 @@
     display: flex !important;
     align-items: center;
     gap: 8px;
-    padding: 10px 16px !important;
+    padding: 6px 14px !important;
+    height: 36px;
+    font-size: 13px;
     font-weight: 600 !important;
     border-radius: 8px !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
