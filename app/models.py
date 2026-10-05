@@ -135,6 +135,7 @@ class Facility(db.Model):
     capacity = db.Column(db.Integer, nullable=True)
     base_price = db.Column(db.Numeric(10, 2), nullable=False, default=0)
     is_available = db.Column(db.Boolean, default=True)
+    archived = db.Column(db.Boolean, default=False)
     # Photo stored straight in the database as base64 — nothing is written to disk.
     # image_data is deferred, so listing facilities never downloads the base64
     # payloads: they are fetched only when a photo is actually served.

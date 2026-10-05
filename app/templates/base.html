@@ -122,20 +122,6 @@
                 </a>
             </li>
             <li>
-                <a href="{{ url_for('ai_concierge.index') }}"
-                   class="nav-item {% if request.blueprint == 'ai_concierge' %}active{% endif %}">
-                    <span class="nav-icon">
-                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
-                            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                        </svg>
-                    </span>
-                    AI Concierge
-                    {%- if g_ai_unread is defined and g_ai_unread > 0 %}
-                    <span class="nav-badge">{{ g_ai_unread }}</span>
-                    {%- endif %}
-                </a>
-            </li>
-            <li>
                 <a href="{{ url_for('attendance_payroll.index') }}"
                    class="nav-item {% if request.blueprint == 'attendance_payroll' %}active{% endif %}">
                     <span class="nav-icon">

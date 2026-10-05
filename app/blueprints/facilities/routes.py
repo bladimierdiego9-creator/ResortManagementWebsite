@@ -306,7 +306,25 @@ def render_index(**overrides):
 @login_required
 @admin_required
 def index():
-    return render_index()
+    # Check if viewing archived
+    view_archived = request.args.get('archived') == 'true'
+    
+    if view_archived:
+        facilities = Facility.query.filter_by(archived=True).order_by(Facility.facility_name).all()
+    else:
+        facilities = Facility.query.filter_by(archived=False).order_by(Facility.facility_name).all()
+    
+    total_count = Facility.query.filter_by(archived=False).count()
+    available_count = Facility.query.filter_by(archived=False, is_available=True).count()
+    archived_count = Facility.query.filter_by(archived=True).count()
+    
+    return render_index(
+        facilities=facilities,
+        view_archived=view_archived,
+        total_count=total_count,
+        available_count=available_count,
+        archived_count=archived_count
+    )
 
 
 @facilities_bp.route('/<id>/image')
@@ -429,6 +447,11 @@ def edit(id):
 def delete(id):
     facility = Facility.query.get_or_404(id)
     name = facility.facility_name
+    
+    # Check if already archived
+    if not facility.archived:
+        flash(f'Cannot delete "{name}". Please archive it first.', 'danger')
+        return redirect(url_for('facilities.index'))
 
     try:
         clear_availability_slots(facility.id)
@@ -438,10 +461,53 @@ def delete(id):
         db.session.rollback()
         current_app.logger.exception('Could not delete facility %s', id)
         flash(f'Could not delete "{name}": {db_error_message(exc)}', 'danger')
+        return redirect(url_for('facilities.index', archived='true'))
+
+    log_action('Permanently deleted facility', 'Facility', None, f'Permanently deleted facility "{name}"')
+    flash(f'Facility "{name}" permanently deleted.', 'success')
+    return redirect(url_for('facilities.index', archived='true'))
+
+
+@facilities_bp.route('/<id>/archive', methods=['POST'])
+@login_required
+@admin_required
+def archive(id):
+    facility = Facility.query.get_or_404(id)
+    facility.archived = True
+    facility.is_available = False
+
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception('Could not archive facility %s', id)
+        flash(f'Could not archive "{facility.facility_name}": {db_error_message(exc)}', 'danger')
         return redirect(url_for('facilities.index'))
 
-    log_action('Deleted facility', 'Facility', None, f'Deleted facility "{name}"')
-    flash(f'Facility "{name}" deleted.', 'success')
+    log_action('Archived facility', 'Facility', facility.id,
+               f'Archived facility "{facility.facility_name}"')
+    flash(f'"{facility.facility_name}" has been archived.', 'success')
+    return redirect(url_for('facilities.index'))
+
+
+@facilities_bp.route('/<id>/unarchive', methods=['POST'])
+@login_required
+@admin_required
+def unarchive(id):
+    facility = Facility.query.get_or_404(id)
+    facility.archived = False
+
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception('Could not unarchive facility %s', id)
+        flash(f'Could not unarchive "{facility.facility_name}": {db_error_message(exc)}', 'danger')
+        return redirect(url_for('facilities.index', archived='true'))
+
+    log_action('Unarchived facility', 'Facility', facility.id,
+               f'Unarchived facility "{facility.facility_name}"')
+    flash(f'"{facility.facility_name}" has been restored.', 'success')
     return redirect(url_for('facilities.index'))
 
 
