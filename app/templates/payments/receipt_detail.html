@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+{% block title %}Receipt #{{ receipt.id[:8].upper() }} — A&D Thysia{% endblock %}
+{% block breadcrumb %}Payment Receipt Details{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Payment Receipt Details</h1>
+        <p class="page-subtitle">Receipt #{{ receipt.id[:8].upper() }} — {{ receipt.payment_method.upper() }}</p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('payments.verification') }}" class="btn btn-secondary">← Back to Verification</a>
+    </div>
+</div>
+
+<div class="grid-2-1">
+    <!-- Receipt Information -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Receipt Information</div>
+            <span class="badge badge-{{ 'success' if receipt.verification_status == 'verified' else ('danger' if receipt.verification_status == 'rejected' else 'warning') }}">
+                {{ receipt.verification_status.title() }}
+            </span>
+        </div>
+        <div class="card-body" style="padding:20px;">
+            <div class="detail-grid">
+                <!-- Booking Info -->
+                <div class="detail-row">
+                    <span class="detail-label">Booking ID</span>
+                    <span class="detail-value">
+                        <a href="{{ url_for('reservations.detail', id='book-' + receipt.booking_id|string) }}" class="text-primary">
+                            #{{ receipt.booking_id[:8].upper() }}
+                        </a>
+                    </span>
+                </div>
+                
+                {% if receipt.booking %}
+                <div class="detail-row">
+                    <span class="detail-label">Guest Name</span>
+                    <span class="detail-value">{{ receipt.booking.account.first_name }} {{ receipt.booking.account.last_name }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Booking Amount</span>
+                    <span class="detail-value">₱{{ "{:,.2f}".format(receipt.booking.total_amount) }}</span>
+                </div>
+                {% endif %}
+                
+                <!-- Payment Details -->
+                <div class="detail-row">
+                    <span class="detail-label">Payment Method</span>
+                    <span class="detail-value">{{ receipt.payment_method.upper() }}</span>
+                </div>
+                
+                <!-- OCR Extracted Data -->
+                {% if receipt.reference_number or receipt.payer_name or receipt.amount_paid %}
+                <div class="detail-section-header">OCR Extracted Data</div>
+                
+                {% if receipt.reference_number %}
+                <div class="detail-row">
+                    <span class="detail-label">Reference Number (OCR)</span>
+                    <span class="detail-value">{{ receipt.reference_number }}</span>
+                </div>
+                {% endif %}
+                
+                {% if receipt.payer_name %}
+                <div class="detail-row">
+                    <span class="detail-label">Payer Name (OCR)</span>
+                    <span class="detail-value">{{ receipt.payer_name }}</span>
+                </div>
+                {% endif %}
+                
+                {% if receipt.amount_paid %}
+                <div class="detail-row">
+                    <span class="detail-label">Amount Paid (OCR)</span>
+                    <span class="detail-value">₱{{ "{:,.2f}".format(receipt.amount_paid) }}</span>
+                </div>
+                {% endif %}
+                
+                {% if receipt.ocr_confidence %}
+                <div class="detail-row">
+                    <span class="detail-label">OCR Confidence</span>
+                    <span class="detail-value">{{ receipt.ocr_confidence }}%</span>
+                </div>
+                {% endif %}
+                {% endif %}
+                
+                <!-- Manual Overrides -->
+                {% if receipt.has_manual_overrides %}
+                <div class="detail-section-header">Manual Overrides</div>
+                
+                {% if receipt.manual_reference_number %}
+                <div class="detail-row">
+                    <span class="detail-label">Reference Number (Manual)</span>
+                    <span class="detail-value font-semibold">{{ receipt.manual_reference_number }}</span>
+                </div>
+                {% endif %}
+                
+                {% if receipt.manual_payer_name %}
+                <div class="detail-row">
+                    <span class="detail-label">Payer Name (Manual)</span>
+                    <span class="detail-value font-semibold">{{ receipt.manual_payer_name }}</span>
+                </div>
+                {% endif %}
+                
+                {% if receipt.manual_amount %}
+                <div class="detail-row">
+                    <span class="detail-label">Amount (Manual)</span>
+                    <span class="detail-value font-semibold">₱{{ "{:,.2f}".format(receipt.manual_amount) }}</span>
+                </div>
+                {% endif %}
+                {% endif %}
+                
+                <!-- Final Effective Values -->
+                <div class="detail-section-header">Effective Values</div>
+                <div class="detail-row">
+                    <span class="detail-label">Final Reference</span>
+                    <span class="detail-value font-bold">{{ receipt.effective_reference_number or '—' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Final Payer</span>
+                    <span class="detail-value font-bold">{{ receipt.effective_payer_name or '—' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Final Amount</span>
+                    <span class="detail-value font-bold">{{ ("₱{:,.2f}".format(receipt.effective_amount)) if receipt.effective_amount else '—' }}</span>
+                </div>
+                
+                <!-- Upload Info -->
+                <div class="detail-section-header">Upload Information</div>
+                <div class="detail-row">
+                    <span class="detail-label">Uploaded By</span>
+                    <span class="detail-value">{{ receipt.uploader.username if receipt.uploader else '—' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Upload Source</span>
+                    <span class="detail-value">{{ receipt.upload_source.title() }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Uploaded At</span>
+                    <span class="detail-value">{{ receipt.created_at.strftime('%B %d, %Y %I:%M %p') if receipt.created_at else '—' }}</span>
+                </div>
+                
+                <!-- Verification Info -->
+                {% if receipt.verified_at %}
+                <div class="detail-section-header">Verification Information</div>
+                <div class="detail-row">
+                    <span class="detail-label">Verified By</span>
+                    <span class="detail-value">{{ receipt.verifier.username if receipt.verifier else '—' }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Verified At</span>
+                    <span class="detail-value">{{ receipt.verified_at.strftime('%B %d, %Y %I:%M %p') }}</span>
+                </div>
+                {% if receipt.verification_notes %}
+                <div class="detail-row">
+                    <span class="detail-label">Notes</span>
+                    <span class="detail-value">{{ receipt.verification_notes }}</span>
+                </div>
+                {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Verification Actions -->
+    {% if receipt.verification_status == 'pending' %}
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Verification Actions</div>
+        </div>
+        <div class="card-body" style="padding:20px;">
+            
+            <!-- Verify Form -->
+            <form method="POST" action="{{ url_for('payments.verify_receipt', receipt_id=receipt.id) }}" style="margin-bottom:24px;">
+                <h4 style="margin:0 0 16px 0;color:var(--text-primary);">Verify Receipt</h4>
+                
+                <!-- Manual Override Fields -->
+                <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+                    <div>
+                        <label class="form-label">Manual Reference Number</label>
+                        <input type="text" name="manual_reference_number" class="form-input" 
+                               value="{{ receipt.manual_reference_number or '' }}" 
+                               placeholder="Override OCR reference number">
+                    </div>
+                    
+                    <div>
+                        <label class="form-label">Manual Payer Name</label>
+                        <input type="text" name="manual_payer_name" class="form-input" 
+                               value="{{ receipt.manual_payer_name or '' }}" 
+                               placeholder="Override OCR payer name">
+                    </div>
+                    
+                    <div>
+                        <label class="form-label">Manual Amount</label>
+                        <input type="number" step="0.01" name="manual_amount" class="form-input" 
+                               value="{{ receipt.manual_amount or '' }}" 
+                               placeholder="Override OCR amount">
+                    </div>
+                    
+                    <div>
+                        <label class="form-label">Verification Notes</label>
+                        <textarea name="verification_notes" class="form-input" rows="3" 
+                                  placeholder="Optional notes about the verification..."></textarea>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-success" onclick="return confirm('Verify this payment receipt?')">
+                    ✓ Verify Receipt
+                </button>
+            </form>
+            
+            <!-- Reject Form -->
+            <div style="border-top:1px solid var(--border);padding-top:20px;">
+                <form method="POST" action="{{ url_for('payments.reject_receipt', receipt_id=receipt.id) }}">
+                    <h4 style="margin:0 0 12px 0;color:var(--text-primary);">Reject Receipt</h4>
+                    <div>
+                        <label class="form-label">Rejection Reason</label>
+                        <textarea name="rejection_reason" class="form-input" rows="3" 
+                                  placeholder="Explain why this receipt is being rejected..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-danger" style="margin-top:12px;" onclick="return confirm('Reject this payment receipt?')">
+                        ✗ Reject Receipt
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Receipt Image -->
+{% if receipt.receipt_image_data %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Receipt Image</div>
+    </div>
+    <div class="card-body" style="padding:20px;text-align:center;">
+        <img src="{{ url_for('payments.receipt_image', receipt_id=receipt.id) }}" 
+             alt="Payment Receipt" 
+             style="max-width:100%;max-height:600px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+    </div>
+</div>
+{% endif %}
+
+<style>
+.detail-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.detail-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+    min-width: 140px;
+}
+
+.detail-value {
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: right;
+    flex: 1;
+}
+
+.detail-section-header {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 16px 0 8px 0;
+    padding-bottom: 4px;
+    border-bottom: 2px solid var(--accent);
+}
+
+.font-bold {
+    font-weight: 700;
+    color: var(--accent);
+}
+</style>
+{% endblock %}

@@ -3,7 +3,7 @@ from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db, login_manager
-from sqlalchemy import String, TypeDecorator
+from sqlalchemy import String, TypeDecorator, func
 
 
 class GUID(TypeDecorator):
@@ -49,7 +49,7 @@ class Account(UserMixin, db.Model):
     last_login = db.Column(db.DateTime, nullable=True)
     
     # Password reset fields
-    reset_token = db.Column(db.String(100), unique=True, nullable=True)
+    reset_token = db.Column(db.String(100), nullable=True)
     reset_token_expiry = db.Column(db.DateTime, nullable=True)
 
     # One-to-one bridges to operational/profile tables
@@ -210,30 +210,63 @@ class Reservation(db.Model):
     notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Cancellation request fields
+    cancellation_requested_at = db.Column(db.DateTime, nullable=True)
+    cancellation_request_reason = db.Column(db.Text, nullable=True)
+    cancellation_request_status = db.Column(db.Text, default='none')  # none, pending, approved, rejected
+    cancellation_handled_by = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True)
+    cancellation_handled_at = db.Column(db.DateTime, nullable=True)
+    
     payment = db.relationship('Payment', backref='reservation', uselist=False)
+    cancellation_handler = db.relationship('Account', foreign_keys=[cancellation_handled_by],
+                                          primaryjoin="Reservation.cancellation_handled_by == Account.id")
 
 
 class Booking(db.Model):
     """Guest-facing bookings from the public application."""
     __tablename__ = 'bookings'
-    id = db.Column(GUID(), primary_key=True)
+    id = db.Column(GUID(), primary_key=True, default=lambda: str(uuid.uuid4()))
     account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=False)
     facility_type = db.Column(db.Text, nullable=False)
-    inclusions = db.Column(db.JSON, nullable=True)
     check_in = db.Column(db.Date, nullable=False)
     check_out = db.Column(db.Date, nullable=False)
-    guests = db.Column(db.Integer, nullable=False)
+    guests = db.Column(db.Integer, nullable=False, default=1)
     total_amount = db.Column(db.Numeric(10, 2), nullable=False)
     payment_method = db.Column(db.Text, nullable=False)
-    status = db.Column(db.Text, nullable=False)  # pending, confirmed, cancelled
-    archived = db.Column(db.Boolean, default=False)  # soft delete
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    status = db.Column(db.Text, nullable=False, default='pending')  # pending, confirmed, cancelled, cancel_requested
+    created_at = db.Column(db.DateTime(timezone=True), default=func.now())
+    updated_at = db.Column(db.DateTime(timezone=True), default=func.now())
     cancellation_reason = db.Column(db.Text, nullable=True)
-    cancelled_at = db.Column(db.DateTime, nullable=True)
+    cancelled_at = db.Column(db.DateTime(timezone=True), nullable=True)
     
-    # Relationship
+    # Check-in and Check-out timestamps (required in schema)
+    check_in_at = db.Column(db.DateTime, nullable=False)
+    check_out_at = db.Column(db.DateTime, nullable=False)
+    archived = db.Column(db.Boolean, default=False)
+    check_in_time = db.Column(db.Time, nullable=True)
+    check_out_time = db.Column(db.Time, nullable=True)
+
+    # Payment tracking fields
+    payment_status = db.Column(db.Text, default='pending')
+    payment_verified_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    payment_verified_by = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True)
+    payment_notes = db.Column(db.Text, nullable=True)
+
+    # Cancellation request fields
+    cancellation_requested_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    inclusions = db.Column(db.JSON, nullable=True)  # JSONB in schema
+    cancellation_request_reason = db.Column(db.Text, nullable=True)
+    cancellation_request_status = db.Column(db.Text, default='none')  # none, pending, approved, rejected
+    cancellation_handled_by = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True)
+    cancellation_handled_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relationships
     account = db.relationship('Account', backref='bookings', foreign_keys=[account_id])
+    payment_verifier = db.relationship('Account', foreign_keys=[payment_verified_by], 
+                                     primaryjoin="Booking.payment_verified_by == Account.id")
+    cancellation_handler = db.relationship('Account', foreign_keys=[cancellation_handled_by], 
+                                          primaryjoin="Booking.cancellation_handled_by == Account.id")
 
 
 class Payment(db.Model):
@@ -242,11 +275,145 @@ class Payment(db.Model):
     reservation_id = db.Column(db.Integer, db.ForeignKey('reservations.id', ondelete='CASCADE'), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     payment_mode = db.Column(db.String(32), nullable=False)  # cash, gcash, bank, card
-    status = db.Column(db.String(32), default='pending')  # pending, paid, refunded
+    status = db.Column(db.String(32), default='pending')  # pending, paid, refunded, verified
     receipt_number = db.Column(db.String(64), unique=True, nullable=True)
     invoice_number = db.Column(db.String(64), unique=True, nullable=True)
     paid_at = db.Column(db.DateTime, nullable=True)
+    
+    # GCash verification fields
+    gcash_reference_number = db.Column(db.String(64), nullable=True)
+    gcash_sender_name = db.Column(db.String(120), nullable=True)
+    gcash_sender_number = db.Column(db.String(32), nullable=True)
+    gcash_screenshot_filename = db.Column(db.String(256), nullable=True)
+    gcash_screenshot_mimetype = db.Column(db.String(64), nullable=True)
+    gcash_screenshot_data = db.deferred(db.Column(db.Text, nullable=True))
+    verification_status = db.Column(db.String(32), default='unverified')  # unverified, pending, verified, rejected
+    verification_notes = db.Column(db.Text, nullable=True)
+    verified_by_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True)
+    verified_at = db.Column(db.DateTime, nullable=True)
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    verified_by = db.relationship('Account', foreign_keys=[verified_by_id], backref='verified_payments')
+    
+    @property
+    def has_gcash_screenshot(self):
+        """Check if payment has an uploaded GCash screenshot"""
+        return bool(self.gcash_screenshot_mimetype)
+    
+    @property
+    def gcash_screenshot_url(self):
+        """URL to view the GCash screenshot"""
+        if not self.has_gcash_screenshot:
+            return None
+        try:
+            from flask import url_for
+            return url_for('payments.gcash_screenshot', id=self.id)
+        except (RuntimeError, ImportError):
+            return f'/payments/{self.id}/gcash-screenshot'
+    
+    @property
+    def gcash_screenshot_bytes(self):
+        """Raw screenshot bytes decoded from base64"""
+        if not self.has_gcash_screenshot:
+            return None
+        import base64
+        try:
+            return base64.b64decode(self.gcash_screenshot_data)
+        except Exception:
+            return None
+
+
+class GCashConfig(db.Model):
+    """Store GCash QR codes and transaction history for payment verification"""
+    __tablename__ = 'gcash_configs'
+    id = db.Column(db.Integer, primary_key=True)
+    qr_code_name = db.Column(db.String(120), nullable=False)
+    qr_code_filename = db.Column(db.String(256), nullable=False)
+    qr_code_mimetype = db.Column(db.String(64), nullable=False)
+    qr_code_data = db.deferred(db.Column(db.Text, nullable=False))
+    
+    # Associated GCash account info
+    gcash_account_name = db.Column(db.String(120), nullable=False)
+    gcash_account_number = db.Column(db.String(32), nullable=False)
+    
+    is_active = db.Column(db.Boolean, default=True)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    created_by = db.relationship('Account', foreign_keys=[created_by_id], backref='gcash_configs')
+    
+    @property
+    def qr_code_url(self):
+        """URL to view the QR code"""
+        try:
+            from flask import url_for
+            return url_for('payments.gcash_qr', id=self.id)
+        except (RuntimeError, ImportError):
+            return f'/payments/gcash-qr/{self.id}'
+    
+    @property
+    def qr_code_bytes(self):
+        """Raw QR code bytes decoded from base64"""
+        import base64
+        try:
+            return base64.b64decode(self.qr_code_data)
+        except Exception:
+            return None
+
+
+class GCashTransaction(db.Model):
+    """Store GCash transaction history for verification"""
+    __tablename__ = 'gcash_transactions'
+    id = db.Column(db.Integer, primary_key=True)
+    reference_number = db.Column(db.String(64), unique=True, nullable=False)
+    transaction_date = db.Column(db.DateTime, nullable=False)
+    sender_name = db.Column(db.String(120), nullable=False)
+    sender_number = db.Column(db.String(32), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    
+    # Link to payment if verified
+    payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=True)
+    
+    # Screenshot of transaction
+    screenshot_filename = db.Column(db.String(256), nullable=True)
+    screenshot_mimetype = db.Column(db.String(64), nullable=True)
+    screenshot_data = db.deferred(db.Column(db.Text, nullable=True))
+    
+    notes = db.Column(db.Text, nullable=True)
+    uploaded_by_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    payment = db.relationship('Payment', backref='gcash_transaction', uselist=False, foreign_keys=[payment_id])
+    uploaded_by = db.relationship('Account', foreign_keys=[uploaded_by_id], backref='uploaded_gcash_transactions')
+    
+    @property
+    def has_screenshot(self):
+        return bool(self.screenshot_mimetype)
+    
+    @property
+    def screenshot_url(self):
+        if not self.has_screenshot:
+            return None
+        try:
+            from flask import url_for
+            return url_for('payments.gcash_transaction_screenshot', id=self.id)
+        except (RuntimeError, ImportError):
+            return f'/payments/gcash-transaction/{self.id}/screenshot'
+    
+    @property
+    def screenshot_bytes(self):
+        if not self.has_screenshot:
+            return None
+        import base64
+        try:
+            return base64.b64decode(self.screenshot_data)
+        except Exception:
+            return None
 
 
 class Staff(db.Model):
@@ -384,3 +551,104 @@ class Announcement(db.Model):
             'created_at': self.created_at,
             'updated_at': self.updated_at
         }
+
+class PaymentReceipt(db.Model):
+    """New comprehensive payment receipt management system"""
+    __tablename__ = 'payment_receipts'
+    
+    id = db.Column(GUID(), primary_key=True, default=lambda: str(uuid.uuid4()))
+    booking_id = db.Column(GUID(), db.ForeignKey('bookings.id'), nullable=False)
+    payment_method = db.Column(db.Text, nullable=False)
+    
+    # Receipt image storage
+    receipt_image_url = db.Column(db.Text, nullable=True)
+    receipt_image_data = db.Column(db.Text, nullable=True)  # base64 encoded
+    receipt_filename = db.Column(db.Text, nullable=True)
+    receipt_mimetype = db.Column(db.Text, nullable=True)
+    
+    # OCR extracted data
+    reference_number = db.Column(db.Text, nullable=True)
+    payer_name = db.Column(db.Text, nullable=True)
+    amount_paid = db.Column(db.Numeric(10, 2), nullable=True)
+    payment_date = db.Column(db.DateTime, nullable=True)
+    
+    # Manual override data
+    manual_reference_number = db.Column(db.Text, nullable=True)
+    manual_payer_name = db.Column(db.Text, nullable=True)
+    manual_amount = db.Column(db.Numeric(10, 2), nullable=True)
+    
+    # OCR processing status
+    ocr_status = db.Column(db.Text, default='pending')  # pending, processing, completed, failed, manual
+    ocr_confidence = db.Column(db.Numeric(5, 2), nullable=True)
+    ocr_raw_data = db.Column(db.JSON, nullable=True)
+    ocr_error = db.Column(db.Text, nullable=True)
+    
+    # Verification workflow
+    verification_status = db.Column(db.Text, default='pending')  # pending, verified, rejected
+    verified_by = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True)
+    verified_at = db.Column(db.DateTime, nullable=True)
+    verification_notes = db.Column(db.Text, nullable=True)
+    
+    # Upload tracking
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=False)
+    upload_source = db.Column(db.Text, default='customer')  # customer, staff, admin
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    booking = db.relationship('Booking', backref='payment_receipts')
+    uploader = db.relationship('Account', foreign_keys=[uploaded_by])
+    verifier = db.relationship('Account', foreign_keys=[verified_by], 
+                              primaryjoin="PaymentReceipt.verified_by == Account.id")
+
+    @property
+    def receipt_image_bytes(self):
+        """Convert base64 receipt data to bytes"""
+        if self.receipt_image_data:
+            import base64
+            return base64.b64decode(self.receipt_image_data)
+        return None
+
+    @property
+    def effective_reference_number(self):
+        """Get the reference number (manual override takes precedence)"""
+        return self.manual_reference_number or self.reference_number
+
+    @property
+    def effective_payer_name(self):
+        """Get the payer name (manual override takes precedence)"""
+        return self.manual_payer_name or self.payer_name
+
+    @property
+    def effective_amount(self):
+        """Get the amount (manual override takes precedence)"""
+        return self.manual_amount or self.amount_paid
+
+    @property
+    def has_manual_overrides(self):
+        """Check if any manual overrides are set"""
+        return bool(self.manual_reference_number or self.manual_payer_name or self.manual_amount)
+
+    @property
+    def needs_ocr_processing(self):
+        """Check if OCR processing is needed"""
+        return self.ocr_status in ['pending', 'failed'] and self.receipt_image_data
+
+    @property
+    def has_receipt_image(self):
+        return bool(self.receipt_image_data or self.receipt_image_url)
+
+    @property
+    def receipt_url(self):
+        if not self.has_receipt_image:
+            return None
+        try:
+            from flask import url_for
+            return url_for('payments.receipt_image', receipt_id=str(self.id))
+        except Exception:
+            return f'/payments/verification/receipt/{self.id}/image'
+
+    @property
+    def is_fully_processed(self):
+        """Check if receipt has been fully processed (OCR + manual data)"""
+        return bool(self.effective_reference_number and self.effective_amount)

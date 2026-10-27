@@ -32,7 +32,7 @@
         <ul class="nav-list">
             <li>
                 <a href="{{ url_for('admin.overview') }}"
-                   class="nav-item {% if request.endpoint == 'admin.overview' %}active{% endif %}">
+                   class="nav-item {% if request.endpoint == 'admin.overview' %}active{% endif %}" data-nav-link>
                     <span class="nav-icon">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                             <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/>
@@ -46,7 +46,7 @@
             </li>
             <li>
                 <a href="{{ url_for('reservations.index') }}"
-                   class="nav-item {% if request.blueprint == 'reservations' %}active{% endif %}">
+                   class="nav-item {% if request.blueprint == 'reservations' %}active{% endif %}" data-nav-link>
                     <span class="nav-icon">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                             <rect x="3" y="4" width="18" height="17" rx="2" stroke="currentColor" stroke-width="2"/>
@@ -58,7 +58,7 @@
             </li>
             <li>
                 <a href="{{ url_for('admin.calendar') }}"
-                   class="nav-item {% if request.endpoint == 'admin.calendar' %}active{% endif %}">
+                   class="nav-item {% if request.endpoint == 'admin.calendar' %}active{% endif %}" data-nav-link>
                     <span class="nav-icon">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                             <rect x="3" y="4" width="18" height="17" rx="2" stroke="currentColor" stroke-width="2"/>
@@ -71,7 +71,7 @@
             </li>
             <li>
                 <a href="{{ url_for('facilities.index') }}"
-                   class="nav-item {% if request.blueprint == 'facilities' %}active{% endif %}">
+                   class="nav-item {% if request.blueprint == 'facilities' %}active{% endif %}" data-nav-link>
                     <span class="nav-icon">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                             <path d="M12 3L4 9v12h16V9L12 3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
@@ -83,7 +83,7 @@
             </li>
             <li>
                 <a href="{{ url_for('payments.index') }}"
-                   class="nav-item {% if request.blueprint == 'payments' %}active{% endif %}">
+                   class="nav-item {% if request.blueprint == 'payments' and request.endpoint != 'payments.verification' %}active{% endif %}" data-nav-link>
                     <span class="nav-icon">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                             <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
@@ -94,8 +94,20 @@
                 </a>
             </li>
             <li>
+                <a href="{{ url_for('payments.verification') }}"
+                   class="nav-item {% if request.endpoint == 'payments.verification' %}active{% endif %}" data-nav-link>
+                    <span class="nav-icon">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <path d="M9 11L12 14L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M21 12V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    GCash Verification
+                </a>
+            </li>
+            <li>
                 <a href="{{ url_for('announcements.index') }}"
-                   class="nav-item {% if request.blueprint == 'announcements' %}active{% endif %}">
+                   class="nav-item {% if request.blueprint == 'announcements' %}active{% endif %}" data-nav-link>
                     <span class="nav-icon">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                             <path d="M18 8A6 6 0 106 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -111,7 +123,7 @@
         <ul class="nav-list">
             <li>
                 <a href="{{ url_for('analytics.index') }}"
-                   class="nav-item {% if request.blueprint == 'analytics' %}active{% endif %}">
+                   class="nav-item {% if request.blueprint == 'analytics' %}active{% endif %}" data-nav-link>
                     <span class="nav-icon">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                             <path d="M3 17l4-5 4 3 4-6 4 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -123,7 +135,7 @@
             </li>
             <li>
                 <a href="{{ url_for('attendance_payroll.index') }}"
-                   class="nav-item {% if request.blueprint == 'attendance_payroll' %}active{% endif %}">
+                   class="nav-item {% if request.blueprint == 'attendance_payroll' %}active{% endif %}" data-nav-link>
                     <span class="nav-icon">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                             <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
@@ -141,7 +153,7 @@
         <ul class="nav-list">
             <li>
                 <a href="{{ url_for('accounts.index', tab='admins') }}"
-                   class="nav-item {% if request.blueprint == 'accounts' %}active{% endif %}">
+                   class="nav-item {% if request.blueprint == 'accounts' %}active{% endif %}" data-nav-link>
                     <span class="nav-icon">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                             <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -154,7 +166,7 @@
             </li>
             <li>
                 <a href="{{ url_for('system.settings') }}"
-                   class="nav-item {% if request.endpoint == 'system.settings' %}active{% endif %}">
+                   class="nav-item {% if request.endpoint == 'system.settings' %}active{% endif %}" data-nav-link>
                     <span class="nav-icon">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                             <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
@@ -166,7 +178,7 @@
             </li>
             <li>
                 <a href="{{ url_for('system.audit_log') }}"
-                   class="nav-item {% if request.endpoint == 'system.audit_log' %}active{% endif %}">
+                   class="nav-item {% if request.endpoint == 'system.audit_log' %}active{% endif %}" data-nav-link>
                     <span class="nav-icon">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -293,5 +305,24 @@
 
 <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 {% block scripts %}{% endblock %}
+
+{% if current_user.is_authenticated %}
+<script>
+// ── Navigation Lock ─────────────────────────────────────────────────────────
+// When a sidebar link is clicked, we set a short-lived cookie so the server
+// knows the next request is a legitimate navigation (not a URL bar edit).
+(function () {
+    // Mark every sidebar link with a click handler that stamps the cookie.
+    document.querySelectorAll('[data-nav-link]').forEach(function (link) {
+        link.addEventListener('click', function (e) {
+            var dest = link.getAttribute('href');
+            if (!dest) return;
+            // Set nav_intent cookie valid for 5 seconds — enough for one redirect.
+            document.cookie = 'nav_intent=' + encodeURIComponent(dest) + '; path=/; max-age=5; SameSite=Lax';
+        });
+    });
+})();
+</script>
+{% endif %}
 </body>
 </html>

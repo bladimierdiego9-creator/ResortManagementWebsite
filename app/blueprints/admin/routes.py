@@ -1,4 +1,4 @@
-from flask import render_template, jsonify, request as req
+from flask import render_template, jsonify, request as req, render_template_string
 from flask_login import login_required, current_user
 from app.blueprints.admin import admin_bp
 from app.decorators import admin_required
@@ -7,6 +7,13 @@ from app.extensions import db
 from datetime import datetime, date, timedelta
 import calendar as cal_module
 from sqlalchemy import func
+
+
+def _fmt_clock_time(value):
+    """Format a datetime.time as '9:00 AM' (no leading zero) or '—' when missing."""
+    if not value:
+        return '—'
+    return value.strftime('%I:%M %p').lstrip('0')
 
 
 # ── API: FullCalendar events endpoint ─────────────────────────────────────────
@@ -84,8 +91,9 @@ def api_bookings():
                 'facility':   facilities_map.get(r.facility_id, 'Unknown Facility') if r.facility_id else '—',
                 'guest':      r.guest.full_name if r.guest else '—',
                 'phone':      r.guest.phone if r.guest else '—',
-                'start_time': r.start_time.strftime('%I:%M %p') if r.start_time else '—',
-                'end_time':   r.end_time.strftime('%I:%M %p') if r.end_time else '—',
+                'start_time': _fmt_clock_time(r.start_time),
+                'end_time':   _fmt_clock_time(r.end_time),
+                'date_label': r.event_date.strftime('%b %d, %Y'),
                 'guests':     r.guest_count,
                 'amount':     r.payment.amount if r.payment else 0,
                 'ref':        f'RES-{r.id:04d}',
@@ -97,17 +105,42 @@ def api_bookings():
     for b in bookings:
         if b.status == 'confirmed':
             color = '#10b981'  # Green
-        elif b.status == 'pending':
-            color = '#ee9800'  # Orange
+        elif b.status in ['pending', 'cancel_requested']:
+            color = '#f59e0b'  # Amber / orange
         else:
-            color = '#6f8e7d'  # Gray (cancelled)
+            color = '#64748b'  # Slate gray (cancelled)
         
-        guest_name = f"{b.account.first_name} {b.account.last_name}" if b.account else 'Unknown Guest'
+        acc = b.account
+        guest_name = ''
+        if acc:
+            if acc.first_name or acc.last_name:
+                guest_name = f"{acc.first_name or ''} {acc.last_name or ''}".strip()
+            elif hasattr(acc, 'guest_profile') and acc.guest_profile and acc.guest_profile.full_name:
+                guest_name = acc.guest_profile.full_name.strip()
+            elif acc.username:
+                guest_name = acc.username
+        if not guest_name:
+            guest_name = 'Guest'
+
+        phone = ''
+        if acc:
+            if hasattr(acc, 'guest_profile') and acc.guest_profile and acc.guest_profile.phone:
+                phone = acc.guest_profile.phone
+            elif acc.email:
+                phone = acc.email
+        
+        facility_display = b.facility_type.replace('_', ' ').title() if b.facility_type else 'Resort'
+
+        # The scheduled clock times live on check_in_at / check_out_at. The
+        # check_in_time / check_out_time columns are the fallback for bookings
+        # created before those timestamps existed.
+        check_in_clock = b.check_in_time or (b.check_in_at.time() if b.check_in_at else None)
+        check_out_clock = b.check_out_time or (b.check_out_at.time() if b.check_out_at else None)
         
         # Create multi-day event for bookings
         events.append({
             'id':        f'book-{b.id}',
-            'title':     guest_name,
+            'title':     f"{guest_name} • {facility_display}",
             'start':     b.check_in.isoformat(),
             'end':       (b.check_out + timedelta(days=1)).isoformat(),  # FullCalendar end date is exclusive
             'color':     color,
@@ -115,15 +148,16 @@ def api_bookings():
             'extendedProps': {
                 'type':       'booking',
                 'status':     b.status,
-                'facility':   b.facility_type.replace('_', ' ').title(),
+                'facility':   facility_display,
                 'guest':      guest_name,
-                'phone':      b.account.email if b.account else '—',
-                'start_time': f"Check-in: {b.check_in.strftime('%b %d')}",
-                'end_time':   f"Check-out: {b.check_out.strftime('%b %d')}",
+                'phone':      phone or '—',
+                'start_time': _fmt_clock_time(check_in_clock),
+                'end_time':   _fmt_clock_time(check_out_clock),
+                'date_label': f"{b.check_in.strftime('%b %d')} → {b.check_out.strftime('%b %d, %Y')}",
                 'guests':     b.guests,
                 'amount':     float(b.total_amount),
                 'ref':        f'BOOK-{str(b.id)[:8].upper()}',
-                'notes':      b.cancellation_reason if b.status == 'cancelled' else '',
+                'notes':      b.cancellation_reason if b.status == 'cancelled' else (b.cancellation_request_reason or ''),
             }
         })
 
@@ -157,11 +191,12 @@ def overview():
     from app.models import Booking
     
     todays_reservations = Reservation.query.filter_by(event_date=today).count()
-    todays_bookings_checkin = Booking.query.filter(
+    todays_bookings_active = Booking.query.filter(
         Booking.check_in <= today,
-        Booking.check_out >= today
+        Booking.check_out > today,
+        Booking.archived == False
     ).count()
-    todays_bookings = todays_reservations + todays_bookings_checkin
+    todays_bookings = todays_reservations + todays_bookings_active
 
     # Revenue this month
     revenue_this_month = db.session.query(func.sum(Payment.amount)).join(
@@ -204,48 +239,70 @@ def overview():
     # Get recent reservations
     reservations = db.session.query(Reservation).order_by(
         Reservation.created_at.desc()
-    ).limit(4).all()
+    ).limit(6).all()
     
     # Get recent bookings
     bookings = db.session.query(Booking).order_by(
         Booking.created_at.desc()
-    ).limit(4).all()
+    ).limit(6).all()
     
     # Combine and sort by created_at
     recent_items = []
+    
+    # Process reservations
     for r in reservations:
-        # Ensure created_at is timezone-naive for comparison
-        created_at = r.created_at.replace(tzinfo=None) if r.created_at and r.created_at.tzinfo else r.created_at
-        recent_items.append({
-            'type': 'reservation',
-            'id': r.id,
-            'guest_name': r.guest.full_name if r.guest else '(Guest removed)',
-            'facility': facilities_map.get(str(r.facility_id), 'Unknown Facility') if r.facility_id else '—',
-            'event_date': r.event_date,
-            'start_time': r.start_time,
-            'amount': r.payment.amount if r.payment else 0,
-            'status': r.status,
-            'created_at': created_at,
-        })
+        try:
+            # Ensure created_at is timezone-naive for comparison
+            created_at = r.created_at.replace(tzinfo=None) if r.created_at and r.created_at.tzinfo else r.created_at
+            recent_items.append({
+                'type': 'reservation',
+                'id': r.id,
+                'guest_name': r.guest.full_name if r.guest else '(Guest removed)',
+                'facility': facilities_map.get(str(r.facility_id), 'Unknown Facility') if r.facility_id else '—',
+                'event_date': r.event_date.isoformat() if r.event_date else None,
+                'start_time': r.start_time.strftime('%H:%M:%S') if r.start_time else None,
+                'amount': float(r.payment.amount) if r.payment and r.payment.amount else 0,
+                'status': r.status,
+                'created_at': created_at.isoformat() if created_at else None,
+            })
+        except Exception as e:
+            print(f"Error processing reservation {r.id}: {e}")
+            continue
     
+    # Process bookings
     for b in bookings:
-        # Ensure created_at is timezone-naive for comparison
-        created_at = b.created_at.replace(tzinfo=None) if b.created_at and b.created_at.tzinfo else b.created_at
-        recent_items.append({
-            'type': 'booking',
-            'id': b.id,
-            'guest_name': f"{b.account.first_name} {b.account.last_name}" if b.account else 'Unknown Guest',
-            'facility': b.facility_type.replace('_', ' ').title(),
-            'event_date': b.check_in,
-            'start_time': None,  # Bookings don't have specific time
-            'amount': float(b.total_amount),
-            'status': b.status,
-            'created_at': created_at,
-        })
+        try:
+            # Ensure created_at is timezone-naive for comparison
+            created_at = b.created_at.replace(tzinfo=None) if b.created_at and b.created_at.tzinfo else b.created_at
+            
+            # Get guest name from account
+            guest_name = 'Unknown Guest'
+            if b.account:
+                if hasattr(b.account, 'full_name') and b.account.full_name:
+                    guest_name = b.account.full_name
+                elif hasattr(b.account, 'first_name') and hasattr(b.account, 'last_name'):
+                    guest_name = f"{b.account.first_name} {b.account.last_name}"
+                elif hasattr(b.account, 'username'):
+                    guest_name = b.account.username
+            
+            recent_items.append({
+                'type': 'booking',
+                'id': str(b.id),  # Convert UUID to string for JSON serialization
+                'guest_name': guest_name,
+                'facility': b.facility_type.replace('_', ' ').title() if b.facility_type else 'Unknown',
+                'event_date': b.check_in.isoformat() if b.check_in else None,
+                'start_time': b.check_in_time.strftime('%H:%M:%S') if b.check_in_time else None,
+                'amount': float(b.total_amount) if b.total_amount else 0,
+                'status': b.status,
+                'created_at': created_at.isoformat() if created_at else None,
+            })
+        except Exception as e:
+            print(f"Error processing booking {b.id}: {e}")
+            continue
     
-    # Sort by created_at and take top 8
-    recent_items.sort(key=lambda x: x['created_at'] or datetime.min, reverse=True)
-    recent_bookings = recent_items[:8]
+    # Sort by created_at and take top 10
+    recent_items.sort(key=lambda x: datetime.fromisoformat(x['created_at']) if x['created_at'] else datetime.min, reverse=True)
+    recent_bookings = recent_items[:10]
 
     # AI queue
     ai_queue = AIChatLog.query.filter_by(escalated=True, resolved=False).order_by(
@@ -258,25 +315,65 @@ def overview():
     for i in range(days_in_month):
         d = month_start + timedelta(days=i)
         booking_chart_labels.append(d.strftime('%b %d'))
+        
+        # Count reservations for this date
         res_count = Reservation.query.filter_by(event_date=d).count()
+        
+        # Count bookings that include this date (check_in <= d <= check_out)
         book_count = Booking.query.filter(
             Booking.check_in <= d,
-            Booking.check_out >= d
+            Booking.check_out > d,  # Use > instead of >= to avoid double counting
+            Booking.archived == False
         ).count()
+        
         booking_chart_data.append(res_count + book_count)
 
-    # Occupancy
+    # Last month booking chart
+    last_month_days = (last_month_end - last_month_start).days + 1
+    last_month_labels, last_month_data = [], []
+    for i in range(last_month_days):
+        d = last_month_start + timedelta(days=i)
+        last_month_labels.append(d.strftime('%b %d'))
+        
+        # Count reservations for this date
+        res_count = Reservation.query.filter_by(event_date=d).count()
+        
+        # Count bookings that include this date
+        book_count = Booking.query.filter(
+            Booking.check_in <= d,
+            Booking.check_out > d,
+            Booking.archived == False
+        ).count()
+        
+        last_month_data.append(res_count + book_count)
+
+    # Occupancy - include both reservations and bookings
     total_facilities = Facility.query.count()
-    booked_facilities = db.session.query(func.count(func.distinct(Reservation.facility_id))).filter(
+    
+    # Count distinct facilities booked today (reservations)
+    booked_by_reservations = db.session.query(func.count(func.distinct(Reservation.facility_id))).filter(
         Reservation.event_date == today,
         Reservation.status == 'confirmed'
     ).scalar() or 0
+    
+    # Count bookings active today (simplified - count all active bookings as occupying facilities)
+    active_bookings_today = Booking.query.filter(
+        Booking.check_in <= today,
+        Booking.check_out > today,
+        Booking.status.in_(['confirmed', 'pending']),
+        Booking.archived == False
+    ).count()
+    
+    # Total booked (reservations + active bookings, but cap at total facilities)
+    booked_facilities = min(booked_by_reservations + active_bookings_today, total_facilities)
+    
     blocked_facilities = Facility.query.filter_by(status='maintenance').count()
     available_facilities = max(0, total_facilities - booked_facilities - blocked_facilities)
 
     chart_data = {
-        'booking':   {'labels': booking_chart_labels, 'data': booking_chart_data},
-        'occupancy': {'booked': booked_facilities, 'available': available_facilities, 'blocked': blocked_facilities},
+        'booking':      {'labels': booking_chart_labels, 'data': booking_chart_data},
+        'last_booking': {'labels': last_month_labels,    'data': last_month_data},
+        'occupancy':    {'booked': booked_facilities, 'available': available_facilities, 'blocked': blocked_facilities},
     }
 
     # Sparkline (last 7 days combined reservations + bookings)
@@ -286,7 +383,8 @@ def overview():
         res_count = Reservation.query.filter_by(event_date=day).count()
         book_count = Booking.query.filter(
             Booking.check_in <= day,
-            Booking.check_out >= day
+            Booking.check_out > day,
+            Booking.archived == False
         ).count()
         sparkline.append(res_count + book_count)
 

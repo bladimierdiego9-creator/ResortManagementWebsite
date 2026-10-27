@@ -120,14 +120,13 @@
     background: rgba(78,222,163,.08) !important;
 }
 .fc-theme-standard td, .fc-theme-standard th { border-color: #1d3a2e; }
-.fc-theme-standard .fc-scrollgrid { border-color: #1d3a2e; }
 .fc .fc-daygrid-day-frame { 
-    min-height: 100px; 
-    height: 100px;
+    min-height: 132px; 
+    height: auto;
     position: relative; 
 }
 .fc .fc-daygrid-day {
-    aspect-ratio: 1 / 1;
+    min-height: 132px;
 }
 .fc-theme-standard td {
     position: relative;
@@ -268,42 +267,52 @@
 .cal-event-card {
     display: flex; 
     flex-direction: column; 
-    gap: 1px;
-    border-radius: 4px;
-    padding: 2px 5px;
-    margin: 0 1px;
+    gap: 2px;
+    border-radius: 6px;
+    padding: 3px 6px;
+    margin: 2px 1px;
     cursor: pointer; 
     overflow: hidden;
-    min-height: 20px;
-    max-height: 26px;
+    min-height: 46px;
     position: relative;
     z-index: 2;
     transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    border-left: 3px solid rgba(255, 255, 255, 0.8);
 }
 .cal-event-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.5);
     z-index: 10;
 }
 .cal-event-card:active {
     transform: scale(0.98);
 }
 .cal-event-guest {
-    font-size: 9.5px;  /* Reduced from 10.5px */
+    font-size: 11px;
     font-weight: 700; 
-    color: #fff;
+    color: #ffffff;
     white-space: nowrap; 
     overflow: hidden; 
     text-overflow: ellipsis; 
-    line-height: 1.2;  /* Tighter line height */
+    line-height: 1.2;
 }
 .cal-event-times {
-    font-size: 8.5px;  /* Reduced from 9px */
-    font-weight: 500;
-    color: rgba(255,255,255,0.85); 
-    line-height: 1.1;  /* Tighter line height */
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.95); 
+    line-height: 1.15;
     white-space: nowrap; 
     overflow: hidden; 
+    text-overflow: ellipsis;
+}
+.cal-event-meta {
+    font-size: 9.5px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.78);
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
     text-overflow: ellipsis;
 }
 
@@ -317,8 +326,26 @@
 <script>
 let calendarInstance = null;
 
+/* Scheduled-time label for an event.
+   Reservations run inside a single day, so a plain range reads best.
+   Bookings span nights, so the check-in and check-out clock times are labelled. */
+function eventTimeText(p) {
+    const start = p.start_time || '—';
+    const end   = p.end_time   || '—';
+    if (start === '—' && end === '—') {
+        return p.date_label || 'Time not set';
+    }
+    if (p.type === 'booking' && start !== end) {
+        return `In ${start} · Out ${end}`;
+    }
+    return `${start} – ${end}`;
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+    console.log('🚀 Calendar initialization started...');
     const calEl = document.getElementById('reservationCalendar');
+    console.log('📍 Calendar element found:', calEl ? 'Yes' : 'No');
+    console.log('📚 FullCalendar loaded:', typeof FullCalendar !== 'undefined' ? 'Yes' : 'No');
 
     calendarInstance = new FullCalendar.Calendar(calEl, {
         initialView: 'dayGridMonth',
@@ -330,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function () {
         buttonText: { today: 'Today', month: 'Month', list: 'List' },
         height: 'calc(100vh - 300px)',  // Reduced height to fit viewport better
         contentHeight: 'auto',
-        dayMaxEvents: 3,  // Limit events per day
+        dayMaxEvents: 3,  // Each card shows name + time + facility, so 3 fits a row
         moreLinkText: 'more',
         eventDisplay: 'block',
         displayEventTime: false,
@@ -339,45 +366,71 @@ document.addEventListener('DOMContentLoaded', function () {
         slotEventOverlap: false,
 
         events: function (info, successCallback, failureCallback) {
-            fetch(`/admin/api/bookings?start=${info.startStr}&end=${info.endStr}&_=${Date.now()}`)
-                .then(r => r.json())
-                .then(data => successCallback(data))
-                .catch(() => failureCallback());
+            const url = `/admin/api/bookings?start=${info.startStr}&end=${info.endStr}&_=${Date.now()}`;
+            console.log('📡 Fetching events from:', url);
+            
+            fetch(url)
+                .then(r => {
+                    console.log('📥 Response status:', r.status);
+                    return r.json();
+                })
+                .then(data => {
+                    console.log('✅ Events received:', data.length, 'events');
+                    console.log('📋 Sample event:', data[0]);
+                    successCallback(data);
+                })
+                .catch(err => {
+                    console.error('❌ Error fetching events:', err);
+                    failureCallback();
+                });
         },
         refetchResourcesOnNavigate: true,
 
         eventContent: function (arg) {
-            const p   = arg.event.extendedProps;
-            // Theme colors by status (frontend-only; ignores legacy API colors)
-            const statusColors = { confirmed: '#10b981', pending: '#ee9800', cancelled: '#6f8e7d' };
-            const bg  = statusColors[p.status] || arg.event.backgroundColor || '#10b981';
-            const name = (p.guest || arg.event.title || '').trim();
+            const p = arg.event.extendedProps;
+            // Theme colors by status
+            const statusColors = { 
+                confirmed: '#059669', 
+                pending: '#d97706', 
+                cancel_requested: '#ea580c', 
+                cancelled: '#475569' 
+            };
+            const bg = statusColors[p.status] || arg.event.backgroundColor || '#059669';
+            const name = (p.guest || arg.event.title || 'Guest').trim();
+            const facility = p.facility || '';
+            const paxInfo = p.guests ? `${p.guests} pax` : '';
+            const timeText = eventTimeText(p);
 
             const card = document.createElement('div');
             card.className = 'cal-event-card';
             card.style.backgroundColor = bg;
-            
-            // Add subtle icon for multi-day bookings
-            if (p.type === 'booking') {
-                card.style.borderLeft = '3px solid rgba(255,255,255,0.6)';
-            }
+            card.setAttribute('title',
+                `${name} • ${timeText}${facility ? ' • ' + facility : ''} (${(p.status || '').toUpperCase()})`);
 
+            // Line 1 — who booked
             const guestEl = document.createElement('div');
             guestEl.className = 'cal-event-guest';
-            guestEl.textContent = name;
+            guestEl.textContent = `👤 ${name}`;
 
+            // Line 2 — the scheduled time, always visible
             const timeEl = document.createElement('div');
             timeEl.className = 'cal-event-times';
-            
-            // Show different info for bookings vs reservations
-            if (p.type === 'booking') {
-                timeEl.textContent = p.facility;
-            } else {
-                timeEl.textContent = `${p.start_time || ''} – ${p.end_time || ''}`;
-            }
+            timeEl.textContent = `🕘 ${timeText}`;
 
             card.appendChild(guestEl);
             card.appendChild(timeEl);
+
+            // Line 3 — facility / pax (kept small so the time and name stay readable)
+            const metaText = p.type === 'booking'
+                ? [facility, paxInfo].filter(Boolean).join(' • ')
+                : facility;
+            if (metaText) {
+                const metaEl = document.createElement('div');
+                metaEl.className = 'cal-event-meta';
+                metaEl.textContent = metaText;
+                card.appendChild(metaEl);
+            }
+
             return { domNodes: [card] };
         },
 
@@ -398,6 +451,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const titleEl = info.el.querySelector('.fc-list-event-title');
                 
                 if (titleEl) {
+                    const listTimeText = eventTimeText(p);
                     // Create custom content for list view
                     const container = document.createElement('div');
                     container.style.cssText = 'display:flex;align-items:center;justify-content:space-between;width:100%;';
@@ -410,7 +464,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     guestName.style.cssText = 'font-weight:700;color:#ecfdf5;font-size:13.5px;';
                     
                     const facility = document.createElement('div');
-                    facility.textContent = p.facility;
+                    facility.textContent = `${listTimeText}${p.facility ? ' · ' + p.facility : ''}${p.type === 'booking' && p.guests ? ' · ' + p.guests + ' pax' : ''}`;
                     facility.style.cssText = 'font-size:12px;color:#9ab9aa;font-weight:500;';
                     
                     leftSide.appendChild(guestName);
@@ -451,13 +505,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Update time column
                 const timeEl = info.el.querySelector('.fc-list-event-time');
                 if (timeEl && p.start_time) {
-                    timeEl.textContent = p.start_time;
+                    timeEl.textContent = listTimeText;
                 }
             }
         },
     });
 
+    console.log('🎨 Rendering calendar...');
     calendarInstance.render();
+    console.log('✅ Calendar rendered successfully!');
 });
 
 function refreshCalendar() {
@@ -474,6 +530,7 @@ function openBookingModal(event) {
     const badgeColors = {
         confirmed: { bg: 'rgba(78,222,163,.14)', color: '#4edea3' },
         pending:   { bg: 'rgba(255,185,95,.14)', color: '#ffb95f' },
+        cancel_requested: { bg: 'rgba(234,88,12,.18)', color: '#fb923c' },
         cancelled: { bg: 'rgba(148,163,184,.14)', color: '#9ab9aa' },
     };
     const bc = badgeColors[p.status] || badgeColors.cancelled;
@@ -499,7 +556,7 @@ function openBookingModal(event) {
                 .toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
     }
     
-    document.getElementById('modalTime').textContent     = `${p.start_time} – ${p.end_time}`;
+    document.getElementById('modalTime').textContent     = eventTimeText(p);
     document.getElementById('modalGuests').textContent   = `${p.guests} pax`;
     document.getElementById('modalPhone').textContent    = p.phone;
     document.getElementById('modalAmount').textContent   =

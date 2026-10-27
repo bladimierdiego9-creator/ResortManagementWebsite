@@ -177,6 +177,20 @@
                     <tbody>
                         <tr><td class="text-secondary" style="padding:6px 0;width:140px;">Amount</td><td class="font-bold" style="font-size:18px;">₱{{ "{:,.2f}".format(reservation.payment.amount) }}</td></tr>
                         <tr><td class="text-secondary" style="padding:6px 0;">Mode</td><td>{{ reservation.payment.payment_mode.title() }}</td></tr>
+                        {% if reservation.payment.payment_mode == 'gcash' %}
+                        <tr><td class="text-secondary" style="padding:6px 0;">GCash Verification</td><td>
+                            <span class="badge badge-{{ reservation.payment.verification_status }}">{{ reservation.payment.verification_status.title() }}</span>
+                            {% if reservation.payment.verification_status in ('unverified', 'pending') %}
+                            <a href="{{ url_for('payments.verification') }}#unverified" class="btn btn-sm btn-secondary" style="margin-left: 8px; padding: 2px 8px; font-size: 11px;">Verify Now</a>
+                            {% endif %}
+                        </td></tr>
+                        {% if reservation.payment.gcash_reference_number %}
+                        <tr><td class="text-secondary" style="padding:6px 0;">GCash Ref #</td><td class="font-semibold">{{ reservation.payment.gcash_reference_number }}</td></tr>
+                        {% endif %}
+                        {% if reservation.payment.has_gcash_screenshot %}
+                        <tr><td class="text-secondary" style="padding:6px 0;">GCash Proof</td><td><a href="{{ reservation.payment.gcash_screenshot_url }}" target="_blank" style="color:var(--accent);">View Proof &nearr;</a></td></tr>
+                        {% endif %}
+                        {% endif %}
                         <tr><td class="text-secondary" style="padding:6px 0;">Receipt #</td><td class="font-semibold">{{ reservation.payment.receipt_number or '—' }}</td></tr>
                         <tr><td class="text-secondary" style="padding:6px 0;">Invoice #</td><td>{{ reservation.payment.invoice_number or '—' }}</td></tr>
                         <tr><td class="text-secondary" style="padding:6px 0;">Paid At</td><td>{{ reservation.payment.paid_at.strftime('%b %d, %Y %H:%M') if reservation.payment.paid_at else '—' }}</td></tr>

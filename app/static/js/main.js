@@ -48,22 +48,37 @@ document.addEventListener('click', function (e) {
 });
 
 // ── MODAL HELPERS ───────────────────────────────────────────
+// Supports both .modal-overlay (legacy, .open class) and
+// .modal-backdrop (verification page, .show class)
 function openModal(id) {
   const el = document.getElementById(id);
-  if (el) el.classList.add('open');
+  if (!el) return;
+  if (el.classList.contains('modal-backdrop')) {
+    el.classList.add('show');
+  } else {
+    el.classList.add('open');
+  }
 }
 window.openModal = openModal;
 
 function closeModal(id) {
   const el = document.getElementById(id);
-  if (el) el.classList.remove('open');
+  if (!el) return;
+  if (el.classList.contains('modal-backdrop')) {
+    el.classList.remove('show');
+  } else {
+    el.classList.remove('open');
+  }
 }
 window.closeModal = closeModal;
 
-// Close modal on overlay click
+// Close modal on overlay/backdrop click
 document.addEventListener('click', function (e) {
   if (e.target.classList.contains('modal-overlay')) {
     e.target.classList.remove('open');
+  }
+  if (e.target.classList.contains('modal-backdrop')) {
+    e.target.classList.remove('show');
   }
 });
 
@@ -72,6 +87,9 @@ document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape') {
     document.querySelectorAll('.modal-overlay.open').forEach(function (m) {
       m.classList.remove('open');
+    });
+    document.querySelectorAll('.modal-backdrop.show').forEach(function (m) {
+      m.classList.remove('show');
     });
   }
 });

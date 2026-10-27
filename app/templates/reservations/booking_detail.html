@@ -61,33 +61,45 @@
         </div>
     </div>
 
-    <!-- Status Update -->
+    <!-- Status Update & Cancellation -->
     <div class="card">
         <div class="card-header">
-            <div class="card-title">Booking Status</div>
+            <div class="card-title">Booking Status & Actions</div>
         </div>
         <div class="card-body" style="padding:20px;">
-            <form method="POST" style="display:flex;flex-direction:column;gap:16px;">
+            
+            <!-- Current Status Display -->
+            <div style="margin-bottom:24px;">
+                <label class="form-label">Current Status</label>
+                <div style="margin-top:6px;">
+                    <span class="badge badge-{{ booking.status }}" style="font-size:14px;padding:8px 16px;">{{ booking.status.title() }}</span>
+                    
+                    {% if booking.cancellation_request_status == 'pending' or booking.status == 'cancel_requested' %}
+                    <span class="badge badge-warning" style="font-size:12px;padding:4px 10px;margin-left:8px;background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);">Cancellation Pending</span>
+                    {% elif booking.cancellation_request_status == 'approved' %}
+                    <span class="badge badge-success" style="font-size:12px;padding:4px 10px;margin-left:8px;">Cancellation Approved</span>
+                    {% elif booking.cancellation_request_status == 'rejected' %}
+                    <span class="badge badge-danger" style="font-size:12px;padding:4px 10px;margin-left:8px;">Cancellation Rejected</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Status Update Form -->
+            <form method="POST" style="display:flex;flex-direction:column;gap:16px;margin-bottom:24px;">
                 <input type="hidden" name="action" value="update_status">
                 
-                <div>
-                    <label class="form-label">Current Status</label>
-                    <div style="margin-top:6px;">
-                        <span class="badge badge-{{ booking.status }}" style="font-size:14px;padding:8px 16px;">{{ booking.status.title() }}</span>
-                    </div>
-                </div>
-
                 <div>
                     <label class="form-label">Update Status</label>
                     <select name="status" class="form-select" style="margin-top:6px;">
                         <option value="pending" {% if booking.status == 'pending' %}selected{% endif %}>Pending</option>
                         <option value="confirmed" {% if booking.status == 'confirmed' %}selected{% endif %}>Confirmed</option>
+                        <option value="cancel_requested" {% if booking.status == 'cancel_requested' %}selected{% endif %}>Cancel Requested</option>
                         <option value="cancelled" {% if booking.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
                     </select>
                 </div>
 
-                <div id="cancellationReasonField" style="display:none;">
-                    <label class="form-label">Cancellation Reason</label>
+                <div id="cancellationReasonField" style="display:{% if booking.status == 'cancelled' %}block{% else %}none{% endif %};">
+                    <label class="form-label">Cancellation Reason (min. 10 chars)</label>
                     <textarea name="cancellation_reason" class="form-input" rows="3" placeholder="Enter reason for cancellation..." style="margin-top:6px;"></textarea>
                 </div>
 
@@ -95,6 +107,44 @@
                     Update Status
                 </button>
             </form>
+
+            <!-- Cancellation Request Section -->
+            {% if booking.cancellation_request_status == 'none' and booking.status not in ['cancelled', 'cancel_requested'] %}
+            <div style="border-top:1px solid var(--border);padding-top:20px;">
+                <h4 style="margin:0 0 12px 0;font-size:16px;color:var(--text-primary);">Request Cancellation</h4>
+                <form method="POST" action="{{ url_for('reservations.request_booking_cancellation', booking_id=booking.id) }}" style="display:flex;flex-direction:column;gap:12px;">
+                    <div>
+                        <label class="form-label">Reason for Cancellation (at least 10 characters)</label>
+                        <textarea name="cancellation_reason" class="form-input" rows="3" placeholder="Enter detailed reason for cancellation request (min. 10 characters)..." minlength="10" required style="margin-top:6px;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-secondary" style="width:fit-content;border-color:rgba(239,68,68,0.3);color:#ffb4ab;" onclick="return confirm('Submit cancellation request for this booking?')">
+                        Request Cancellation
+                    </button>
+                </form>
+            </div>
+            {% elif booking.cancellation_request_status == 'pending' or booking.status == 'cancel_requested' %}
+            <div style="border-top:1px solid var(--border);padding-top:20px;">
+                <h4 style="margin:0 0 12px 0;font-size:16px;color:var(--text-primary);">Handle Cancellation Request</h4>
+                <div style="background:var(--surface-2);padding:16px;border-radius:8px;margin-bottom:16px;border:1px solid var(--border);">
+                    <p style="margin:0 0 8px 0;font-weight:600;color:var(--text-primary);">Requested: {{ booking.cancellation_requested_at.strftime('%B %d, %Y %I:%M %p') if booking.cancellation_requested_at else 'Recent' }}</p>
+                    <p style="margin:0;color:var(--text-secondary);">Reason: {{ booking.cancellation_request_reason or booking.cancellation_reason or 'No detailed reason provided by guest.' }}</p>
+                </div>
+                <form method="POST" action="{{ url_for('reservations.handle_booking_cancellation', booking_id=booking.id) }}" style="display:flex;flex-direction:column;gap:12px;">
+                    <div>
+                        <label class="form-label">Admin Notes (Optional)</label>
+                        <textarea name="admin_notes" class="form-input" rows="2" placeholder="Additional notes for the decision..." style="margin-top:6px;"></textarea>
+                    </div>
+                    <div style="display:flex;gap:12px;">
+                        <button type="submit" name="action" value="approve" class="btn btn-danger" onclick="return confirm('Approve cancellation? This will cancel the booking.')">
+                            Approve Cancellation
+                        </button>
+                        <button type="submit" name="action" value="reject" class="btn btn-secondary" onclick="return confirm('Reject cancellation request?')">
+                            Reject Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -118,7 +168,7 @@
 
     {% if booking.cancellation_reason %}
     <div class="card-header" style="border-top:1px solid var(--border);">
-        <div class="card-title">Cancellation</div>
+        <div class="card-title">Cancellation Details</div>
     </div>
     <div class="card-body" style="padding:20px;">
         <div class="detail-row">
@@ -129,6 +179,46 @@
             <span class="detail-label">Cancelled At</span>
             <span class="detail-value">{{ booking.cancelled_at.strftime('%B %d, %Y %I:%M %p') if booking.cancelled_at else '—' }}</span>
         </div>
+    </div>
+    {% endif %}
+
+    {% if booking.cancellation_request_status != 'none' %}
+    <div class="card-header" style="border-top:1px solid var(--border);">
+        <div class="card-title">Cancellation Request History</div>
+    </div>
+    <div class="card-body" style="padding:20px;">
+        <div class="detail-row">
+            <span class="detail-label">Request Status</span>
+            <span class="detail-value">
+                <span class="badge badge-{{ 'warning' if booking.cancellation_request_status == 'pending' else ('success' if booking.cancellation_request_status == 'approved' else 'danger') }}" style="font-size:12px;padding:4px 8px;">
+                    {{ booking.cancellation_request_status.title() }}
+                </span>
+            </span>
+        </div>
+        {% if booking.cancellation_requested_at %}
+        <div class="detail-row">
+            <span class="detail-label">Requested At</span>
+            <span class="detail-value">{{ booking.cancellation_requested_at.strftime('%B %d, %Y %I:%M %p') }}</span>
+        </div>
+        {% endif %}
+        {% if booking.cancellation_request_reason %}
+        <div class="detail-row">
+            <span class="detail-label">Request Reason</span>
+            <span class="detail-value">{{ booking.cancellation_request_reason }}</span>
+        </div>
+        {% endif %}
+        {% if booking.cancellation_handled_at %}
+        <div class="detail-row">
+            <span class="detail-label">Handled At</span>
+            <span class="detail-value">{{ booking.cancellation_handled_at.strftime('%B %d, %Y %I:%M %p') }}</span>
+        </div>
+        {% endif %}
+        {% if booking.cancellation_handler %}
+        <div class="detail-row">
+            <span class="detail-label">Handled By</span>
+            <span class="detail-value">{{ booking.cancellation_handler.username }}</span>
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 </div>
@@ -168,7 +258,7 @@
 // Show/hide cancellation reason field based on status selection
 document.querySelector('select[name="status"]').addEventListener('change', function() {
     const cancelField = document.getElementById('cancellationReasonField');
-    if (this.value === 'cancelled') {
+    if (this.value === 'cancelled' || this.value === 'cancel_requested') {
         cancelField.style.display = 'block';
     } else {
         cancelField.style.display = 'none';

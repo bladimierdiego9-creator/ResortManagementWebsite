@@ -1,5 +1,6 @@
 """Email utilities for sending password reset and other system emails."""
 import smtplib
+import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import current_app, render_template
@@ -20,16 +21,32 @@ def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] =
         True if email sent successfully, False otherwise
     """
     try:
-        # Get SMTP settings from config
-        mail_server = current_app.config.get('MAIL_SERVER')
-        mail_port = current_app.config.get('MAIL_PORT')
-        mail_username = current_app.config.get('MAIL_USERNAME')
-        mail_password = current_app.config.get('MAIL_PASSWORD')
-        mail_use_tls = current_app.config.get('MAIL_USE_TLS', True)
-        mail_default_sender = current_app.config.get('MAIL_DEFAULT_SENDER') or mail_username
+        import os
+        from dotenv import load_dotenv
+        basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        load_dotenv(os.path.join(basedir, '.env'), override=True)
+
+        # Get SMTP settings from env (fallback to config)
+        mail_server = os.environ.get('MAIL_SERVER') or current_app.config.get('MAIL_SERVER') or 'smtp.gmail.com'
+        mail_port = int(os.environ.get('MAIL_PORT') or current_app.config.get('MAIL_PORT') or 465)
+        mail_username = (os.environ.get('MAIL_USERNAME') or current_app.config.get('MAIL_USERNAME') or '').strip()
+        mail_password = (os.environ.get('MAIL_PASSWORD') or current_app.config.get('MAIL_PASSWORD') or '').strip()
+        mail_use_ssl = os.environ.get('MAIL_USE_SSL', '').lower() in ['true', 'on', '1'] if os.environ.get('MAIL_USE_SSL') is not None else current_app.config.get('MAIL_USE_SSL', False)
+        mail_use_tls = os.environ.get('MAIL_USE_TLS', '').lower() in ['true', 'on', '1'] if os.environ.get('MAIL_USE_TLS') is not None else current_app.config.get('MAIL_USE_TLS', True)
+        mail_default_sender = os.environ.get('MAIL_DEFAULT_SENDER') or current_app.config.get('MAIL_DEFAULT_SENDER') or mail_username
+
+        # If port is 465, SSL must be True
+        if mail_port == 465:
+            mail_use_ssl = True
+            mail_use_tls = False
+
+        # Gmail displays app passwords in four groups separated by spaces.
+        if mail_server and mail_server.lower() == 'smtp.gmail.com':
+            mail_password = ''.join(mail_password.split())
         
         # Validate config
         if not all([mail_server, mail_port, mail_username, mail_password]):
+            print(f"[EMAIL] ERROR: Incomplete config - server={mail_server}, port={mail_port}, user={mail_username}")
             current_app.logger.error('SMTP configuration incomplete')
             return False
         
@@ -48,18 +65,91 @@ def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] =
         msg.attach(part2)
         
         # Send email
-        with smtplib.SMTP(mail_server, mail_port) as server:
-            server.set_debuglevel(0)  # Set to 1 for debugging
-            if mail_use_tls:
-                server.starttls()
-            server.login(mail_username, mail_password)
+        timeout = int(os.environ.get('MAIL_TIMEOUT') or current_app.config.get('MAIL_TIMEOUT') or 20)
+
+        print(f"[EMAIL] Connecting to {mail_server}:{mail_port} for {to} (user={mail_username}, SSL={mail_use_ssl}, TLS={mail_use_tls})...")
+
+        # Build transport list - for Gmail, always put port 465 SSL first because
+        # port 587 STARTTLS gets connection-aborted by Windows security software.
+        transports = []
+        if mail_server.lower() == 'smtp.gmail.com':
+            transports.append((465, True, False))
+            if mail_port != 465:
+                transports.append((mail_port, mail_use_ssl, mail_use_tls))
+        else:
+            transports.append((mail_port, mail_use_ssl, mail_use_tls))
+
+        server = None
+        last_error = None
+        for port, use_ssl, use_tls in transports:
+            candidate = None
+            try:
+                print(f"[EMAIL] Trying transport port={port}, SSL={use_ssl}, TLS={use_tls}...")
+                if use_ssl:
+                    candidate = smtplib.SMTP_SSL(
+                        mail_server,
+                        port,
+                        timeout=timeout,
+                        context=ssl.create_default_context(),
+                    )
+                    candidate.ehlo()
+                else:
+                    candidate = smtplib.SMTP(mail_server, port, timeout=timeout)
+                    candidate.ehlo()
+                    if use_tls:
+                        candidate.starttls(context=ssl.create_default_context())
+                        candidate.ehlo()
+
+                candidate.login(mail_username, mail_password)
+                print(f"[EMAIL] SMTP login successful on port {port}!")
+                server = candidate
+                break
+            except smtplib.SMTPAuthenticationError as e:
+                print(f"[EMAIL] SMTP auth rejected on port {port}: {e}")
+                if candidate is not None:
+                    try:
+                        candidate.close()
+                    except Exception:
+                        pass
+                raise
+            except Exception as e:
+                last_error = e
+                print(f"[EMAIL] Port {port} transport failed: {type(e).__name__}: {e}")
+                if candidate is not None:
+                    try:
+                        candidate.close()
+                    except Exception:
+                        pass
+
+        if server is None:
+            raise last_error or ConnectionError('No SMTP transport succeeded')
+
+        try:
             server.sendmail(mail_default_sender, to, msg.as_string())
+            print(f"[EMAIL] Message sent to {to} successfully!")
+        finally:
+            try:
+                server.quit()
+            except Exception:
+                try:
+                    server.close()
+                except Exception:
+                    pass
         
-        current_app.logger.info(f'Email sent successfully to {to}')
         return True
         
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"[EMAIL] Authentication failed: {e.smtp_code} - {e.smtp_error}")
+        current_app.logger.error(
+            'SMTP authentication was rejected (code %s). Use the valid Gmail '
+            'address and a current Google App Password.', e.smtp_code
+        )
+        return False
     except Exception as e:
-        current_app.logger.error(f'Failed to send email to {to}: {str(e)}')
+        import traceback
+        print(f"[EMAIL] Exception occurred: {type(e).__name__}: {e}")
+        traceback.print_exc()
+        current_app.logger.exception('Failed to send email through SMTP (%s)', type(e).__name__)
         return False
 
 

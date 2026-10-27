@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    A&D THYSIA ADMIN CONSOLE - DESIGN SYSTEM
    Resort UI: Cream 60% - Forest Green 40% - Gold 10%
    Premium Sidebar Edition
@@ -628,6 +628,10 @@ tbody tr:hover td { background: var(--surface-2); }
 }
 .badge-cancelled, .badge-refunded, .badge-disabled, .badge-blocked {
   background: var(--cancelled-bg); color: var(--cancelled-text);
+}
+.badge-cancel_requested, .badge-Cancel_Requested {
+  background: rgba(245,158,11,0.15); color: #fbbf24;
+  border: 1px solid rgba(245,158,11,0.3);
 }
 .badge-available { background: var(--confirmed-bg); color: var(--confirmed-text); }
 .badge-info      { background: #dde8f5; color: #2558a4; }

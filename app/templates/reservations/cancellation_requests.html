@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}Cancellation Requests — A&D Thysia{% endblock %}
+{% block breadcrumb %}Cancellation Requests{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Cancellation Requests</h1>
+        <p class="page-subtitle">Manage booking and reservation cancellation requests</p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('reservations.index') }}" class="btn btn-secondary">← Back to Reservations</a>
+    </div>
+</div>
+
+<!-- Pending Requests -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Pending Cancellation Requests</div>
+        <span class="badge badge-warning">{{ (pending_bookings|length) + (pending_reservations|length) }} Pending</span>
+    </div>
+    <div class="card-body" style="padding:0;">
+        
+        {% if pending_bookings or pending_reservations %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>ID</th>
+                        <th>Guest</th>
+                        <th>Facility/Date</th>
+                        <th>Amount</th>
+                        <th>Requested</th>
+                        <th>Reason</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Booking Requests -->
+                    {% for booking in pending_bookings %}
+                    <tr>
+                        <td><span class="badge badge-info">Booking</span></td>
+                        <td>
+                            <a href="{{ url_for('reservations.detail', id='book-' + booking.id|string) }}" class="text-primary font-semibold">
+                                #{{ booking.id[:8].upper() }}
+                            </a>
+                        </td>
+                        <td>
+                            <div style="font-weight:600;">{{ booking.account.first_name }} {{ booking.account.last_name }}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">{{ booking.account.email }}</div>
+                        </td>
+                        <td>
+                            <div>{{ booking.facility_type.replace('_', ' ').title() }}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">{{ booking.check_in.strftime('%b %d') }} - {{ booking.check_out.strftime('%b %d, %Y') }}</div>
+                        </td>
+                        <td>₱{{ "{:,.2f}".format(booking.total_amount) }}</td>
+                        <td>{{ booking.cancellation_requested_at.strftime('%b %d, %Y %I:%M %p') if booking.cancellation_requested_at else '—' }}</td>
+                        <td>
+                            <div style="max-width:200px;overflow:hidden;text-overflow:ellipsis;" title="{{ booking.cancellation_request_reason or booking.cancellation_reason or 'No reason provided' }}">
+                                {{ (booking.cancellation_request_reason or booking.cancellation_reason or 'No reason provided') | truncate(50) }}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="display:flex;gap:8px;">
+                                <form method="POST" action="{{ url_for('reservations.handle_booking_cancellation', booking_id=booking.id) }}" style="display:inline;">
+                                    <button type="submit" name="action" value="approve" class="btn btn-sm btn-danger" style="background:#dc2626;border-color:#dc2626;color:#ffffff;" onclick="return confirm('Approve cancellation for booking #{{ (booking.id|string)[:8].upper() }}?')">
+                                        Approve
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('reservations.handle_booking_cancellation', booking_id=booking.id) }}" style="display:inline;">
+                                    <button type="submit" name="action" value="reject" class="btn btn-sm btn-secondary" onclick="return confirm('Reject cancellation request?')">
+                                        Reject
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    <!-- Reservation Requests -->
+                    {% for reservation in pending_reservations %}
+                    <tr>
+                        <td><span class="badge badge-primary">Reservation</span></td>
+                        <td>
+                            <a href="{{ url_for('reservations.detail', id=reservation.id) }}" class="text-primary font-semibold">
+                                #{{ reservation.id }}
+                            </a>
+                        </td>
+                        <td>
+                            <div style="font-weight:600;">{{ reservation.guest.full_name if reservation.guest else '(Guest removed)' }}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">{{ reservation.guest.email if reservation.guest else '—' }}</div>
+                        </td>
+                        <td>
+                            <div>Facility {{ reservation.facility_id }}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">{{ reservation.event_date.strftime('%b %d, %Y') }}</div>
+                        </td>
+                        <td>₱{{ "{:,.2f}".format(reservation.payment.amount) if reservation.payment else '0.00' }}</td>
+                        <td>{{ reservation.cancellation_requested_at.strftime('%b %d, %Y %I:%M %p') if reservation.cancellation_requested_at else '—' }}</td>
+                        <td>
+                            <div style="max-width:200px;overflow:hidden;text-overflow:ellipsis;" title="{{ reservation.cancellation_request_reason or 'No reason provided' }}">
+                                {{ (reservation.cancellation_request_reason or 'No reason provided') | truncate(50) }}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="display:flex;gap:8px;">
+                                <form method="POST" action="{{ url_for('reservations.handle_reservation_cancellation', reservation_id=reservation.id) }}" style="display:inline;">
+                                    <button type="submit" name="action" value="approve" class="btn btn-sm btn-danger" onclick="return confirm('Approve cancellation for reservation #{{ reservation.id }}?')">
+                                        Approve
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('reservations.handle_reservation_cancellation', reservation_id=reservation.id) }}" style="display:inline;">
+                                    <button type="submit" name="action" value="reject" class="btn btn-sm btn-secondary" onclick="return confirm('Reject cancellation request?')">
+                                        Reject
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="padding:40px;text-align:center;">
+            <div style="font-size:48px;margin-bottom:16px;">✅</div>
+            <h3 style="margin:0 0 8px 0;color:var(--text-primary);">No Pending Requests</h3>
+            <p style="margin:0;color:var(--text-muted);">All cancellation requests have been handled.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recently Handled Requests -->
+{% if handled_bookings or handled_reservations %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Recently Handled Requests</div>
+        <span class="badge badge-secondary">Last 30 Days</span>
+    </div>
+    <div class="card-body" style="padding:0;">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>ID</th>
+                        <th>Guest</th>
+                        <th>Status</th>
+                        <th>Handled</th>
+                        <th>Handler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Handled Bookings -->
+                    {% for booking in handled_bookings %}
+                    <tr>
+                        <td><span class="badge badge-info">Booking</span></td>
+                        <td>
+                            <a href="{{ url_for('reservations.detail', id='book-' + booking.id|string) }}" class="text-primary">
+                                #{{ booking.id[:8].upper() }}
+                            </a>
+                        </td>
+                        <td>{{ booking.account.first_name }} {{ booking.account.last_name }}</td>
+                        <td>
+                            <span class="badge badge-{{ 'success' if booking.cancellation_request_status == 'approved' else 'danger' }}">
+                                {{ booking.cancellation_request_status.title() }}
+                            </span>
+                        </td>
+                        <td>{{ booking.cancellation_handled_at.strftime('%b %d, %Y %I:%M %p') if booking.cancellation_handled_at else '—' }}</td>
+                        <td>{{ booking.cancellation_handler.username if booking.cancellation_handler else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+
+                    <!-- Handled Reservations -->
+                    {% for reservation in handled_reservations %}
+                    <tr>
+                        <td><span class="badge badge-primary">Reservation</span></td>
+                        <td>
+                            <a href="{{ url_for('reservations.detail', id=reservation.id) }}" class="text-primary">
+                                #{{ reservation.id }}
+                            </a>
+                        </td>
+                        <td>{{ reservation.guest.full_name if reservation.guest else '(Guest removed)' }}</td>
+                        <td>
+                            <span class="badge badge-{{ 'success' if reservation.cancellation_request_status == 'approved' else 'danger' }}">
+                                {{ reservation.cancellation_request_status.title() }}
+                            </span>
+                        </td>
+                        <td>{{ reservation.cancellation_handled_at.strftime('%b %d, %Y %I:%M %p') if reservation.cancellation_handled_at else '—' }}</td>
+                        <td>{{ reservation.cancellation_handler.username if reservation.cancellation_handler else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.table th {
+    background: var(--surface-2);
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--border);
+}
+
+.table td {
+    font-size: 14px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.btn-sm {
+    font-size: 12px;
+    padding: 6px 12px;
+}
+</style>
+{% endblock %}

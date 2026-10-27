@@ -19,6 +19,7 @@
                 <span class="dropdown-value">
                     {% if status_filter == 'pending' %}Pending
                     {% elif status_filter == 'confirmed' %}Confirmed
+                    {% elif status_filter == 'cancel_requested' %}Cancel Requested
                     {% elif status_filter == 'cancelled' %}Cancelled
                     {% else %}All Statuses{% endif %}
                 </span>
@@ -45,6 +46,12 @@
                         <polyline points="20 6 9 17 4 12"/>
                     </svg>
                 </div>
+                <div class="dropdown-item {% if status_filter == 'cancel_requested' %}active{% endif %}" data-value="cancel_requested">
+                    <span class="dropdown-item-text">Cancel Requested</span>
+                    <svg class="dropdown-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
                 <div class="dropdown-item {% if status_filter == 'cancelled' %}active{% endif %}" data-value="cancelled">
                     <span class="dropdown-item-text">Cancelled</span>
                     <svg class="dropdown-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -61,11 +68,24 @@
     </form>
     
     <!-- View Archived Button on the Right -->
-    {% if view_archived %}
-        <a href="{{ url_for('reservations.index') }}" class="btn btn-primary" style="white-space:nowrap;">View Active</a>
-    {% else %}
-        <a href="{{ url_for('reservations.index', archived='true') }}" class="btn btn-primary" style="white-space:nowrap;">View Archived</a>
-    {% endif %}
+    <div style="display:flex;gap:8px;">
+        <a href="{{ url_for('reservations.cancellation_requests') }}" class="btn btn-secondary" style="white-space:nowrap;position:relative;display:inline-flex;align-items:center;gap:6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="9" y1="15" x2="15" y2="15"/>
+            </svg>
+            <span>Cancellation Requests</span>
+            {% if pending_cancellations > 0 %}
+            <span class="notification-badge" style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 6px;font-size:11px;font-weight:700;">{{ pending_cancellations }}</span>
+            {% endif %}
+        </a>
+        {% if view_archived %}
+            <a href="{{ url_for('reservations.index') }}" class="btn btn-primary" style="white-space:nowrap;">View Active</a>
+        {% else %}
+            <a href="{{ url_for('reservations.index', archived='true') }}" class="btn btn-primary" style="white-space:nowrap;">View Archived</a>
+        {% endif %}
+    </div>
 </div>
 
 <!-- TABLE -->
@@ -99,7 +119,13 @@
                     <td class="text-muted">{{ res['time'] }}</td>
                     <td>{{ res['guests'] }}</td>
                     <td>₱{{ "{:,.0f}".format(res['amount']) }}</td>
-                    <td><span class="badge badge-{{ res['status'] }}">{{ res['status'].title() }}</span></td>
+                    <td>
+                        {% if res['status'] == 'cancel_requested' %}
+                            <span class="badge badge-cancel_requested">Cancel Requested</span>
+                        {% else %}
+                            <span class="badge badge-{{ res['status'] }}">{{ res['status'].replace('_', ' ').title() }}</span>
+                        {% endif %}
+                    </td>
                     <td>
                         {% if res['payment_status'] %}
                         <span class="badge badge-{{ res['payment_status'] }}">{{ res['payment_status'].title() }}</span>
@@ -111,12 +137,12 @@
                                 {# Active bookings: View, Archive #}
                                 {% if res['type'] == 'reservation' %}
                                     <a href="{{ url_for('reservations.detail', id=res['id']) }}" class="btn btn-xs btn-info">View</a>
-                                    <form method="POST" action="{{ url_for('reservations.archive', id=res['id']) }}" style="display:inline; margin:0;">
+                                    <form method="POST" action="{{ url_for('reservations.archive', id=res['id']) }}" style="display:inline; margin:0;" onsubmit="return confirm('Archive this booking?')">
                                         <button type="submit" class="btn btn-xs btn-warning">Archive</button>
                                     </form>
                                 {% elif res['type'] == 'booking' %}
                                     <a href="{{ url_for('reservations.detail', id='book-' ~ res['id']) }}" class="btn btn-xs btn-info">View</a>
-                                    <form method="POST" action="{{ url_for('reservations.archive_booking', booking_id=res['id']) }}" style="display:inline; margin:0;">
+                                    <form method="POST" action="{{ url_for('reservations.archive_booking', booking_id=res['id']) }}" style="display:inline; margin:0;" onsubmit="return confirm('Archive this booking?')">
                                         <button type="submit" class="btn btn-xs btn-warning">Archive</button>
                                     </form>
                                 {% endif %}
@@ -351,6 +377,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .dropdown-menu::-webkit-scrollbar-thumb:hover {
     background: var(--border);
+}
+
+.notification-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: #ef4444;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
 }
 </style>
 {% endblock %}

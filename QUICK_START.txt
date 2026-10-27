@@ -1,0 +1,106 @@
+╔══════════════════════════════════════════════════════════════╗
+║          🏦 GCASH PAYMENT VERIFICATION SETUP                 ║
+║                   QUICK START GUIDE                          ║
+╚══════════════════════════════════════════════════════════════╝
+
+📍 IMPORTANTE: Data mag-store sa SUPABASE, hindi local!
+
+╔══════════════════════════════════════════════════════════════╗
+║  METHOD 1: Supabase SQL Editor (RECOMMENDED - 2 minutes)    ║
+╚══════════════════════════════════════════════════════════════╝
+
+1. Open: https://supabase.com
+2. Go to: SQL Editor
+3. Open file: create_payment_verification_tables.sql
+4. Copy ALL content (Ctrl + A, Ctrl + C)
+5. Paste sa Supabase (Ctrl + V)
+6. Click "Run" (or Ctrl + Enter)
+7. ✅ DONE! Tables created in Supabase!
+
+╔══════════════════════════════════════════════════════════════╗
+║  METHOD 2: Python Script (Automatic)                         ║
+╚══════════════════════════════════════════════════════════════╝
+
+1. Open terminal
+2. Run: .venv\Scripts\activate
+3. Run: python create_verification_tables.py
+4. ✅ DONE! Tables created in Supabase!
+
+╔══════════════════════════════════════════════════════════════╗
+║  VERIFY SUCCESS                                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+Go to Supabase → Table Editor
+Check if these tables exist:
+  ✓ payments (updated)
+  ✓ gcash_configs (new)
+  ✓ gcash_transactions (new)
+
+╔══════════════════════════════════════════════════════════════╗
+║  FILES CREATED                                               ║
+╚══════════════════════════════════════════════════════════════╝
+
+1. create_payment_verification_tables.sql
+   → Complete SQL queries for Supabase
+
+2. create_verification_tables.py
+   → Python script (automatic)
+
+3. SUPABASE_SETUP_GUIDE.md
+   → Detailed guide with screenshots
+
+4. PAYMENT_VERIFICATION_SETUP.md
+   → Complete documentation
+
+5. QUICK_START.txt
+   → This file!
+
+╔══════════════════════════════════════════════════════════════╗
+║  WHAT GETS CREATED IN SUPABASE                               ║
+╚══════════════════════════════════════════════════════════════╝
+
+1. PAYMENTS TABLE (updated)
+   - New columns for GCash verification
+   - verification_status, gcash_reference_number, etc.
+
+2. GCASH_CONFIGS TABLE (new)
+   - Store QR codes
+   - GCash account info
+
+3. GCASH_TRANSACTIONS TABLE (new)
+   - Transaction history from GCash
+   - Auto-matching with payments
+
+╔══════════════════════════════════════════════════════════════╗
+║  NEXT STEPS AFTER SETUP                                      ║
+╚══════════════════════════════════════════════════════════════╝
+
+1. Test the interface: http://localhost:5000/payments/verification
+2. Upload QR code
+3. Add transaction history
+4. Verify payments!
+
+╔══════════════════════════════════════════════════════════════╗
+║  TROUBLESHOOTING                                             ║
+╚══════════════════════════════════════════════════════════════╝
+
+❌ "Table already exists"
+   ✅ OK! Skip that part, table already created
+
+❌ "Column already exists"  
+   ✅ OK! Column already added
+
+❌ "Permission denied"
+   ❌ Check Supabase project permissions
+
+❌ "Connection failed"
+   ❌ Check .env DATABASE_URL
+
+╔══════════════════════════════════════════════════════════════╗
+║  READY TO GO! 🚀                                             ║
+╚══════════════════════════════════════════════════════════════╝
+
+Your payment verification system is ready!
+All data will be stored in Supabase PostgreSQL.
+
+Questions? Check SUPABASE_SETUP_GUIDE.md
