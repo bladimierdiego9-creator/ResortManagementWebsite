@@ -1,0 +1,3615 @@
+{% extends "base.html" %}
+
+{% block title %}GCash Payment Verification — A&D Thysia Admin{% endblock %}
+{% block breadcrumb %}GCash Verification{% endblock %}
+
+{% block content %}
+<div class="verification-container">
+    <!-- Header -->
+    <div class="verification-header">
+        <div class="header-content">
+            <div class="header-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="4" width="20" height="16" rx="3" stroke="currentColor" stroke-width="2"/>
+                    <path d="M2 10H22" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="7" cy="15" r="1.5" fill="currentColor"/>
+                    <path d="M12 15H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div class="header-text">
+                <h1>GCash Payment Verification</h1>
+                <p>Verify guest payments, reconcile transaction receipts, and manage payment QR codes seamlessly</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="action-btn secondary" onclick="showUploadTransaction()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M17 8L12 3M12 3L7 8M12 3V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span>Upload Screenshot</span>
+            </button>
+            <button class="action-btn secondary" onclick="showUploadQR()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+                    <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+                    <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+                    <rect x="14" y="14" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <span>Upload QR Code</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="modern-stats-grid">
+        <!-- Payment Receipts Stats -->
+        <div class="modern-stat-card" onclick="switchTab('receipts')">
+            <div class="stat-top">
+                <span class="stat-label-modern">Payment Receipts</span>
+                <div class="stat-icon-modern">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
+                        <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2"/>
+                        <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="stat-value-modern">{{ unverified_receipts|length }}</div>
+            <div class="stat-footer">Pending verification</div>
+        </div>
+        
+        <div class="modern-stat-card" onclick="switchTab('unverified')">
+            <div class="stat-top">
+                <span class="stat-label-modern">Unverified</span>
+                <div class="stat-icon-modern">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                        <path d="M12 8V12M12 16H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="stat-value-modern">{{ (unverified_receipts|length) + (unverified_payments|length) + (pending_payments|length) }}</div>
+            <div class="stat-footer">All awaiting verification</div>
+        </div>
+
+        <div class="modern-stat-card" onclick="switchTab('verified')">
+            <div class="stat-top">
+                <span class="stat-label-modern">Verified</span>
+                <div class="stat-icon-modern">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M22 11.08V12A10 10 0 1 1 16.17 3.29" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <polyline points="22 4 12 14.01 9 11.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="stat-value-modern">{{ (verified_receipts|length) + (verified_payments|length) }}</div>
+            <div class="stat-footer">Successfully verified payments</div>
+        </div>
+
+        <div class="modern-stat-card" onclick="switchTab('transactions')">
+            <div class="stat-top">
+                <span class="stat-label-modern">Transactions</span>
+                <div class="stat-icon-modern">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
+                        <path d="M2 10H22" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="stat-value-modern">{{ recent_transactions|length }}</div>
+            <div class="stat-footer">{{ unlinked_transactions|length }} available to match</div>
+        </div>
+
+        <div class="modern-stat-card" onclick="switchTab('matches')">
+            <div class="stat-top">
+                <span class="stat-label-modern">Smart Matches</span>
+                <div class="stat-icon-modern">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                        <path d="M16 3H21V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M4 20L21 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M21 16V21H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M15 15L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M4 4L9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="stat-value-modern">{{ matches|length }}</div>
+            <div class="stat-footer">Auto-detected payment matches</div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="modern-tabs-container">
+        <div class="modern-tabs">
+            <button class="modern-tab active" onclick="switchTab('receipts')" data-tab="receipts">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2"/>
+                    <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <span>Payment Receipts</span>
+                {% if unverified_receipts|length > 0 %}
+                <span class="modern-badge alert">{{ unverified_receipts|length }}</span>
+                {% endif %}
+            </button>
+            
+            <button class="modern-tab" onclick="switchTab('matches')" data-tab="matches">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Suggested Matches</span>
+                {% if matches %}
+                <span class="modern-badge highlight">{{ matches|length }}</span>
+                {% endif %}
+            </button>
+
+            <button class="modern-tab" onclick="switchTab('unverified')" data-tab="unverified">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                    <polyline points="12 6 12 12 14 14" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <span>Unverified Payments</span>
+                {% set unverified_total = (unverified_receipts|length) + (unverified_payments|length) + (pending_payments|length) %}
+                {% if unverified_total > 0 %}
+                <span class="modern-badge alert">{{ unverified_total }}</span>
+                {% endif %}
+            </button>
+
+            <button class="modern-tab" onclick="switchTab('verified')" data-tab="verified">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Verified Payments</span>
+                {% set verified_total = (verified_receipts|length) + (verified_payments|length) %}
+                {% if verified_total > 0 %}
+                <span class="modern-badge count">{{ verified_total }}</span>
+                {% endif %}
+            </button>
+
+            <button class="modern-tab" onclick="switchTab('transactions')" data-tab="transactions">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="2"/>
+                    <line x1="6" y1="12" x2="18" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span>Transaction History</span>
+                {% if recent_transactions %}
+                <span class="modern-badge count">{{ recent_transactions|length }}</span>
+                {% endif %}
+            </button>
+
+            <button class="modern-tab" onclick="switchTab('qrcodes')" data-tab="qrcodes">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+                    <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+                    <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+                    <rect x="14" y="14" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                <span>QR Codes</span>
+                {% if qr_codes %}
+                <span class="modern-badge count">{{ qr_codes|length }}</span>
+                {% endif %}
+            </button>
+        </div>
+    </div>
+
+    <!-- TAB 0: Payment Receipts -->
+    <div id="tab-receipts" class="tab-pane active">
+        <div class="panel-header-bar">
+            <div class="panel-title-wrap">
+                <h2>Payment Receipts Verification</h2>
+                <span class="count-tag">{{ unverified_receipts|length }} Pending</span>
+            </div>
+            <div class="filter-controls">
+                <input type="text" id="receiptsSearch" class="search-input" placeholder="Search by booking ID, payer name..." oninput="filterReceiptsTable()">
+                <button class="action-btn secondary" onclick="showUploadReceiptModal()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H16" stroke="currentColor" stroke-width="2"/>
+                        <path d="M17 8L12 3M12 3L7 8M12 3V15" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    Upload Receipt
+                </button>
+            </div>
+        </div>
+
+        {% if unverified_receipts %}
+        <div class="table-wrap">
+            <table class="modern-table" id="receiptsTable">
+                <thead>
+                    <tr>
+                        <th>Booking</th>
+                        <th>Guest</th>
+                        <th>Payment Method</th>
+                        <th>OCR Data</th>
+                        <th>Manual Overrides</th>
+                        <th>Upload Info</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for receipt in unverified_receipts %}
+                    <tr>
+                        <td>
+                            <div class="booking-cell">
+                                {% if receipt.booking %}
+                                <a href="{{ url_for('reservations.detail', id='book-' + receipt.booking_id|string) }}" class="booking-link">
+                                    #{{ receipt.booking_id[:8].upper() }}
+                                </a>
+                                <div class="booking-amount">₱{{ "{:,.2f}".format(receipt.booking.total_amount) }}</div>
+                                {% else %}
+                                <span class="text-muted">#{{ receipt.booking_id[:8].upper() }}</span>
+                                <div class="text-muted">Booking not found</div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if receipt.booking and receipt.booking.account %}
+                            <div class="guest-cell">
+                                <div class="guest-name">{{ receipt.booking.account.first_name }} {{ receipt.booking.account.last_name }}</div>
+                                <div class="guest-email">{{ receipt.booking.account.email }}</div>
+                            </div>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="payment-method-badge">{{ receipt.payment_method.upper() }}</span>
+                        </td>
+                        <td>
+                            <div class="ocr-data">
+                                {% if receipt.reference_number or receipt.payer_name or receipt.amount_paid %}
+                                <div class="ocr-item">
+                                    <span class="ocr-label">Ref:</span> {{ receipt.reference_number or '—' }}
+                                </div>
+                                <div class="ocr-item">
+                                    <span class="ocr-label">Payer:</span> {{ receipt.payer_name or '—' }}
+                                </div>
+                                <div class="ocr-item">
+                                    <span class="ocr-label">Amount:</span> {{ ("₱{:,.2f}".format(receipt.amount_paid)) if receipt.amount_paid else '—' }}
+                                </div>
+                                {% if receipt.ocr_confidence %}
+                                <div class="ocr-confidence">{{ receipt.ocr_confidence }}% confidence</div>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted">No OCR data</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if receipt.has_manual_overrides %}
+                            <div class="manual-data">
+                                {% if receipt.manual_reference_number %}
+                                <div class="manual-item">
+                                    <span class="manual-label">Ref:</span> {{ receipt.manual_reference_number }}
+                                </div>
+                                {% endif %}
+                                {% if receipt.manual_payer_name %}
+                                <div class="manual-item">
+                                    <span class="manual-label">Payer:</span> {{ receipt.manual_payer_name }}
+                                </div>
+                                {% endif %}
+                                {% if receipt.manual_amount %}
+                                <div class="manual-item">
+                                    <span class="manual-label">Amount:</span> ₱{{ "{:,.2f}".format(receipt.manual_amount) }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <span class="text-muted">None</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="upload-info">
+                                <div class="uploader">{{ receipt.uploader.username if receipt.uploader else '—' }}</div>
+                                <div class="upload-date">{{ receipt.created_at.strftime('%b %d, %Y') }}</div>
+                                <div class="upload-source">{{ receipt.upload_source.title() }}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="table-actions">
+                                <a href="{{ url_for('payments.receipt_detail', receipt_id=receipt.id) }}" class="btn btn-sm btn-info">
+                                    Details
+                                </a>
+                                {% if receipt.has_receipt_image %}
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="openLightbox('{{ receipt.receipt_url }}', 'Receipt #{{ receipt.id[:8].upper() }}')">
+                                    Image
+                                </button>
+                                {% endif %}
+                                <button type="button" class="btn btn-sm btn-success" onclick="showVerifyReceiptModal('{{ receipt.id }}', '{{ receipt.effective_amount or (receipt.booking.total_amount if receipt.booking else '') }}', '{{ receipt.effective_reference_number or '' }}', '{{ receipt.effective_payer_name or '' }}')">
+                                    Verify
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="showRejectReceiptModal('{{ receipt.id }}')">
+                                    Reject
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state-modern">
+            <div class="empty-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                    <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="1.5"/>
+                    <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M7 10L12 13L17 10" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+            </div>
+            <h3>No Payment Receipts Pending</h3>
+            <p>All payment receipts have been verified or no receipts have been uploaded yet.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB 1: Suggested Matches -->
+    <div id="tab-matches" class="tab-pane">
+        {% if matches %}
+            <div class="matches-list">
+                {% for match in matches %}
+                {% if match.type == 'receipt' %}
+                {% set receipt = match.receipt %}
+                {% set guest_name = (receipt.booking.account.first_name ~ ' ' ~ receipt.booking.account.last_name) if receipt.booking and receipt.booking.account else (receipt.effective_payer_name or 'Guest') %}
+                {% set guest_mobile = (receipt.booking.account.guest_profile.phone if receipt.booking.account.guest_profile else '') if receipt.booking and receipt.booking.account else '' %}
+                {% set eff_amt = receipt.effective_amount or (receipt.booking.total_amount if receipt.booking else 0) %}
+                <div class="match-card">
+                    <div class="match-card-top">
+                        <div class="match-badge-wrap">
+                            <span class="status-indicator live"></span>
+                            <span class="match-title">Potential Match Found</span>
+                            <span class="badge-status" style="background:rgba(147, 51, 234, 0.15);color:#9333ea;font-size:11px;padding:2px 8px;border-radius:12px;margin-left:8px;font-weight:600;">Receipt</span>
+                        </div>
+                        <div class="match-sub-info">
+                            Receipt #{{ receipt.id[:8].upper() }} &bull; Booking #{{ receipt.booking_id[:8].upper() }}
+                        </div>
+                    </div>
+
+                    <div class="match-body">
+                        <!-- Left: Receipt Details -->
+                        <div class="match-col payment-col">
+                            <div class="col-badge">Guest Receipt Details</div>
+                            <div class="payment-guest-name">
+                                {{ guest_name }}
+                            </div>
+                            <div class="payment-amount-display">
+                                ₱{{ "{:,.2f}".format(eff_amt) }}
+                            </div>
+
+                            <div class="match-meta-list">
+                                <div class="meta-row">
+                                    <span class="meta-label">Receipt ID:</span>
+                                    <span class="meta-val">#{{ receipt.id[:8].upper() }}</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-label">Booking:</span>
+                                    <span class="meta-val">
+                                        <a href="{{ url_for('reservations.detail', id='book-' + receipt.booking_id|string) }}" class="res-link" target="_blank">
+                                            #{{ receipt.booking_id[:8].upper() }} &nearr;
+                                        </a>
+                                    </span>
+                                </div>
+                                {% if guest_mobile %}
+                                <div class="meta-row">
+                                    <span class="meta-label">Guest Phone:</span>
+                                    <span class="meta-val">{{ guest_mobile }}</span>
+                                </div>
+                                {% endif %}
+                                {% if receipt.effective_reference_number %}
+                                <div class="meta-row">
+                                    <span class="meta-label">Submitted Ref:</span>
+                                    <span class="meta-val font-mono">{{ receipt.effective_reference_number }}</span>
+                                </div>
+                                {% endif %}
+                                <div class="meta-row">
+                                    <span class="meta-label">Method:</span>
+                                    <span class="meta-val">{{ receipt.payment_method.upper() }}</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-label">Date Uploaded:</span>
+                                    <span class="meta-val">{{ receipt.created_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+                                </div>
+                            </div>
+
+                            {% if receipt.has_receipt_image %}
+                            <div class="proof-preview-btn">
+                                <button type="button" class="btn-preview" onclick="openLightbox('{{ receipt.receipt_url }}', 'Receipt #{{ receipt.id[:8].upper() }}')">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                        <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                        <path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="2"/>
+                                    </svg>
+                                    View Receipt Image
+                                </button>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Center Divider -->
+                        <div class="match-arrow-col">
+                            <div class="match-arrow-pill">
+                                <span>⇄</span>
+                            </div>
+                        </div>
+
+                        <!-- Right: Matching Transaction Options -->
+                        <div class="match-col txn-col">
+                            <div class="col-badge">Matching GCash Transaction(s) ({{ match.matched_items|length }})</div>
+                            {% for item in match.matched_items %}
+                            {% set txn = item.transaction %}
+                            <div class="txn-match-box">
+                                <div class="txn-match-header">
+                                    <span class="match-tag {{ item.badge_class }}">{{ item.match_type }}</span>
+                                    <span class="confidence-tag">{{ item.confidence }}</span>
+                                </div>
+
+                                <div class="match-meta-list">
+                                    <div class="meta-row">
+                                        <span class="meta-label">GCash Ref No:</span>
+                                        <span class="meta-val font-mono highlight-ref">{{ txn.reference_number }}</span>
+                                    </div>
+                                    <div class="meta-row">
+                                        <span class="meta-label">Txn Amount:</span>
+                                        <span class="meta-val font-bold text-accent">₱{{ "{:,.2f}".format(txn.amount) }}</span>
+                                    </div>
+                                    <div class="meta-row">
+                                        <span class="meta-label">Sender Name:</span>
+                                        <span class="meta-val">{{ txn.sender_name }}</span>
+                                    </div>
+                                    <div class="meta-row">
+                                        <span class="meta-label">Sender Mobile:</span>
+                                        <span class="meta-val">{{ txn.sender_number }}</span>
+                                    </div>
+                                    <div class="meta-row">
+                                        <span class="meta-label">Transaction Date:</span>
+                                        <span class="meta-val">{{ txn.transaction_date.strftime('%b %d, %Y %I:%M %p') }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="txn-match-actions">
+                                    {% if txn.has_screenshot %}
+                                    <button type="button" class="btn-preview" onclick="openLightbox('{{ txn.screenshot_url }}', 'Transaction {{ txn.reference_number }} Receipt')">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                            <path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                        Receipt
+                                    </button>
+                                    {% endif %}
+                                    <form method="POST" action="{{ url_for('payments.verify_receipt', receipt_id=receipt.id) }}" style="flex:1;">
+                                        <input type="hidden" name="transaction_id" value="{{ txn.id }}">
+                                        <input type="hidden" name="manual_reference_number" value="{{ txn.reference_number }}">
+                                        <input type="hidden" name="manual_amount" value="{{ txn.amount }}">
+                                        <input type="hidden" name="manual_payer_name" value="{{ txn.sender_name }}">
+                                        <button type="submit" class="btn btn-verify-direct w-100" onclick="return confirm('Confirm and verify this match? This will mark the receipt as VERIFIED and confirm the booking.')">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                            Verify &amp; Confirm Match
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="match-card">
+                    <div class="match-card-top">
+                        <div class="match-badge-wrap">
+                            <span class="status-indicator live"></span>
+                            <span class="match-title">Potential Match Found</span>
+                            <span class="badge-status" style="background:rgba(59, 130, 246, 0.15);color:#2563eb;font-size:11px;padding:2px 8px;border-radius:12px;margin-left:8px;font-weight:600;">Payment</span>
+                        </div>
+                        <div class="match-sub-info">
+                            Payment #{{ match.payment.id }} &bull; Reservation #{{ match.payment.reservation_id }}
+                        </div>
+                    </div>
+
+                    <div class="match-body">
+                        <!-- Left: Guest Payment Details -->
+                        <div class="match-col payment-col">
+                            <div class="col-badge">Guest Payment Details</div>
+                            <div class="payment-guest-name">
+                                {% if match.payment.reservation and match.payment.reservation.guest %}
+                                    {{ match.payment.reservation.guest.full_name }}
+                                {% else %}
+                                    Guest (Res #{{ match.payment.reservation_id }})
+                                {% endif %}
+                            </div>
+                            <div class="payment-amount-display">
+                                ₱{{ "{:,.2f}".format(match.payment.amount) }}
+                            </div>
+
+                            <div class="match-meta-list">
+                                <div class="meta-row">
+                                    <span class="meta-label">Payment ID:</span>
+                                    <span class="meta-val">#{{ match.payment.id }}</span>
+                                </div>
+                                <div class="meta-row">
+                                    <span class="meta-label">Reservation:</span>
+                                    <span class="meta-val">
+                                        <a href="{{ url_for('reservations.detail', id=match.payment.reservation_id) }}" class="res-link" target="_blank">
+                                            #{{ match.payment.reservation_id }} &nearr;
+                                        </a>
+                                    </span>
+                                </div>
+                                {% if match.payment.reservation and match.payment.reservation.guest and match.payment.reservation.guest.phone %}
+                                <div class="meta-row">
+                                    <span class="meta-label">Guest Phone:</span>
+                                    <span class="meta-val">{{ match.payment.reservation.guest.phone }}</span>
+                                </div>
+                                {% endif %}
+                                {% if match.payment.gcash_reference_number %}
+                                <div class="meta-row">
+                                    <span class="meta-label">Submitted Ref:</span>
+                                    <span class="meta-val font-mono">{{ match.payment.gcash_reference_number }}</span>
+                                </div>
+                                {% endif %}
+                                <div class="meta-row">
+                                    <span class="meta-label">Date Created:</span>
+                                    <span class="meta-val">{{ match.payment.created_at.strftime('%b %d, %Y %I:%M %p') }}</span>
+                                </div>
+                            </div>
+
+                            {% if match.payment.has_gcash_screenshot %}
+                            <div class="proof-preview-btn">
+                                <button type="button" class="btn-preview" onclick="openLightbox('{{ match.payment.gcash_screenshot_url }}', 'Payment #{{ match.payment.id }} Guest Proof')">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                        <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                        <path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="2"/>
+                                    </svg>
+                                    View Guest Proof
+                                </button>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Center Divider -->
+                        <div class="match-arrow-col">
+                            <div class="match-arrow-pill">
+                                <span>⇄</span>
+                            </div>
+                        </div>
+
+                        <!-- Right: Matching Transaction Options -->
+                        <div class="match-col txn-col">
+                            <div class="col-badge">Matching GCash Transaction(s) ({{ match.matched_items|length }})</div>
+                            {% for item in match.matched_items %}
+                            {% set txn = item.transaction %}
+                            <div class="txn-match-box">
+                                <div class="txn-match-header">
+                                    <span class="match-tag {{ item.badge_class }}">{{ item.match_type }}</span>
+                                    <span class="confidence-tag">{{ item.confidence }}</span>
+                                </div>
+
+                                <div class="match-meta-list">
+                                    <div class="meta-row">
+                                        <span class="meta-label">GCash Ref No:</span>
+                                        <span class="meta-val font-mono highlight-ref">{{ txn.reference_number }}</span>
+                                    </div>
+                                    <div class="meta-row">
+                                        <span class="meta-label">Txn Amount:</span>
+                                        <span class="meta-val font-bold text-accent">₱{{ "{:,.2f}".format(txn.amount) }}</span>
+                                    </div>
+                                    <div class="meta-row">
+                                        <span class="meta-label">Sender Name:</span>
+                                        <span class="meta-val">{{ txn.sender_name }}</span>
+                                    </div>
+                                    <div class="meta-row">
+                                        <span class="meta-label">Sender Mobile:</span>
+                                        <span class="meta-val">{{ txn.sender_number }}</span>
+                                    </div>
+                                    <div class="meta-row">
+                                        <span class="meta-label">Transaction Date:</span>
+                                        <span class="meta-val">{{ txn.transaction_date.strftime('%b %d, %Y %I:%M %p') }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="txn-match-actions">
+                                    {% if txn.has_screenshot %}
+                                    <button type="button" class="btn-preview" onclick="openLightbox('{{ txn.screenshot_url }}', 'Transaction {{ txn.reference_number }} Receipt')">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                            <path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="2"/>
+                                        </svg>
+                                        Receipt
+                                    </button>
+                                    {% endif %}
+                                    <form method="POST" action="{{ url_for('payments.verify_payment', payment_id=match.payment.id) }}" style="flex:1;">
+                                        <input type="hidden" name="transaction_id" value="{{ txn.id }}">
+                                        <input type="hidden" name="confirm_booking" value="1">
+                                        <button type="submit" class="btn btn-verify-direct w-100" onclick="return confirm('Confirm and verify this match? This will mark the payment as PAID and confirm the reservation.')">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                                <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                            Verify &amp; Confirm Match
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <h3>No Suggested Matches Right Now</h3>
+                <p>When guests submit GCash payments or receipts and you upload GCash transaction records, our smart matching engine automatically compares reference numbers, sender names, and amounts here.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB 2: Unverified Payments -->
+    <div id="tab-unverified" class="tab-pane">
+        <div class="panel-header-bar">
+            <div class="panel-title-wrap">
+                <h2>Payments Awaiting Verification</h2>
+                <span class="count-tag">{{ (unverified_receipts|length) + (unverified_payments|length) + (pending_payments|length) }} Total</span>
+            </div>
+            <div class="filter-controls">
+                <input type="text" id="unverifiedSearch" class="search-input" placeholder="Search by guest, ref #, or amount..." oninput="filterUnverifiedTable()">
+                <div class="pill-filters">
+                    <button class="pill-btn active" onclick="setFilterSubStatus('all', this)">All</button>
+                    <button class="pill-btn" onclick="setFilterSubStatus('unverified', this)">Unverified Only</button>
+                    <button class="pill-btn" onclick="setFilterSubStatus('pending', this)">Pending Only</button>
+                </div>
+            </div>
+        </div>
+
+        {% set all_unverified = unverified_payments + pending_payments %}
+        {% set total_unverified = (unverified_receipts|length) + (all_unverified|length) %}
+        {% if total_unverified > 0 %}
+        <div class="table-wrap">
+            <table class="modern-table" id="unverifiedTable">
+                <thead>
+                    <tr>
+                        <th>Type &amp; ID</th>
+                        <th>Booking / Res &amp; Guest</th>
+                        <th>Amount</th>
+                        <th>Submitted Ref / Sender</th>
+                        <th>Proof of Payment</th>
+                        <th>Date Created</th>
+                        <th>Status</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in unverified_receipts %}
+                    {% set r_guest = (r.booking.account.first_name ~ ' ' ~ r.booking.account.last_name) if r.booking and r.booking.account else (r.effective_payer_name or 'Guest') %}
+                    {% set r_phone = (r.booking.account.guest_profile.phone if r.booking.account.guest_profile else '') if r.booking and r.booking.account else '' %}
+                    {% set r_amt = r.effective_amount or (r.booking.total_amount if r.booking else 0) %}
+                    <tr class="table-row-item" data-status="pending" data-search="{{ r.id }} {{ r.booking_id }} {{ r_guest }} {{ r_amt }} {{ r.effective_reference_number or '' }}">
+                        <td>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span class="badge-status status-pending" style="background:rgba(147, 51, 234, 0.12);color:#9333ea;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;">Receipt</span>
+                                <span class="id-pill">#{{ r.id[:8].upper() }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="guest-cell">
+                                <a href="{{ url_for('reservations.detail', id='book-' + r.booking_id|string) }}" class="res-link">
+                                    Booking #{{ r.booking_id[:8].upper() }} &nearr;
+                                </a>
+                                <div class="guest-name-text">{{ r_guest }}</div>
+                                {% if r_phone %}
+                                <div class="guest-sub-text">{{ r_phone }}</div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="amount-pill">₱{{ "{:,.2f}".format(r_amt) }}</span>
+                        </td>
+                        <td>
+                            {% if r.effective_reference_number %}
+                            <div class="ref-copy-box">
+                                <span class="font-mono text-bold">{{ r.effective_reference_number }}</span>
+                                <button type="button" class="copy-btn" onclick="copyText('{{ r.effective_reference_number }}')" title="Copy Reference">📋</button>
+                            </div>
+                            {% endif %}
+                            {% if r.effective_payer_name %}
+                            <div class="sender-name-text">{{ r.effective_payer_name }}</div>
+                            {% endif %}
+                            {% if not r.effective_reference_number and not r.effective_payer_name %}
+                            <span class="text-muted">Awaiting details</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if r.has_receipt_image %}
+                            <button type="button" class="proof-badge-btn" onclick="openLightbox('{{ r.receipt_url }}', 'Receipt #{{ r.id[:8].upper() }}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                    <path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="2"/>
+                                </svg>
+                                <span>View Receipt</span>
+                            </button>
+                            {% else %}
+                            <span class="text-muted text-xs">No image</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted text-sm">
+                            {{ r.created_at.strftime('%b %d, %Y') }}<br>
+                            <span style="font-size: 11px;">{{ r.created_at.strftime('%I:%M %p') }}</span>
+                        </td>
+                        <td>
+                            <span class="badge-status status-pending">Pending</span>
+                        </td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn btn-sm btn-verify-action" onclick="showVerifyReceiptModal('{{ r.id }}', '{{ r_amt }}', '{{ r.effective_reference_number or '' }}', '{{ r.effective_payer_name or '' }}')">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                        <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    Verify
+                                </button>
+                                <button class="btn btn-sm btn-reject-action" onclick="showRejectReceiptModal('{{ r.id }}')">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                    Reject
+                                </button>
+                                <a href="{{ url_for('payments.receipt_detail', receipt_id=r.id) }}" class="btn btn-sm btn-ghost" title="View Detail">
+                                    Details
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% for p in all_unverified %}
+                    {% set guest_name = p.reservation.guest.full_name if p.reservation and p.reservation.guest else 'Guest' %}
+                    {% set guest_phone = p.reservation.guest.phone if p.reservation and p.reservation.guest else '' %}
+                    <tr class="table-row-item" data-status="{{ p.verification_status }}" data-search="{{ p.id }} {{ p.reservation_id }} {{ guest_name }} {{ p.amount }} {{ p.gcash_reference_number or '' }}">
+                        <td>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span class="badge-status" style="background:rgba(59, 130, 246, 0.12);color:#2563eb;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;">Payment</span>
+                                <span class="id-pill">#{{ p.id }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="guest-cell">
+                                <a href="{{ url_for('reservations.detail', id=p.reservation_id) }}" class="res-link">
+                                    Reservation #{{ p.reservation_id }} &nearr;
+                                </a>
+                                <div class="guest-name-text">{{ guest_name }}</div>
+                                {% if guest_phone %}
+                                <div class="guest-sub-text">{{ guest_phone }}</div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span class="amount-pill">₱{{ "{:,.2f}".format(p.amount) }}</span>
+                        </td>
+                        <td>
+                            {% if p.gcash_reference_number %}
+                            <div class="ref-copy-box">
+                                <span class="font-mono text-bold">{{ p.gcash_reference_number }}</span>
+                                <button type="button" class="copy-btn" onclick="copyText('{{ p.gcash_reference_number }}')" title="Copy Reference">📋</button>
+                            </div>
+                            {% endif %}
+                            {% if p.gcash_sender_name %}
+                            <div class="sender-name-text">{{ p.gcash_sender_name }}</div>
+                            {% endif %}
+                            {% if p.gcash_sender_number %}
+                            <div class="sender-num-text">{{ p.gcash_sender_number }}</div>
+                            {% endif %}
+                            {% if not p.gcash_reference_number and not p.gcash_sender_name %}
+                            <span class="text-muted">Not submitted</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if p.has_gcash_screenshot %}
+                            <button type="button" class="proof-badge-btn" onclick="openLightbox('{{ p.gcash_screenshot_url }}', 'Payment #{{ p.id }} Proof')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                    <path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="2"/>
+                                </svg>
+                                <span>View Proof</span>
+                            </button>
+                            {% else %}
+                            <button type="button" class="attach-proof-btn" onclick="showAttachProofModal({{ p.id }}, '{{ p.gcash_reference_number or '' }}', '{{ p.gcash_sender_name or '' }}', '{{ p.gcash_sender_number or '' }}')">
+                                + Attach Proof
+                            </button>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted text-sm">
+                            {{ p.created_at.strftime('%b %d, %Y') }}<br>
+                            <span style="font-size: 11px;">{{ p.created_at.strftime('%I:%M %p') }}</span>
+                        </td>
+                        <td>
+                            {% if p.verification_status == 'unverified' %}
+                            <span class="badge-status status-unverified">Unverified</span>
+                            {% elif p.verification_status == 'pending' %}
+                            <span class="badge-status status-pending">Pending</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="table-actions">
+                                <button class="btn btn-sm btn-verify-action" onclick="showDirectVerifyModal({{ p.id }}, {{ p.amount }}, '{{ guest_name|replace("'", "\\'") }}', {{ p.reservation_id }}, '{{ p.gcash_reference_number or '' }}', '{{ p.gcash_sender_name or '' }}', '{{ p.gcash_sender_number or '' }}')">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                        <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    Verify
+                                </button>
+                                <button class="btn btn-sm btn-reject-action" onclick="showRejectModal({{ p.id }}, '{{ guest_name|replace("'", "\\'") }}', {{ p.amount }})">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                    Reject
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M8 12L11 15L16 9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <h3>All Caught Up!</h3>
+            <p>There are no unverified or pending GCash payments awaiting action at this moment.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB 3: Verified Payments History -->
+    <div id="tab-verified" class="tab-pane">
+        <div class="panel-header-bar">
+            <div class="panel-title-wrap">
+                <h2>Verified GCash Payments &amp; Receipts</h2>
+                <span class="count-tag green">{{ (verified_receipts|length) + (verified_payments|length) }} Verified</span>
+            </div>
+            <div class="filter-controls">
+                <input type="text" id="verifiedSearch" class="search-input" placeholder="Search by guest, ref no, or ID..." oninput="filterTable('verifiedTable', this.value)">
+            </div>
+        </div>
+
+        {% set total_verified = (verified_receipts|length) + (verified_payments|length) %}
+        {% if total_verified > 0 %}
+        <div class="table-wrap">
+            <table class="modern-table" id="verifiedTable">
+                <thead>
+                    <tr>
+                        <th>Type &amp; ID</th>
+                        <th>Booking / Res &amp; Guest</th>
+                        <th>Amount Verified</th>
+                        <th>Reference #</th>
+                        <th>Sender Details</th>
+                        <th>Verified At</th>
+                        <th>Proof</th>
+                        <th style="text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in verified_receipts %}
+                    {% set r_guest = (r.booking.account.first_name ~ ' ' ~ r.booking.account.last_name) if r.booking and r.booking.account else (r.effective_payer_name or 'Guest') %}
+                    {% set r_amt = r.effective_amount or (r.booking.total_amount if r.booking else 0) %}
+                    <tr class="table-row-item" data-search="{{ r.id }} {{ r.booking_id }} {{ r_guest }} {{ r_amt }} {{ r.effective_reference_number or '' }}">
+                        <td>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span class="badge-status" style="background:rgba(16, 185, 129, 0.12);color:#059669;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;">Receipt</span>
+                                <span class="id-pill">#{{ r.id[:8].upper() }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="guest-cell">
+                                <a href="{{ url_for('reservations.detail', id='book-' + r.booking_id|string) }}" class="res-link">
+                                    Booking #{{ r.booking_id[:8].upper() }} &nearr;
+                                </a>
+                                <div class="guest-name-text">{{ r_guest }}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="amount-pill verified">₱{{ "{:,.2f}".format(r_amt) }}</span>
+                        </td>
+                        <td>
+                            {% if r.effective_reference_number %}
+                            <div class="ref-copy-box">
+                                <span class="font-mono text-bold text-accent">{{ r.effective_reference_number }}</span>
+                                <button type="button" class="copy-btn" onclick="copyText('{{ r.effective_reference_number }}')">📋</button>
+                            </div>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>{{ r.effective_payer_name or '—' }}</div>
+                        </td>
+                        <td class="text-muted text-sm">
+                            {% if r.verified_at %}
+                            {{ r.verified_at.strftime('%b %d, %Y %I:%M %p') }}
+                            {% if r.verifier %}
+                            <br><span style="font-size:11px;color:var(--text-muted);">by {{ r.verifier.username }}</span>
+                            {% endif %}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if r.has_receipt_image %}
+                            <button type="button" class="proof-badge-btn" onclick="openLightbox('{{ r.receipt_url }}', 'Receipt #{{ r.id[:8].upper() }}')">
+                                View
+                            </button>
+                            {% else %}
+                            <span class="text-muted text-xs">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <a href="{{ url_for('payments.receipt_detail', receipt_id=r.id) }}" class="btn btn-sm btn-ghost" title="View Detail">
+                                Details
+                            </a>
+                            <form method="POST" action="{{ url_for('payments.reset_receipt', receipt_id=r.id) }}" style="display:inline;">
+                                <button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Reset Receipt #{{ r.id[:8].upper() }} back to pending verification?')" title="Reset to Pending">
+                                    ↺ Reset
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% for p in verified_payments %}
+                    {% set guest_name = p.reservation.guest.full_name if p.reservation and p.reservation.guest else 'Guest' %}
+                    <tr class="table-row-item" data-search="{{ p.id }} {{ p.reservation_id }} {{ guest_name }} {{ p.amount }} {{ p.gcash_reference_number or '' }}">
+                        <td>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span class="badge-status" style="background:rgba(59, 130, 246, 0.12);color:#2563eb;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;">Payment</span>
+                                <span class="id-pill">#{{ p.id }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="guest-cell">
+                                <a href="{{ url_for('reservations.detail', id=p.reservation_id) }}" class="res-link">
+                                    Reservation #{{ p.reservation_id }} &nearr;
+                                </a>
+                                <div class="guest-name-text">{{ guest_name }}</div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="amount-pill verified">₱{{ "{:,.2f}".format(p.amount) }}</span>
+                        </td>
+                        <td>
+                            {% if p.gcash_reference_number %}
+                            <div class="ref-copy-box">
+                                <span class="font-mono text-bold text-accent">{{ p.gcash_reference_number }}</span>
+                                <button type="button" class="copy-btn" onclick="copyText('{{ p.gcash_reference_number }}')">📋</button>
+                            </div>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>{{ p.gcash_sender_name or '—' }}</div>
+                            <div class="text-muted text-xs">{{ p.gcash_sender_number or '' }}</div>
+                        </td>
+                        <td class="text-muted text-sm">
+                            {% if p.verified_at %}
+                            {{ p.verified_at.strftime('%b %d, %Y %I:%M %p') }}
+                            {% elif p.paid_at %}
+                            {{ p.paid_at.strftime('%b %d, %Y %I:%M %p') }}
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if p.has_gcash_screenshot %}
+                            <button type="button" class="proof-badge-btn" onclick="openLightbox('{{ p.gcash_screenshot_url }}', 'Payment #{{ p.id }} Proof')">
+                                View
+                            </button>
+                            {% elif p.gcash_transaction and p.gcash_transaction.has_screenshot %}
+                            <button type="button" class="proof-badge-btn" onclick="openLightbox('{{ p.gcash_transaction.screenshot_url }}', 'Transaction Receipt')">
+                                Receipt
+                            </button>
+                            {% else %}
+                            <span class="text-muted text-xs">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <form method="POST" action="{{ url_for('payments.reset_payment', payment_id=p.id) }}" style="display:inline;">
+                                <button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Reset Payment #{{ p.id }} back to unverified?')" title="Reset to Unverified">
+                                    ↺ Reset
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="M2 10H22" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+            </div>
+            <h3>No Verified GCash Payments Yet</h3>
+            <p>Verified payments will appear here with audit timestamps and proof details.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB 4: Transaction History -->
+    <div id="tab-transactions" class="tab-pane">
+        <div class="panel-header-bar">
+            <div class="panel-title-wrap">
+                <h2>GCash Transaction Records</h2>
+                <span class="count-tag blue">{{ recent_transactions|length }} Total</span>
+            </div>
+            <div class="filter-controls">
+                <input type="text" id="txnSearch" class="search-input" placeholder="Search by reference, sender, or amount..." oninput="filterTable('txnTable', this.value)">
+                <button class="action-btn secondary btn-sm" onclick="showUploadTransaction()">
+                    Upload Screenshot
+                </button>
+            </div>
+        </div>
+
+        {% if recent_transactions %}
+        <div class="table-wrap">
+            <table class="modern-table" id="txnTable">
+                <thead>
+                    <tr>
+                        <th>Reference Number</th>
+                        <th>Transaction Date</th>
+                        <th>Sender Details</th>
+                        <th>Amount</th>
+                        <th>Link Status</th>
+                        <th>Screenshot</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for txn in recent_transactions %}
+                    <tr class="table-row-item" data-search="{{ txn.reference_number }} {{ txn.sender_name }} {{ txn.sender_number }} {{ txn.amount }} {{ txn.payment_id or '' }}">
+                        <td>
+                            <div class="ref-copy-box">
+                                <span class="font-mono text-bold">{{ txn.reference_number }}</span>
+                                <button type="button" class="copy-btn" onclick="copyText('{{ txn.reference_number }}')">📋</button>
+                            </div>
+                        </td>
+                        <td class="text-muted text-sm">
+                            {{ txn.transaction_date.strftime('%b %d, %Y') }}<br>
+                            <span style="font-size: 11px;">{{ txn.transaction_date.strftime('%I:%M %p') }}</span>
+                        </td>
+                        <td>
+                            <div class="font-medium">{{ txn.sender_name }}</div>
+                            <div class="text-muted text-xs">{{ txn.sender_number }}</div>
+                        </td>
+                        <td>
+                            <span class="amount-pill">₱{{ "{:,.2f}".format(txn.amount) }}</span>
+                        </td>
+                        <td>
+                            {% if txn.payment_id %}
+                            <span class="badge-status status-linked">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style="margin-right:4px;">
+                                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" stroke-width="2"/>
+                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="currentColor" stroke-width="2"/>
+                                </svg>
+                                Linked to #{{ txn.payment_id }}
+                            </span>
+                            {% else %}
+                            <span class="badge-status status-unlinked">Unlinked</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if txn.has_screenshot %}
+                            <button type="button" class="proof-badge-btn" onclick="openLightbox('{{ txn.screenshot_url }}', 'Receipt: {{ txn.reference_number }}')">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                    <path d="M1 12S5 4 12 4s11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" stroke-width="2"/>
+                                </svg>
+                                View
+                            </button>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <div class="table-actions" style="justify-content: flex-end;">
+                                {% if not txn.payment_id %}
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="showMatchTxnModal({{ txn.id }}, '{{ txn.reference_number }}', {{ txn.amount }})">
+                                    Link
+                                </button>
+                                {% else %}
+                                <form method="POST" action="{{ url_for('payments.unlink_transaction', id=txn.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Unlink this transaction from Payment #{{ txn.payment_id }}?')" title="Unlink from Payment">
+                                        Unlink
+                                    </button>
+                                </form>
+                                {% endif %}
+                                <button type="button" class="btn btn-sm btn-ghost" onclick="showEditTxnModal({{ txn.id }}, '{{ txn.reference_number }}', '{{ txn.sender_name|replace("'", "\\'") }}', '{{ txn.sender_number }}', {{ txn.amount }}, '{{ txn.notes|replace("'", "\\'") if txn.notes else '' }}')">
+                                    Edit
+                                </button>
+                                <form method="POST" action="{{ url_for('payments.delete_transaction', id=txn.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger-ghost" onclick="return confirm('Delete transaction {{ txn.reference_number }} permanently?')" title="Delete Transaction">
+                                        🗑
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                    <line x1="8" y1="10" x2="16" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="8" y1="14" x2="12" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <h3>No Transaction History Recorded</h3>
+            <p>Upload your transaction screenshots to maintain a verifiable audit trail.</p>
+            <div class="empty-actions">
+                <button class="action-btn secondary" onclick="showUploadTransaction()">
+                    Upload Screenshot
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB 5: QR Codes -->
+    <div id="tab-qrcodes" class="tab-pane">
+        <div class="panel-header-bar">
+            <div class="panel-title-wrap">
+                <h2>GCash Payment QR Codes</h2>
+                <span class="count-tag green">{{ qr_codes|length }} Registered</span>
+            </div>
+        </div>
+
+        {% if qr_codes %}
+        <div class="qr-grid">
+            {% for qr in qr_codes %}
+            <div class="qr-card {% if not qr.is_active %}inactive{% endif %}">
+                <div class="qr-card-header">
+                    <div>
+                        <h3 class="qr-title">{{ qr.qr_code_name }}</h3>
+                        <span class="qr-date text-xs text-muted">Added {{ qr.created_at.strftime('%b %d, %Y') }}</span>
+                    </div>
+                    {% if qr.is_active %}
+                    <span class="badge-status status-active">Active</span>
+                    {% else %}
+                    <span class="badge-status status-inactive">Inactive</span>
+                    {% endif %}
+                </div>
+
+                <div class="qr-display" onclick="openLightbox('{{ qr.qr_code_url }}', '{{ qr.qr_code_name }} — {{ qr.gcash_account_name }}')">
+                    <img src="{{ qr.qr_code_url }}" alt="{{ qr.qr_code_name }}">
+                    <div class="qr-hover-overlay">
+                        <span>🔍 Click to Expand</span>
+                    </div>
+                </div>
+
+                <div class="qr-info-list">
+                    <div class="qr-info-row">
+                        <span class="qr-label">Account Name:</span>
+                        <span class="qr-val">{{ qr.gcash_account_name }}</span>
+                    </div>
+                    <div class="qr-info-row">
+                        <span class="qr-label">GCash Number:</span>
+                        <div class="qr-val-copy">
+                            <span class="font-mono text-bold">{{ qr.gcash_account_number }}</span>
+                            <button type="button" class="copy-btn" onclick="copyText('{{ qr.gcash_account_number }}')">📋</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="qr-card-actions">
+                    <form method="POST" action="{{ url_for('payments.toggle_qr_active', id=qr.id) }}" style="flex:1;">
+                        <button type="submit" class="btn btn-sm btn-secondary w-100">
+                            {% if qr.is_active %}Disable QR{% else %}Activate QR{% endif %}
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('payments.delete_qr', id=qr.id) }}" style="display:inline;">
+                        <button type="submit" class="btn btn-sm btn-danger-ghost" onclick="return confirm('Delete this QR code permanently?')" title="Delete QR Code">
+                            🗑
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                    <rect x="7" y="7" width="3" height="3" fill="currentColor"/>
+                    <rect x="14" y="7" width="3" height="3" fill="currentColor"/>
+                    <rect x="7" y="14" width="3" height="3" fill="currentColor"/>
+                </svg>
+            </div>
+            <h3>No GCash QR Codes Configured</h3>
+            <p>Upload your official GCash QR codes so guests can scan and send booking downpayments smoothly.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     MODALS
+     ═══════════════════════════════════════════════════════════════════════════ -->
+
+<!-- 1. Upload Payment Receipt Modal -->
+<div id="uploadReceiptModal" class="modal-backdrop">
+    <div class="modal-window" style="max-width: 580px;">
+        <button type="button" class="modal-close-btn" onclick="closeModal('uploadReceiptModal')">&times;</button>
+        <div class="modal-header-modern">
+            <div class="modal-icon-badge" style="background:rgba(147, 51, 234, 0.12);color:#9333ea;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2"/>
+                    <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <div>
+                <h2>Upload Payment Receipt</h2>
+                <p>Upload guest payment proof screenshot to verify against resort bookings</p>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('payments.upload_receipt') }}" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>Target Booking *</label>
+                <select id="urBookingSelect" name="booking_id" class="form-control" required style="font-weight: 500;">
+                    <option value="" disabled selected>-- Select a Booking --</option>
+                    {% if recent_bookings %}
+                        {% for b in recent_bookings %}
+                        <option value="{{ b.id }}">
+                            #{{ b.id[:8].upper() }} — {{ b.account.first_name if b.account else 'Guest' }} {{ b.account.last_name if b.account else '' }} (₱{{ "{:,.2f}".format(b.total_amount) }} &bull; {{ b.status|title }})
+                        </option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+                <div style="margin-top:6px;">
+                    <input type="text" id="manualBookingIdInput" class="form-control" placeholder="Or enter manual booking UUID here..." oninput="if(this.value.trim()){ document.getElementById('urBookingSelect').removeAttribute('required'); } else { document.getElementById('urBookingSelect').setAttribute('required','required'); }">
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>Payment Method *</label>
+                    <select name="payment_method" class="form-control" required>
+                        <option value="gcash" selected>GCash</option>
+                        <option value="paymaya">PayMaya</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="cash">Cash</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Amount (₱)</label>
+                    <input type="number" step="0.01" name="manual_amount" class="form-control" placeholder="e.g. 1000.00">
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>Reference Number</label>
+                    <input type="text" name="manual_reference_number" class="form-control" placeholder="e.g. 3045773694726">
+                </div>
+                <div class="form-group">
+                    <label>Payer Name</label>
+                    <input type="text" name="manual_payer_name" class="form-control" placeholder="e.g. Juan Dela Cruz">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Receipt Screenshot / Image *</label>
+                <div class="file-drop-area highlighted" id="receiptDropArea" onclick="document.getElementById('receiptFileInput').click()">
+                    <div id="receiptPreviewWrap" style="display:none; margin-bottom:12px;">
+                        <img id="receiptImgPreview" style="max-height:180px; max-width:100%; border-radius:8px; border:1px solid var(--border);" alt="Receipt Preview">
+                    </div>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H16" stroke="currentColor" stroke-width="2"/>
+                        <path d="M17 8L12 3M12 3L7 8M12 3V15" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <p class="drop-title" id="receiptDropTitle">Click or drag &amp; drop payment receipt here</p>
+                    <p class="drop-sub">PNG, JPG, JPEG, WEBP</p>
+                </div>
+                <input type="file" id="receiptFileInput" name="receipt_file" accept="image/*" required style="display:none;" onchange="handleReceiptFilePreview(this)">
+            </div>
+
+            <div class="modal-footer-btns">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('uploadReceiptModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary" onclick="syncBookingIdBeforeSubmit()">Upload Receipt</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 2. Verify Payment Receipt Modal -->
+<div id="verifyReceiptModal" class="modal-backdrop">
+    <div class="modal-window">
+        <button type="button" class="modal-close-btn" onclick="closeModal('verifyReceiptModal')">&times;</button>
+        <div class="modal-header-modern">
+            <div class="modal-icon-badge green">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M22 11.08V12A10 10 0 1 1 16.17 3.29" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <polyline points="22 4 12 14.01 9 11.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div>
+                <h2>Verify Payment Receipt #<span id="vrModalShortId"></span></h2>
+                <p>Confirm verified payment details and update booking status to confirmed</p>
+            </div>
+        </div>
+
+        <form id="verifyReceiptForm" method="POST" action="">
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>Amount (₱) *</label>
+                    <input type="number" step="0.01" id="vrModalAmount" name="manual_amount" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Reference Number</label>
+                    <input type="text" id="vrModalRef" name="manual_reference_number" class="form-control" placeholder="GCash reference number">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Payer Name</label>
+                <input type="text" id="vrModalPayer" name="manual_payer_name" class="form-control" placeholder="Full name on payment">
+            </div>
+
+            <div class="form-group">
+                <label>Verification Notes</label>
+                <textarea name="verification_notes" class="form-control" rows="2" placeholder="Optional internal notes..."></textarea>
+            </div>
+
+            <div class="modal-footer-btns">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('verifyReceiptModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="background:#10b981;border-color:#10b981;">✓ Confirm &amp; Verify Receipt</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 3. Reject Payment Receipt Modal -->
+<div id="rejectReceiptModal" class="modal-backdrop">
+    <div class="modal-window">
+        <button type="button" class="modal-close-btn" onclick="closeModal('rejectReceiptModal')">&times;</button>
+        <div class="modal-header-modern">
+            <div class="modal-icon-badge red">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                    <line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2"/>
+                    <line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <div>
+                <h2>Reject Payment Receipt #<span id="rrModalShortId"></span></h2>
+                <p>Provide a reason for rejecting this payment receipt</p>
+            </div>
+        </div>
+
+        <form id="rejectReceiptForm" method="POST" action="">
+            <div class="form-group">
+                <label>Rejection Reason *</label>
+                <textarea name="rejection_reason" class="form-control" rows="3" placeholder="e.g. Invalid reference number, screenshot blurred, amount mismatch..." required></textarea>
+            </div>
+
+            <div class="modal-footer-btns">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('rejectReceiptModal')">Cancel</button>
+                <button type="submit" class="btn btn-danger">✗ Reject Receipt</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Upload Transaction Screenshot Modal -->
+<div id="uploadTxnModal" class="modal-backdrop">
+    <div class="modal-window">
+        <button type="button" class="modal-close-btn" onclick="closeModal('uploadTxnModal')">&times;</button>
+        <div class="modal-header-modern">
+            <div class="modal-icon-badge">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
+                    <polyline points="21 15 16 10 5 21" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <div>
+                <h2>Upload GCash Receipt Screenshot</h2>
+                <p>Upload guest GCash payment receipt screenshot for verification and records</p>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('payments.upload_transaction') }}" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>Screenshot File *</label>
+                <div class="file-drop-area highlighted" id="quickDropArea" onclick="document.getElementById('quickScreenshotInput').click()">
+                    <div id="quickImgPreviewWrap" style="display:none; margin-bottom:12px;">
+                        <img id="quickImgPreview" style="max-height:180px; max-width:100%; border-radius:8px; border:1px solid var(--border);" alt="Preview">
+                    </div>
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+                        <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M17 8L12 3M12 3L7 8M12 3V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    <p class="drop-title" id="quickDropTitle">Click or drag &amp; drop GCash screenshot here</p>
+                    <p class="drop-sub">Image preview will appear above</p>
+                </div>
+                <input type="file" id="quickScreenshotInput" name="screenshot" accept="image/*" required style="display:none;" onchange="handleQuickUploadPreview(this)">
+            </div>
+
+            <div class="modal-footer-btns">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('uploadTxnModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Upload Screenshot</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- 3. Upload QR Code Modal -->
+<div id="uploadQRModal" class="modal-backdrop">
+    <div class="modal-window">
+        <button type="button" class="modal-close-btn" onclick="closeModal('uploadQRModal')">&times;</button>
+        <div class="modal-header-modern">
+            <div class="modal-icon-badge">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+                    <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+                    <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+                    <rect x="14" y="14" width="7" height="7" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <div>
+                <h2>Upload GCash QR Code</h2>
+                <p>Add a resort GCash QR code for guest payment collections</p>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('payments.upload_qr') }}" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>QR Code Label / Name *</label>
+                <input type="text" name="qr_name" class="form-control" placeholder="e.g. Main Resort GCash, Reservations Account" required>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>Account Holder Name *</label>
+                    <input type="text" name="account_name" class="form-control" placeholder="Full name registered on GCash" required>
+                </div>
+
+                <div class="form-group">
+                    <label>GCash Mobile Number *</label>
+                    <input type="text" name="account_number" class="form-control" placeholder="09XXXXXXXXX" pattern="[0-9]{11}" maxlength="11" required>
+                    <small>11-digit Philippine mobile number</small>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>QR Code Image *</label>
+                <div class="file-drop-area" id="qrDropArea" onclick="document.getElementById('qrFileInput').click()">
+                    <div id="qrPreviewWrap" style="display:none; margin-bottom:12px;">
+                        <img id="qrImgPreview" style="max-height:160px; max-width:100%; border-radius:8px;" alt="QR Preview">
+                    </div>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <p class="drop-title" id="qrDropTitle">Click to upload GCash QR Code image</p>
+                    <p class="drop-sub">PNG, JPG, or WEBP</p>
+                </div>
+                <input type="file" id="qrFileInput" name="qr_file" accept="image/*" required style="display:none;" onchange="handleQRFilePreview(this)">
+            </div>
+
+            <div class="modal-footer-btns">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('uploadQRModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save QR Code</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- 4. Direct Verify Payment Modal -->
+<div id="directVerifyModal" class="modal-backdrop">
+    <div class="modal-window">
+        <button type="button" class="modal-close-btn" onclick="closeModal('directVerifyModal')">&times;</button>
+        <div class="modal-header-modern">
+            <div class="modal-icon-badge green">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M22 11.08V12A10 10 0 1 1 16.17 3.29" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <polyline points="22 4 12 14.01 9 11.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div>
+                <h2>Verify Payment #<span id="vModalPaymentId"></span></h2>
+                <p>Confirm guest payment verification and update booking status</p>
+            </div>
+        </div>
+
+        <div class="payment-highlight-summary">
+            <div class="summary-item">
+                <span class="summary-label">Guest Name:</span>
+                <span class="summary-val" id="vModalGuest"></span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Reservation ID:</span>
+                <span class="summary-val" id="vModalResId"></span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Amount:</span>
+                <span class="summary-val text-accent text-lg" id="vModalAmount"></span>
+            </div>
+        </div>
+
+        <form id="directVerifyForm" method="POST">
+            <!-- Verification Method Toggle -->
+            <div class="verify-method-selector">
+                <label class="radio-card active">
+                    <input type="radio" name="verify_method" value="direct" checked onchange="toggleVerifyMode('direct')">
+                    <div>
+                        <strong>Direct Reference Verification</strong>
+                        <p class="text-xs text-muted">Verify using GCash Reference Number &amp; details</p>
+                    </div>
+                </label>
+
+                <label class="radio-card">
+                    <input type="radio" name="verify_method" value="link" onchange="toggleVerifyMode('link')">
+                    <div>
+                        <strong>Link Existing Transaction</strong>
+                        <p class="text-xs text-muted">Select from recorded unlinked transactions</p>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Mode A: Direct Details -->
+            <div id="verifyDirectFields">
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label>GCash Reference Number *</label>
+                        <input type="text" name="reference_number" id="vModalRefNo" class="form-control" placeholder="e.g. 100234567890">
+                    </div>
+                    <div class="form-group">
+                        <label>Sender Full Name</label>
+                        <input type="text" name="sender_name" id="vModalSenderName" class="form-control" placeholder="Sender name">
+                    </div>
+                </div>
+
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label>Sender Mobile Number</label>
+                        <input type="text" name="sender_number" id="vModalSenderNum" class="form-control" placeholder="09XXXXXXXXX">
+                    </div>
+                    <div class="form-group">
+                        <label>Verification Notes</label>
+                        <input type="text" name="notes" class="form-control" placeholder="Optional notes...">
+                    </div>
+                </div>
+
+                <div class="checkbox-option">
+                    <label>
+                        <input type="checkbox" name="auto_record_txn" value="1" checked>
+                        <span>Auto-record as a GCash Transaction in History</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Mode B: Link to Transaction Dropdown -->
+            <div id="verifyLinkFields" style="display:none;">
+                <div class="form-group">
+                    <label>Select Unlinked GCash Transaction *</label>
+                    <select name="transaction_id" id="vModalTxnSelect" class="form-control">
+                        <option value="">— Select a Transaction —</option>
+                        {% for t in unlinked_transactions %}
+                        <option value="{{ t.id }}">
+                            {{ t.reference_number }} — ₱{{ "{:,.2f}".format(t.amount) }} ({{ t.sender_name }} &bull; {{ t.transaction_date.strftime('%b %d') }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="checkbox-option" style="margin-top:12px;">
+                <label>
+                    <input type="checkbox" name="confirm_booking" value="1" checked>
+                    <span>Automatically mark Reservation as <strong>CONFIRMED</strong></span>
+                </label>
+            </div>
+
+            <div class="modal-footer-btns">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('directVerifyModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Confirm &amp; Verify Payment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- 5. Reject Modal -->
+<div id="rejectModal" class="modal-backdrop">
+    <div class="modal-window">
+        <button type="button" class="modal-close-btn" onclick="closeModal('rejectModal')">&times;</button>
+        <div class="modal-header-modern">
+            <div class="modal-icon-badge red">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                    <line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div>
+                <h2>Reject Payment #<span id="rModalPaymentId"></span></h2>
+                <p>Provide a clear audit reason for rejecting this verification</p>
+            </div>
+        </div>
+
+        <form id="rejectForm" method="POST">
+            <div class="form-group">
+                <label>Reason for Rejection *</label>
+                <textarea name="notes" class="form-control" rows="4" placeholder="e.g. Invalid reference number, screenshot amount does not match booking total, duplicate receipt..." required></textarea>
+                <small>This reason will be recorded in the audit log and visible in payment notes.</small>
+            </div>
+
+            <div class="modal-footer-btns">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('rejectModal')">Cancel</button>
+                <button type="submit" class="btn btn-danger">Reject Payment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- 6. Attach Proof Modal -->
+<div id="attachProofModal" class="modal-backdrop">
+    <div class="modal-window">
+        <button type="button" class="modal-close-btn" onclick="closeModal('attachProofModal')">&times;</button>
+        <div class="modal-header-modern">
+            <div class="modal-icon-badge">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div>
+                <h2>Attach Payment Proof #<span id="apModalPaymentId"></span></h2>
+                <p>Attach guest screenshot receipt or GCash reference information</p>
+            </div>
+        </div>
+
+        <form id="attachProofForm" method="POST" enctype="multipart/form-data">
+            <div class="form-group">
+                <label>Receipt Screenshot</label>
+                <div class="file-drop-area" onclick="document.getElementById('proofFileInput').click()">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    <p class="drop-title">Click to upload screenshot</p>
+                    <div id="proofFileName" class="file-chosen-text"></div>
+                </div>
+                <input type="file" id="proofFileInput" name="screenshot" accept="image/*" style="display:none;" onchange="handleFileSelect(this, 'proofFileName')">
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>Reference Number</label>
+                    <input type="text" name="reference_number" id="apRefNo" class="form-control" placeholder="Reference #">
+                </div>
+
+                <div class="form-group">
+                    <label>Sender Full Name</label>
+                    <input type="text" name="sender_name" id="apSenderName" class="form-control" placeholder="Name on GCash">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Sender Mobile Number</label>
+                <input type="text" name="sender_number" id="apSenderNum" class="form-control" placeholder="09XXXXXXXXX">
+            </div>
+
+            <div class="modal-footer-btns">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('attachProofModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Proof</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- 7. Edit Transaction Modal -->
+<div id="editTxnModal" class="modal-backdrop">
+    <div class="modal-window">
+        <button type="button" class="modal-close-btn" onclick="closeModal('editTxnModal')">&times;</button>
+        <div class="modal-header-modern">
+            <div class="modal-icon-badge">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 20h9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div>
+                <h2>Edit GCash Transaction</h2>
+                <p>Update transaction record details</p>
+            </div>
+        </div>
+
+        <form id="editTxnForm" method="POST">
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>Reference Number *</label>
+                    <input type="text" name="reference_number" id="etRefNo" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Amount (PHP) *</label>
+                    <input type="number" step="0.01" name="amount" id="etAmount" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>Sender Name</label>
+                    <input type="text" name="sender_name" id="etSenderName" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Sender Mobile</label>
+                    <input type="text" name="sender_number" id="etSenderNum" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Notes</label>
+                <input type="text" name="notes" id="etNotes" class="form-control">
+            </div>
+
+            <div class="modal-footer-btns">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editTxnModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Update Transaction</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- 8. Manual Match Transaction Modal -->
+<div id="matchTxnModal" class="modal-backdrop">
+    <div class="modal-window">
+        <button type="button" class="modal-close-btn" onclick="closeModal('matchTxnModal')">&times;</button>
+        <div class="modal-header-modern">
+            <div class="modal-icon-badge">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" stroke-width="2"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="currentColor" stroke-width="2"/>
+                </svg>
+            </div>
+            <div>
+                <h2>Link Transaction to Payment</h2>
+                <p>Link Ref <strong id="mtRefNo" class="font-mono text-accent"></strong> (₱<span id="mtAmount"></span>) to a booking payment</p>
+            </div>
+        </div>
+
+        <form id="matchTxnForm" method="POST">
+            <input type="hidden" name="transaction_id" id="mtTxnId">
+            <div class="form-group">
+                <label>Select Unverified Payment *</label>
+                <select id="mtPaymentSelect" class="form-control" required onchange="updateMatchFormAction(this.value)">
+                    <option value="">— Select an Unverified Payment —</option>
+                    {% for p in unverified_payments + pending_payments %}
+                    <option value="{{ p.id }}">
+                        Payment #{{ p.id }} &bull; Res #{{ p.reservation_id }} &bull; ₱{{ "{:,.2f}".format(p.amount) }} &bull; {{ p.reservation.guest.full_name if p.reservation and p.reservation.guest else 'Guest' }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="checkbox-option">
+                <label>
+                    <input type="checkbox" name="confirm_booking" value="1" checked>
+                    <span>Automatically mark Reservation as <strong>CONFIRMED</strong></span>
+                </label>
+            </div>
+
+            <div class="modal-footer-btns">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('matchTxnModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Link &amp; Verify</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<!-- 9. Image Lightbox Modal -->
+<div id="imageLightboxModal" class="modal-backdrop lightbox-backdrop" onclick="closeLightbox()">
+    <div class="lightbox-container" onclick="event.stopPropagation()">
+        <button type="button" class="lightbox-close" onclick="closeLightbox()">&times;</button>
+        <div class="lightbox-header">
+            <h3 id="lightboxTitle">Image Preview</h3>
+            <a id="lightboxDownload" href="#" download class="lightbox-download-btn">⬇ Download</a>
+        </div>
+        <div class="lightbox-body">
+            <img id="lightboxImage" src="" alt="Proof Image">
+        </div>
+    </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     STYLES (EMERALD NIGHTFALL UNIFIED)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<style>
+/* Verification Container */
+.verification-container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding-bottom: 60px;
+}
+
+/* Header */
+.verification-header {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 28px 32px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, rgba(9, 36, 26, 0.95), rgba(15, 45, 33, 0.90));
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.header-icon {
+    width: 60px;
+    height: 60px;
+    background: var(--accent-light);
+    border: 1px solid rgba(78, 222, 163, 0.3);
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.header-text h1 {
+    margin: 0 0 6px 0;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+}
+
+.header-text p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* Action Buttons */
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+}
+
+.action-btn.primary {
+    background: var(--accent);
+    color: #002e1b;
+}
+
+.action-btn.primary:hover {
+    background: #5ef5b8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(78, 222, 163, 0.35);
+}
+
+.action-btn.secondary {
+    background: var(--surface-2);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.action-btn.secondary:hover {
+    background: var(--surface-3);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+}
+
+/* Stats Grid */
+.modern-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 1200px) {
+    .modern-stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .modern-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .modern-stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.modern-stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    min-height: 110px;
+}
+
+.modern-stat-card:hover {
+    background: var(--surface-2);
+    border-color: rgba(255, 255, 255, 0.16);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+}
+
+.stat-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.stat-label-modern {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
+.stat-icon-modern {
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.modern-stat-card:hover .stat-icon-modern {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.stat-icon-modern svg {
+    color: inherit;
+}
+
+.stat-value-modern {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text-primary, #ffffff);
+    line-height: 1.1;
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+}
+
+.stat-footer {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Tabs */
+.modern-tabs-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 8px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-sm);
+}
+
+.modern-tabs {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.modern-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.modern-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.modern-tab:hover {
+    background: var(--surface-2);
+    color: var(--text-primary);
+}
+
+.modern-tab.active {
+    background: var(--accent);
+    color: #002e1b;
+    box-shadow: 0 4px 14px rgba(78, 222, 163, 0.25);
+}
+
+.modern-badge {
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.modern-badge.highlight { background: rgba(0, 46, 27, 0.25); color: #002e1b; }
+.modern-badge.alert { background: rgba(239, 68, 68, 0.2); color: #ffb4ab; }
+.modern-badge.count { background: var(--surface-3); color: var(--text-primary); }
+.modern-tab.active .modern-badge { background: rgba(0, 46, 27, 0.35); color: #002e1b; }
+
+/* Tab Panes */
+.tab-pane {
+    display: none;
+    animation: fadeIn 0.25s ease;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Panel Header */
+.panel-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.panel-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.panel-title-wrap h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.count-tag {
+    padding: 3px 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.count-tag.green {
+    background: rgba(78, 222, 163, 0.12);
+    color: var(--accent);
+    border-color: rgba(78, 222, 163, 0.3);
+}
+
+.count-tag.blue {
+    background: rgba(96, 165, 250, 0.12);
+    color: #60a5fa;
+    border-color: rgba(96, 165, 250, 0.3);
+}
+
+.filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.search-input {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    color: var(--text-primary);
+    font-size: 13px;
+    min-width: 240px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.search-input:focus {
+    border-color: var(--accent);
+}
+
+.pill-filters {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px;
+}
+
+.pill-btn {
+    background: transparent;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pill-btn.active {
+    background: var(--surface-3);
+    color: var(--text-primary);
+}
+
+/* Match Cards */
+.matches-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.match-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.2s;
+}
+
+.match-card:hover {
+    border-color: var(--accent);
+}
+
+.match-card-top {
+    padding: 16px 24px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.match-badge-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-indicator.live {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+}
+
+.match-title {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-primary);
+}
+
+.match-sub-info {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.match-body {
+    display: grid;
+    grid-template-columns: 1fr 60px 1.2fr;
+    padding: 24px;
+    gap: 20px;
+    align-items: center;
+}
+
+.match-col {
+    background: var(--surface-2);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    position: relative;
+}
+
+.col-badge {
+    position: absolute;
+    top: -10px;
+    left: 16px;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+}
+
+.payment-guest-name {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-top: 6px;
+}
+
+.payment-amount-display {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--accent);
+    margin: 6px 0 16px;
+}
+
+.match-meta-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.meta-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.meta-label {
+    color: var(--text-muted);
+}
+
+.meta-val {
+    color: var(--text-primary);
+    font-weight: 500;
+    text-align: right;
+}
+
+.highlight-ref {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.match-arrow-col {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.match-arrow-pill {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.txn-match-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-top: 8px;
+}
+
+.txn-match-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.match-tag {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.match-tag.badge-success {
+    background: rgba(78, 222, 163, 0.15);
+    color: var(--accent);
+}
+
+.match-tag.badge-warning {
+    background: rgba(255, 185, 95, 0.15);
+    color: var(--text-gold);
+}
+
+.confidence-tag {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.txn-match-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.btn-preview {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-preview:hover {
+    background: var(--surface);
+    border-color: var(--accent);
+}
+
+.btn-verify-direct {
+    background: var(--accent);
+    color: #002e1b;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.btn-verify-direct:hover {
+    background: #5ef5b8;
+    transform: translateY(-1px);
+}
+
+/* Tables */
+.table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    overflow-x: auto;
+    box-shadow: var(--shadow-sm);
+}
+
+.modern-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    text-align: left;
+}
+
+.modern-table th {
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    font-weight: 600;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
+
+.modern-table td {
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.modern-table tbody tr:hover {
+    background: rgba(78, 222, 163, 0.03);
+}
+
+.modern-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Pills & Badges */
+.id-pill {
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.res-link {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.res-link:hover {
+    text-decoration: underline;
+}
+
+.guest-name-text {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: 2px;
+}
+
+.guest-sub-text, .sender-num-text {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.amount-pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 700;
+    background: rgba(78, 222, 163, 0.1);
+    color: var(--accent);
+    font-size: 13px;
+}
+
+.amount-pill.verified {
+    background: rgba(78, 222, 163, 0.15);
+    color: #4edea3;
+}
+
+.ref-copy-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.copy-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    padding: 2px 4px;
+}
+
+.copy-btn:hover {
+    opacity: 1;
+}
+
+.proof-badge-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    color: var(--text-primary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.proof-badge-btn:hover {
+    background: var(--surface-3);
+    border-color: var(--accent);
+}
+
+.attach-proof-btn {
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.attach-proof-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.badge-status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: capitalize;
+}
+
+.badge-status.status-unverified {
+    background: rgba(255, 180, 171, 0.12);
+    color: var(--cancelled-text);
+}
+
+.badge-status.status-pending {
+    background: rgba(255, 185, 95, 0.12);
+    color: var(--text-gold);
+}
+
+.badge-status.status-linked {
+    background: rgba(78, 222, 163, 0.12);
+    color: var(--accent);
+}
+
+.badge-status.status-unlinked {
+    background: rgba(255, 185, 95, 0.12);
+    color: var(--text-gold);
+}
+
+.badge-status.status-active {
+    background: rgba(78, 222, 163, 0.12);
+    color: var(--accent);
+}
+
+.badge-status.status-inactive {
+    background: var(--surface-3);
+    color: var(--text-muted);
+}
+
+.table-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-verify-action {
+    background: var(--accent);
+    color: #002e1b;
+    border: none;
+    font-weight: 700;
+}
+
+.btn-verify-action:hover {
+    background: #5ef5b8;
+}
+
+.btn-reject-action {
+    background: rgba(255, 180, 171, 0.12);
+    color: var(--cancelled-text);
+    border: 1px solid rgba(255, 180, 171, 0.2);
+}
+
+.btn-reject-action:hover {
+    background: rgba(255, 180, 171, 0.25);
+}
+
+.btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.btn-ghost:hover {
+    background: var(--surface-2);
+    color: var(--text-primary);
+}
+
+.btn-danger-ghost {
+    background: transparent;
+    border: 1px solid rgba(255, 180, 171, 0.2);
+    color: var(--cancelled-text);
+}
+
+.btn-danger-ghost:hover {
+    background: rgba(255, 180, 171, 0.15);
+}
+
+/* QR Grid */
+.qr-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.qr-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: all 0.2s;
+}
+
+.qr-card.inactive {
+    opacity: 0.65;
+}
+
+.qr-card:hover {
+    border-color: var(--accent);
+}
+
+.qr-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.qr-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.qr-display {
+    width: 100%;
+    height: 220px;
+    background: #ffffff;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.qr-display img {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+}
+
+.qr-hover-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 20, 14, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.qr-display:hover .qr-hover-overlay {
+    opacity: 1;
+}
+
+.qr-info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.qr-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.qr-label {
+    color: var(--text-muted);
+}
+
+.qr-val-copy {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.qr-card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+}
+
+/* Modals */
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 15, 10, 0.75);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.modal-backdrop.show {
+    display: flex;
+    animation: modalBackdropFade 0.2s ease;
+}
+
+@keyframes modalBackdropFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-window {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 36px;
+    width: 100%;
+    max-width: 620px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: var(--shadow-lg);
+    animation: modalWindowSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalWindowSlide {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.modal-close-btn:hover {
+    background: var(--accent);
+    color: #002e1b;
+}
+
+.modal-header-modern {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.modal-icon-badge {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--accent-light);
+    border: 1px solid rgba(78, 222, 163, 0.3);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.modal-icon-badge.red {
+    background: rgba(255, 180, 171, 0.12);
+    border-color: rgba(255, 180, 171, 0.3);
+    color: var(--cancelled-text);
+}
+
+.modal-icon-badge.green {
+    background: rgba(78, 222, 163, 0.15);
+    color: var(--accent);
+}
+
+.modal-header-modern h2 {
+    margin: 0 0 4px 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.modal-header-modern p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* Form Styles */
+.form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.form-group small {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: all 0.2s;
+    outline: none;
+}
+
+.form-control:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(78, 222, 163, 0.15);
+}
+
+.input-prefix-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-prefix {
+    position: absolute;
+    left: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.form-control.with-prefix {
+    padding-left: 28px;
+}
+
+.file-drop-area {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-muted);
+}
+
+.file-drop-area:hover, .file-drop-area.highlighted {
+    border-color: var(--accent);
+    background: rgba(78, 222, 163, 0.04);
+    color: var(--text-primary);
+}
+
+.drop-title {
+    margin: 8px 0 2px;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.drop-sub {
+    margin: 0;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.file-chosen-text {
+    margin-top: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.modal-footer-btns {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+/* Payment Highlight Summary */
+.payment-highlight-summary {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.summary-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+}
+
+.summary-val {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.verify-method-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.radio-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    transition: all 0.2s;
+}
+
+.radio-card input {
+    margin-top: 3px;
+}
+
+.radio-card.active, .radio-card:hover {
+    border-color: var(--accent);
+    background: rgba(78, 222, 163, 0.05);
+}
+
+.checkbox-option {
+    margin-bottom: 12px;
+}
+
+.checkbox-option label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+/* Lightbox */
+.lightbox-backdrop {
+    background: rgba(0, 10, 6, 0.88);
+}
+
+.lightbox-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    max-width: 800px;
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow-lg);
+}
+
+.lightbox-header {
+    padding: 16px 24px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.lightbox-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.lightbox-download-btn {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 14px;
+    right: 18px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 24px;
+    cursor: pointer;
+}
+
+.lightbox-body {
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000b07;
+}
+
+.lightbox-body img {
+    max-width: 100%;
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .match-body {
+        grid-template-columns: 1fr;
+    }
+    .match-arrow-col {
+        transform: rotate(90deg);
+        margin: -10px 0;
+    }
+    .verification-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .header-actions {
+        width: 100%;
+    }
+    .form-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+/* Payment Receipts Styles */
+.booking-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.booking-link {
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.booking-link:hover {
+    text-decoration: underline;
+}
+
+.booking-amount {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.payment-method-badge {
+    background: var(--surface-2);
+    color: var(--text-primary);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.ocr-data, .manual-data {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 12px;
+}
+
+.ocr-item, .manual-item {
+    display: flex;
+    gap: 6px;
+}
+
+.ocr-label, .manual-label {
+    font-weight: 600;
+    color: var(--text-muted);
+    min-width: 40px;
+}
+
+.ocr-confidence {
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+.upload-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 12px;
+}
+
+.uploader {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.upload-date, .upload-source {
+    color: var(--text-muted);
+}
+
+.manual-data .manual-item {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.table-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 12px;
+    border-radius: 4px;
+}
+
+</style>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT LOGIC
+     ═══════════════════════════════════════════════════════════════════════════ -->
+<script>
+// 1. Tab Switching with URL Hash Preservation
+function switchTab(tabName) {
+    // Hide all tab panes
+    document.querySelectorAll('.tab-pane').forEach(el => {
+        el.classList.remove('active');
+    });
+
+    // Remove active state from all tabs
+    document.querySelectorAll('.modern-tab').forEach(el => {
+        el.classList.remove('active');
+    });
+
+    // Show target tab pane
+    const targetPane = document.getElementById('tab-' + tabName);
+    if (targetPane) {
+        targetPane.classList.add('active');
+    }
+
+    // Set active tab button
+    const targetBtn = document.querySelector(`.modern-tab[data-tab="${tabName}"]`);
+    if (targetBtn) {
+        targetBtn.classList.add('active');
+    }
+
+    // Update URL Hash while preserving ?session= and query parameters
+    const currentSearch = window.location.search || '';
+    if (history.replaceState) {
+        history.replaceState(null, null, window.location.pathname + currentSearch + '#' + tabName);
+    } else {
+        location.hash = '#' + tabName;
+    }
+
+    // Save active tab in cookie so that page refreshes or URL adjustments stay on current tab
+    document.cookie = "active_verification_tab=" + encodeURIComponent(tabName) + "; path=/; max-age=86400; SameSite=Lax";
+}
+
+// Initialize Active Tab from URL Hash or Cookie
+window.addEventListener('DOMContentLoaded', () => {
+    const hash = window.location.hash.replace('#', '');
+    const validTabs = ['receipts', 'matches', 'unverified', 'verified', 'transactions', 'qrcodes'];
+    const tabCookie = (document.cookie.match(/active_verification_tab=([^;]+)/) || [])[1];
+    const initialTab = (hash && validTabs.includes(hash)) ? hash : (tabCookie && validTabs.includes(decodeURIComponent(tabCookie)) ? decodeURIComponent(tabCookie) : '');
+    if (initialTab && validTabs.includes(initialTab)) {
+        switchTab(initialTab);
+    }
+
+    // Prefill datetime-local for add transaction
+    const dateInput = document.getElementById('addTxnDate');
+    if (dateInput) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        dateInput.value = `${year}-${month}-${day}T${hours}:${mins}`;
+    }
+});
+
+// 2. Modal Open / Close Helpers
+function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('show');
+}
+
+function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('show');
+}
+
+function showUploadTransaction() {
+    openModal('uploadTxnModal');
+}
+
+function showUploadQR() {
+    openModal('uploadQRModal');
+}
+
+// 3. Direct Verify Modal
+function showDirectVerifyModal(paymentId, amount, guestName, resId, refNo, senderName, senderNum) {
+    document.getElementById('vModalPaymentId').textContent = paymentId;
+    document.getElementById('vModalAmount').textContent = '₱' + Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('vModalGuest').textContent = guestName || 'Guest';
+    document.getElementById('vModalResId').textContent = '#' + resId;
+
+    document.getElementById('vModalRefNo').value = refNo || '';
+    document.getElementById('vModalSenderName').value = senderName || guestName || '';
+    document.getElementById('vModalSenderNum').value = senderNum || '';
+
+    const form = document.getElementById('directVerifyForm');
+    form.action = `/payments/verification/${paymentId}/verify`;
+
+    openModal('directVerifyModal');
+}
+
+function toggleVerifyMode(mode) {
+    const directFields = document.getElementById('verifyDirectFields');
+    const linkFields = document.getElementById('verifyLinkFields');
+    const cards = document.querySelectorAll('.radio-card');
+
+    if (mode === 'direct') {
+        directFields.style.display = 'block';
+        linkFields.style.display = 'none';
+        cards[0].classList.add('active');
+        cards[1].classList.remove('active');
+    } else {
+        directFields.style.display = 'none';
+        linkFields.style.display = 'block';
+        cards[0].classList.remove('active');
+        cards[1].classList.add('active');
+    }
+}
+
+// 4. Reject Modal
+function showRejectModal(paymentId, guestName, amount) {
+    document.getElementById('rModalPaymentId').textContent = paymentId;
+    const form = document.getElementById('rejectForm');
+    form.action = `/payments/verification/${paymentId}/reject`;
+    openModal('rejectModal');
+}
+
+// 5. Attach Proof Modal
+function showAttachProofModal(paymentId, refNo, senderName, senderNum) {
+    document.getElementById('apModalPaymentId').textContent = paymentId;
+    document.getElementById('apRefNo').value = refNo || '';
+    document.getElementById('apSenderName').value = senderName || '';
+    document.getElementById('apSenderNum').value = senderNum || '';
+
+    const form = document.getElementById('attachProofForm');
+    form.action = `/payments/verification/${paymentId}/attach-proof`;
+    openModal('attachProofModal');
+}
+
+// 6. Edit Transaction Modal
+function showEditTxnModal(txnId, refNo, senderName, senderNum, amount, notes) {
+    document.getElementById('etRefNo').value = refNo;
+    document.getElementById('etAmount').value = amount;
+    document.getElementById('etSenderName').value = senderName;
+    document.getElementById('etSenderNum').value = senderNum;
+    document.getElementById('etNotes').value = notes;
+
+    const form = document.getElementById('editTxnForm');
+    form.action = `/payments/verification/transaction/${txnId}/edit`;
+    openModal('editTxnModal');
+}
+
+// 7. Match Transaction Modal
+function showMatchTxnModal(txnId, refNo, amount) {
+    document.getElementById('mtTxnId').value = txnId;
+    document.getElementById('mtRefNo').textContent = refNo;
+    document.getElementById('mtAmount').textContent = Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2 });
+    document.getElementById('mtPaymentSelect').value = '';
+
+    openModal('matchTxnModal');
+}
+
+function updateMatchFormAction(paymentId) {
+    if (paymentId) {
+        document.getElementById('matchTxnForm').action = `/payments/verification/${paymentId}/verify`;
+    }
+}
+
+// 8. Lightbox Handler
+function openLightbox(url, title) {
+    document.getElementById('lightboxImage').src = url;
+    document.getElementById('lightboxTitle').textContent = title || 'Image Preview';
+    document.getElementById('lightboxDownload').href = url;
+    openModal('imageLightboxModal');
+}
+
+function closeLightbox() {
+    closeModal('imageLightboxModal');
+}
+
+// 9. File Input Previews
+function handleFileSelect(input, displayId) {
+    const display = document.getElementById(displayId);
+    if (input.files && input.files[0]) {
+        display.textContent = '✓ Selected: ' + input.files[0].name;
+    } else {
+        display.textContent = '';
+    }
+}
+
+
+function handleQuickUploadPreview(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('quickImgPreview').src = e.target.result;
+            document.getElementById('quickImgPreviewWrap').style.display = 'block';
+            document.getElementById('quickDropTitle').textContent = '✓ ' + file.name;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function handleQRFilePreview(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('qrImgPreview').src = e.target.result;
+            document.getElementById('qrPreviewWrap').style.display = 'block';
+            document.getElementById('qrDropTitle').textContent = '✓ ' + file.name;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+// 10. Copy Text Helper
+function copyText(text) {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Copied to clipboard: ' + text);
+    }).catch(() => {
+        const input = document.createElement('input');
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        alert('Copied to clipboard: ' + text);
+    });
+}
+
+// 11. Table Filter Helpers
+function filterUnverifiedTable() {
+    const searchEl = document.getElementById('unverifiedSearch');
+    const query = searchEl ? searchEl.value.toLowerCase() : '';
+    const rows = document.querySelectorAll('#unverifiedTable tbody tr');
+    const activePillBtn = document.querySelector('.pill-btn.active');
+    const activeSubStatus = activePillBtn ? activePillBtn.textContent.toLowerCase() : 'all';
+
+    rows.forEach(row => {
+        const text = (row.dataset.search || '').toLowerCase();
+        const status = (row.dataset.status || '').toLowerCase();
+
+        let matchesStatus = true;
+        if (activeSubStatus.includes('unverified only')) {
+            matchesStatus = status === 'unverified';
+        } else if (activeSubStatus.includes('pending only')) {
+            matchesStatus = status === 'pending';
+        }
+
+        const matchesQuery = !query || text.includes(query);
+        row.style.display = (matchesStatus && matchesQuery) ? '' : 'none';
+    });
+}
+
+function setFilterSubStatus(status, btn) {
+    document.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filterUnverifiedTable();
+}
+
+function filterTable(tableId, query) {
+    const q = query.toLowerCase();
+    const rows = document.querySelectorAll(`#${tableId} tbody tr`);
+    rows.forEach(row => {
+        const text = (row.dataset.search || row.textContent).toLowerCase();
+        row.style.display = (!q || text.includes(q)) ? '' : 'none';
+    });
+}
+
+// 12. Modal Keyboard & Click Outside Listeners
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-backdrop.show').forEach(el => {
+            el.classList.remove('show');
+        });
+    }
+});
+
+document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+    backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) {
+            backdrop.classList.remove('show');
+        }
+    });
+});
+
+// 13. Payment Receipts Handlers
+function filterReceiptsTable() {
+    const searchEl = document.getElementById('receiptsSearch');
+    const query = searchEl ? searchEl.value.toLowerCase() : '';
+    const rows = document.querySelectorAll('#receiptsTable tbody tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = (!query || text.includes(query)) ? '' : 'none';
+    });
+}
+
+function showUploadReceiptModal() {
+    openModal('uploadReceiptModal');
+}
+
+function showVerifyReceiptModal(receiptId, amount, ref, payer) {
+    const shortId = receiptId ? receiptId.substring(0, 8).toUpperCase() : '';
+    const shortEl = document.getElementById('vrModalShortId');
+    if (shortEl) shortEl.textContent = shortId;
+    
+    const amtInput = document.getElementById('vrModalAmount');
+    if (amtInput) amtInput.value = amount || '';
+    
+    const refInput = document.getElementById('vrModalRef');
+    if (refInput) refInput.value = ref || '';
+    
+    const payerInput = document.getElementById('vrModalPayer');
+    if (payerInput) payerInput.value = payer || '';
+    
+    const form = document.getElementById('verifyReceiptForm');
+    if (form) form.action = `/payments/verification/receipt/${receiptId}/verify`;
+    
+    openModal('verifyReceiptModal');
+}
+
+function showRejectReceiptModal(receiptId) {
+    const shortId = receiptId ? receiptId.substring(0, 8).toUpperCase() : '';
+    const shortEl = document.getElementById('rrModalShortId');
+    if (shortEl) shortEl.textContent = shortId;
+    
+    const form = document.getElementById('rejectReceiptForm');
+    if (form) form.action = `/payments/verification/receipt/${receiptId}/reject`;
+    
+    openModal('rejectReceiptModal');
+}
+
+function handleReceiptFilePreview(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const previewWrap = document.getElementById('receiptPreviewWrap');
+            const previewImg = document.getElementById('receiptImgPreview');
+            const dropTitle = document.getElementById('receiptDropTitle');
+            if (previewImg) previewImg.src = e.target.result;
+            if (previewWrap) previewWrap.style.display = 'block';
+            if (dropTitle) dropTitle.textContent = '✓ ' + file.name;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function syncBookingIdBeforeSubmit() {
+    const manualInput = document.getElementById('manualBookingIdInput');
+    const select = document.getElementById('urBookingSelect');
+    if (manualInput && manualInput.value.trim()) {
+        const val = manualInput.value.trim();
+        if (select) {
+            let option = Array.from(select.options).find(o => o.value === val);
+            if (!option) {
+                option = new Option(val, val, true, true);
+                select.add(option);
+            }
+            select.value = val;
+        }
+    }
+}
+</script>
+{% endblock %}

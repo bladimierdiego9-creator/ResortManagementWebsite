@@ -1,0 +1,1016 @@
+{% extends "base.html" %}
+{% block title %}{% if tab == 'rfid' %}RFID Management{% elif tab == 'payroll' %}Payroll{% else %}Attendance Logs{% endif %} — A&amp;D Thysia Admin{% endblock %}
+{% block breadcrumb %}{% if tab == 'rfid' %}RFID Management{% elif tab == 'payroll' %}Payroll{% else %}Attendance &amp; Payroll{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+.table-sort-link {
+    color: inherit;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.15s ease;
+}
+.table-sort-link:hover {
+    color: var(--accent, #d4af37);
+}
+.rfid-chip-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+.rfid-register-modal { max-width: 720px; padding: 0; overflow-x: hidden; }
+#registerRfidModal [hidden] { display:none !important; }
+.rfid-register-header { display:flex; align-items:center; gap:12px; padding:22px 28px 18px; border-bottom:1px solid var(--border-light); }
+.rfid-register-header .modal-title { margin:0; font-size:20px; flex:1; }
+.rfid-register-header .modal-close { position:static; flex:0 0 32px; }
+.rfid-register-body { padding:22px 28px 28px; }
+.rfid-wizard-stepper { display:flex; align-items:center; gap:10px; margin:0 0 26px; color:var(--text-secondary); font-size:14px; font-weight:700; }
+.rfid-wizard-stage { display:flex; align-items:center; gap:9px; white-space:nowrap; }
+.rfid-wizard-stage > span { width:32px; height:32px; display:grid; place-items:center; border-radius:50%; background:var(--surface-2); color:var(--text-secondary); }
+.rfid-wizard-stage.active { color:#2E4A3D; }
+.rfid-wizard-stage.active > span { color:#fff; background:linear-gradient(135deg,#2E4A3D,#4a7060); }
+.rfid-wizard-stage.complete { color:var(--confirmed-text); }
+.rfid-wizard-stage.complete > span { color:var(--confirmed-text); background:var(--confirmed-bg); }
+.rfid-wizard-line { height:2px; flex:1; min-width:12px; background:#dfe3e8; }
+.rfid-wizard-line.complete { background:#75b58d; }
+.rfid-wizard-panel { display:none; }
+.rfid-wizard-panel.active { display:block; }
+.rfid-scan-zone { min-height:230px; border:2px dashed #c9d8cf; border-radius:18px; background:#f0f5f2; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:26px; color:#2E4A3D; }
+.rfid-scan-zone.error { border-color:var(--cancelled-text); background:#fff4f3; color:var(--cancelled-text); }
+.rfid-scan-zone.success { border-color:#8ebaa0; background:var(--confirmed-bg); color:var(--confirmed-text); }
+.rfid-scan-icon { width:58px; height:58px; display:grid; place-items:center; border-radius:50%; margin-bottom:15px; background:rgba(46,74,61,.1); }
+.rfid-scan-zone.error .rfid-scan-icon { background:rgba(193,89,74,.1); }
+.rfid-scan-zone.success .rfid-scan-icon { background:rgba(31,110,69,.1); }
+.rfid-scan-heading { font-size:18px; font-weight:750; margin:0 0 7px; }
+.rfid-scan-help { font-size:14px; color:var(--text-secondary); margin:0; }
+.rfid-scan-capture { position:fixed; left:-10000px; top:0; width:1px; height:1px; opacity:0; }
+.rfid-scan-actions { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px; }
+.rfid-scan-action { min-height:62px; border:0; border-radius:14px; background:linear-gradient(135deg,#2E4A3D,#4a7060); color:#fff; font-size:18px; font-weight:800; box-shadow:0 7px 17px rgba(46,74,61,.22); cursor:pointer; }
+.rfid-scan-action.scanning { background:linear-gradient(135deg,var(--accent),var(--accent-dark)); box-shadow:0 7px 17px rgba(201,119,61,.22); }
+.rfid-scan-action.secondary { background:var(--accent-light); color:#2E4A3D; border:1px solid var(--border); box-shadow:none; }
+.rfid-scan-action:disabled { opacity:.58; cursor:not-allowed; }
+.rfid-card-details { display:none; margin-top:14px; padding:14px 16px; border:1px solid #edc9c4; border-radius:12px; background:#fff8f7; color:var(--cancelled-text); text-align:center; }
+.rfid-card-details.visible { display:block; }
+.rfid-card-uid { margin-top:4px; padding:10px; border-radius:9px; background:var(--cancelled-bg); font:800 24px/1.2 ui-monospace,monospace; letter-spacing:.18em; overflow-wrap:anywhere; }
+.rfid-reactivate { margin-top:10px; border:0; border-radius:9px; background:linear-gradient(135deg,#2E4A3D,#4a7060); color:#fff; padding:9px 17px; font-weight:750; cursor:pointer; }
+.rfid-assign-summary { padding:13px 15px; border-radius:11px; background:var(--accent-light); color:var(--text-primary); margin-bottom:18px; }
+.rfid-assign-search { position:relative; margin-bottom:9px; }
+.rfid-assign-search input { width:100%; border:1px solid var(--border); border-radius:12px; padding:12px 14px 12px 40px; color:var(--text-primary); background:var(--surface); }
+.rfid-assign-search span { position:absolute; left:14px; top:11px; color:var(--text-secondary); }
+.rfid-staff-list { max-height:210px; overflow:auto; border:1px solid var(--border-light); border-radius:12px; }
+.rfid-staff-option { display:block; width:100%; padding:11px 14px; text-align:left; border:0; border-bottom:1px solid var(--border-light); background:var(--surface); color:var(--text-primary); cursor:pointer; }
+.rfid-staff-option:last-child { border-bottom:0; }
+.rfid-staff-option:hover,.rfid-staff-option.selected { background:var(--accent-light); }
+.rfid-staff-option strong,.rfid-staff-option small { display:block; }
+.rfid-staff-option small { margin-top:3px; color:var(--text-secondary); }
+.rfid-notes-field { margin-top:15px; }
+.rfid-notes-field input { width:100%; }
+.rfid-confirm-card { padding:20px 22px; border:1px solid var(--border); border-radius:15px; background:var(--surface-2); }
+.rfid-confirm-card h3 { margin:0 0 12px; color:var(--text-primary); font-size:17px; }
+.rfid-confirm-row { display:flex; justify-content:space-between; gap:16px; padding:10px 0; border-top:1px solid var(--border); color:var(--text-secondary); }
+.rfid-confirm-row strong { color:var(--text-primary); text-align:right; overflow-wrap:anywhere; }
+.rfid-wizard-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:24px; }
+.rfid-wizard-footer .right { display:flex; gap:10px; margin-left:auto; }
+.rfid-wizard-footer button { min-height:42px; }
+@media(max-width:600px) {
+    .rfid-register-modal { max-height:94vh; }
+    .rfid-register-header { padding:17px 18px 14px; }
+    .rfid-register-body { padding:18px; }
+    .rfid-wizard-stepper { gap:5px; font-size:11px; }
+    .rfid-wizard-stage { gap:5px; }
+    .rfid-wizard-stage > span { width:27px; height:27px; }
+    .rfid-scan-zone { min-height:195px; padding:18px; }
+    .rfid-scan-actions { grid-template-columns:1fr; }
+}
+</style>
+
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">{% if tab == 'rfid' %}RFID Card Management{% elif tab == 'payroll' %}Payroll Management{% else %}Staff Attendance &amp; Payroll{% endif %}</h1>
+        <p class="page-subtitle">{% if tab == 'rfid' %}Register, assign, and manage staff RFID tags for attendance tracking{% elif tab == 'payroll' %}Calculate hours and generate staff payroll{% else %}Real-time staff attendance tracking and RFID tap records{% endif %}</p>
+    </div>
+</div>
+
+<!-- STATS CARDS -->
+{% if tab == 'rfid' %}
+<div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-bottom:20px;">
+    <div class="stat-card">
+        <span class="stat-label">Total RFID Cards</span>
+        <span class="stat-value">{{ total_rfid }}</span>
+        <span class="stat-meta">Registered tags</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Active Cards</span>
+        <span class="stat-value" style="color:var(--success, #22c55e);">{{ active_rfid }}</span>
+        <span class="stat-meta">Ready for scanning</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Assigned to Staff</span>
+        <span class="stat-value" style="color:var(--accent, #d4af37);">{{ assigned_rfid }}</span>
+        <span class="stat-meta">of {{ staff_list | length }} active staff</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Unassigned / Spare</span>
+        <span class="stat-value" style="color:var(--warning, #eab308);">{{ unassigned_rfid }}</span>
+        <span class="stat-meta">Available spare cards</span>
+    </div>
+</div>
+{% else %}
+<div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-bottom:20px;">
+    <div class="stat-card">
+        <span class="stat-label">Clocked In Today</span>
+        <span class="stat-value">{{ today_total }}</span>
+        <span class="stat-meta">of {{ staff_list | length }} active staff</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">On Time</span>
+        <span class="stat-value" style="color:var(--success);">{{ today_on_time }}</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Late</span>
+        <span class="stat-value" style="color:var(--warning);">{{ today_late }}</span>
+    </div>
+</div>
+{% endif %}
+
+<!-- TABS -->
+<div class="tabs">
+    <a href="{{ url_for('attendance_payroll.index', tab='attendance') }}"
+       class="tab {% if tab == 'attendance' %}active{% endif %}">Attendance Logs</a>
+    <a href="{{ url_for('attendance_payroll.index', tab='rfid') }}"
+       class="tab {% if tab == 'rfid' %}active{% endif %}">RFID Management</a>
+    <a href="{{ url_for('attendance_payroll.index', tab='payroll') }}"
+       class="tab {% if tab == 'payroll' %}active{% endif %}">Payroll</a>
+</div>
+
+<!-- ATTENDANCE TAB -->
+{% if tab == 'attendance' %}
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Staff</th>
+                    <th>Role</th>
+                    <th>Time In</th>
+                    <th>Time Out</th>
+                    <th>Duration</th>
+                    <th>Status</th>
+                    <th>RFID</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in attendance_logs.items %}
+                <tr>
+                    <td class="font-semibold">{{ log.staff.full_name }}</td>
+                    <td>{{ log.staff.role.replace('_', ' ').title() }}</td>
+                    <td>{{ log.time_in.strftime('%b %d, %H:%M') }}</td>
+                    <td>
+                        {% if log.time_out %}
+                        {{ log.time_out.strftime('%H:%M') }}
+                        {% else %}
+                        <span class="badge badge-confirmed" style="font-size:11px;">Active</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted">
+                        {% if log.time_out %}
+                        {% set mins = ((log.time_out - log.time_in).total_seconds() / 60) | int %}
+                        {{ (mins // 60) }}h {{ (mins % 60) }}m
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        <span class="att-dot {{ log.status }}"></span>
+                        <span class="badge badge-{{ log.status }}">{{ log.status.replace('_', ' ').title() }}</span>
+                    </td>
+                    <td class="text-muted" style="font-size:12px;">{{ log.rfid_tap_in or '—' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted" style="padding:36px;">No attendance logs.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if attendance_logs.pages > 1 %}
+    <div class="card-footer flex items-center justify-between">
+        <span class="text-muted" style="font-size:13px;">Page {{ attendance_logs.page }} of {{ attendance_logs.pages }}</span>
+        <nav class="pagination" aria-label="Pagination">
+            {% if attendance_logs.has_prev %}
+            <a href="{{ url_for('attendance_payroll.index', tab='attendance', page=attendance_logs.prev_num) }}">&laquo;</a>
+            {% endif %}
+            {% for p in attendance_logs.iter_pages() %}
+                {% if p %}<a href="{{ url_for('attendance_payroll.index', tab='attendance', page=p) }}" class="{% if p == attendance_logs.page %}current{% endif %}">{{ p }}</a>{% else %}<span>…</span>{% endif %}
+            {% endfor %}
+            {% if attendance_logs.has_next %}
+            <a href="{{ url_for('attendance_payroll.index', tab='attendance', page=attendance_logs.next_num) }}">&raquo;</a>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- RFID MANAGEMENT TAB -->
+{% elif tab == 'rfid' %}
+<div class="page-actions mb-16" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+    <!-- Search and Filter Form -->
+    <form method="GET" action="{{ url_for('attendance_payroll.index') }}" class="flex items-center gap-8" style="flex-wrap:wrap;flex:1;">
+        <input type="hidden" name="tab" value="rfid">
+        <div style="position:relative;min-width:220px;flex:1;max-width:340px;">
+            <input type="text" name="q" id="rfidSearchInput" value="{{ q }}" placeholder="Search Tag UID, staff, role, shift..." class="form-input" style="padding-left:32px;">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;">
+                <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+        </div>
+        <select name="status" class="form-select" style="width:auto;min-width:130px;" onchange="this.form.submit()">
+            <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Statuses</option>
+            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+            <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
+            <option value="blocked" {% if status_filter == 'blocked' %}selected{% endif %}>Blocked</option>
+            <option value="assigned" {% if status_filter == 'assigned' %}selected{% endif %}>Assigned to Staff</option>
+            <option value="unassigned" {% if status_filter == 'unassigned' %}selected{% endif %}>Unassigned / Spare</option>
+        </select>
+        <select name="sort" class="form-select" style="width:auto;min-width:140px;" onchange="this.form.submit()">
+            <option value="uid" {% if sort_by == 'uid' %}selected{% endif %}>Sort: Tag UID</option>
+            <option value="owner" {% if sort_by == 'owner' %}selected{% endif %}>Sort: Staff Owner</option>
+            <option value="role" {% if sort_by == 'role' %}selected{% endif %}>Sort: Role</option>
+            <option value="shift" {% if sort_by == 'shift' %}selected{% endif %}>Sort: Shift</option>
+            <option value="status" {% if sort_by == 'status' %}selected{% endif %}>Sort: Status</option>
+            <option value="last_used" {% if sort_by == 'last_used' %}selected{% endif %}>Sort: Last Tapped</option>
+            <option value="date" {% if sort_by == 'date' %}selected{% endif %}>Sort: Date Registered</option>
+        </select>
+        <select name="order" class="form-select" style="width:auto;min-width:110px;" onchange="this.form.submit()">
+            <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Ascending</option>
+            <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Descending</option>
+        </select>
+        <button type="submit" class="btn btn-secondary">Filter</button>
+        {% if q or status_filter != 'all' or sort_by != 'uid' or sort_order != 'asc' %}
+        <a href="{{ url_for('attendance_payroll.index', tab='rfid') }}" class="btn btn-secondary" title="Reset Filters">Clear</a>
+        {% endif %}
+    </form>
+
+    <!-- Action buttons -->
+    <div class="flex gap-8">
+        <button type="button" onclick="openModal('tapRfidModal')" class="btn btn-secondary">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Tap / Scan Card
+        </button>
+        <button type="button" onclick="showRfidRegisterModal()" class="btn btn-primary">
+            <svg width="15" height="15" fill="none" viewBox="0 0 24 24">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+            Register RFID Card
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-wrap">
+        <table id="rfidTable">
+            <thead>
+                <tr>
+                    <th>
+                        <a href="{{ url_for('attendance_payroll.index', tab='rfid', q=q, status=status_filter, sort='uid', order='desc' if sort_by == 'uid' and sort_order == 'asc' else 'asc') }}" class="table-sort-link">
+                            Card Tag UID
+                            {% if sort_by == 'uid' %}{{ '▲' if sort_order == 'asc' else '▼' }}{% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="{{ url_for('attendance_payroll.index', tab='rfid', q=q, status=status_filter, sort='owner', order='desc' if sort_by == 'owner' and sort_order == 'asc' else 'asc') }}" class="table-sort-link">
+                            Owner / Staff
+                            {% if sort_by == 'owner' %}{{ '▲' if sort_order == 'asc' else '▼' }}{% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="{{ url_for('attendance_payroll.index', tab='rfid', q=q, status=status_filter, sort='role', order='desc' if sort_by == 'role' and sort_order == 'asc' else 'asc') }}" class="table-sort-link">
+                            Role
+                            {% if sort_by == 'role' %}{{ '▲' if sort_order == 'asc' else '▼' }}{% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="{{ url_for('attendance_payroll.index', tab='rfid', q=q, status=status_filter, sort='shift', order='desc' if sort_by == 'shift' and sort_order == 'asc' else 'asc') }}" class="table-sort-link">
+                            Shift
+                            {% if sort_by == 'shift' %}{{ '▲' if sort_order == 'asc' else '▼' }}{% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="{{ url_for('attendance_payroll.index', tab='rfid', q=q, status=status_filter, sort='status', order='desc' if sort_by == 'status' and sort_order == 'asc' else 'asc') }}" class="table-sort-link">
+                            Status
+                            {% if sort_by == 'status' %}{{ '▲' if sort_order == 'asc' else '▼' }}{% endif %}
+                        </a>
+                    </th>
+                    <th>Notes</th>
+                    <th>
+                        <a href="{{ url_for('attendance_payroll.index', tab='rfid', q=q, status=status_filter, sort='date', order='desc' if sort_by == 'date' and sort_order == 'asc' else 'asc') }}" class="table-sort-link">
+                            Registered
+                            {% if sort_by == 'date' %}{{ '▲' if sort_order == 'asc' else '▼' }}{% endif %}
+                        </a>
+                    </th>
+                    <th>
+                        <a href="{{ url_for('attendance_payroll.index', tab='rfid', q=q, status=status_filter, sort='last_used', order='desc' if sort_by == 'last_used' and sort_order == 'asc' else 'asc') }}" class="table-sort-link">
+                            Last Tapped
+                            {% if sort_by == 'last_used' %}{{ '▲' if sort_order == 'asc' else '▼' }}{% endif %}
+                        </a>
+                    </th>
+                    <th style="width:140px;text-align:right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for card in rfid_cards.items %}
+                <tr class="rfid-row">
+                    <td>
+                        <div class="rfid-chip-badge">
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" style="color:var(--accent,#d4af37);">
+                                <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
+                                <path d="M7 10h4M7 14h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <circle cx="16.5" cy="12" r="1.5" fill="currentColor"/>
+                            </svg>
+                            <span>{{ card.card_uid }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if card.staff %}
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div class="guest-chip" style="font-size:11px;min-width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(212,175,55,0.15);color:var(--accent,#d4af37);font-weight:bold;">
+                                {{ card.staff.full_name[:2].upper() }}
+                            </div>
+                            <div>
+                                <span class="font-semibold">{{ card.staff.full_name }}</span>
+                                {% if card.staff.employee_id %}
+                                <div class="text-muted" style="font-size:11px;">ID: {{ card.staff.employee_id }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <span class="badge badge-secondary" style="font-size:11px;background:rgba(255,255,255,0.07);color:var(--text-muted);">Unassigned</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if card.staff and card.staff.role %}
+                        <span style="font-size:13px;">{{ card.staff.role.replace('_', ' ').title() }}</span>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if card.staff and card.staff.shift %}
+                        <span class="badge badge-info" style="font-size:11px;">{{ card.staff.shift.title() }}</span>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if card.status == 'active' %}
+                        <span class="badge badge-confirmed" style="font-size:11px;">
+                            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--success,#22c55e);margin-right:4px;"></span>
+                            Active
+                        </span>
+                        {% elif card.status == 'inactive' %}
+                        <span class="badge badge-secondary" style="font-size:11px;">Inactive</span>
+                        {% elif card.status == 'blocked' %}
+                        <span class="badge badge-cancelled" style="font-size:11px;">
+                            <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--danger,#ef4444);margin-right:4px;"></span>
+                            Blocked
+                        </span>
+                        {% else %}
+                        <span class="badge badge-secondary" style="font-size:11px;">{{ card.status.title() }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted" style="font-size:12px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ card.notes or '' }}">
+                        {{ card.notes or '—' }}
+                    </td>
+                    <td class="text-muted" style="font-size:12px;">
+                        {{ card.created_at.strftime('%b %d, %Y') if card.created_at else '—' }}
+                    </td>
+                    <td style="font-size:12px;">
+                        {% if card.last_used_at %}
+                        <span title="{{ card.last_used_at.strftime('%Y-%m-%d %H:%M:%S') }}">{{ card.last_used_at.strftime('%b %d, %H:%M') }}</span>
+                        {% else %}
+                        <span class="text-muted">Never</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:right;">
+                        <div class="flex gap-8 justify-end" style="justify-content:flex-end;">
+                            {% if card.staff and card.status == 'active' %}
+                            <form method="POST" action="{{ url_for('attendance_payroll.tap_rfid') }}" style="display:inline;">
+                                <input type="hidden" name="card_uid" value="{{ card.card_uid }}">
+                                <button type="submit" class="btn btn-xs btn-secondary" title="Simulate Card Tap (Clock In / Clock Out)" style="padding:4px 8px;">
+                                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                                        <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                    Tap
+                                </button>
+                            </form>
+                            {% endif %}
+                            <button type="button" onclick="openEditRfid({{ card.id }}, '{{ card.card_uid|e }}', '{{ card.staff_id or 0 }}', '{{ card.status }}', '{{ (card.notes or '')|replace('\n', ' ')|e }}')"
+                                    class="btn btn-xs btn-secondary" title="Edit Card Details">
+                                Edit
+                            </button>
+                            <form method="POST" action="{{ url_for('attendance_payroll.delete_rfid', id=card.id) }}"
+                                  data-confirm="Are you sure you want to delete RFID Card '{{ card.card_uid|e }}'? This will remove the card and unassign it from staff.">
+                                <button type="submit" class="btn btn-xs btn-danger" title="Delete Card">Del</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted" style="padding:48px 24px;">
+                        <div style="font-size:15px;margin-bottom:6px;">No RFID cards found.</div>
+                        <p style="font-size:13px;color:var(--text-muted);margin:0 0 16px 0;">
+                            {% if q or status_filter != 'all' %}
+                            Try clearing your search filters to view all cards.
+                            {% else %}
+                            Register a new RFID card using the button above to get started.
+                            {% endif %}
+                        </p>
+                        {% if q or status_filter != 'all' %}
+                        <a href="{{ url_for('attendance_payroll.index', tab='rfid') }}" class="btn btn-sm btn-secondary">Clear Filters</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if rfid_cards.pages > 1 %}
+    <div class="card-footer flex items-center justify-between">
+        <span class="text-muted" style="font-size:13px;">Page {{ rfid_cards.page }} of {{ rfid_cards.pages }} ({{ rfid_cards.total }} total cards)</span>
+        <nav class="pagination" aria-label="Pagination">
+            {% if rfid_cards.has_prev %}
+            <a href="{{ url_for('attendance_payroll.index', tab='rfid', page=rfid_cards.prev_num, q=q, status=status_filter, sort=sort_by, order=sort_order) }}">&laquo;</a>
+            {% endif %}
+            {% for p in rfid_cards.iter_pages() %}
+                {% if p %}
+                <a href="{{ url_for('attendance_payroll.index', tab='rfid', page=p, q=q, status=status_filter, sort=sort_by, order=sort_order) }}" class="{% if p == rfid_cards.page %}current{% endif %}">{{ p }}</a>
+                {% else %}
+                <span>…</span>
+                {% endif %}
+            {% endfor %}
+            {% if rfid_cards.has_next %}
+            <a href="{{ url_for('attendance_payroll.index', tab='rfid', page=rfid_cards.next_num, q=q, status=status_filter, sort=sort_by, order=sort_order) }}">&raquo;</a>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- PAYROLL TAB -->
+{% elif tab == 'payroll' %}
+<div class="grid-2-1">
+    <div class="card">
+        <div class="card-header"><span class="card-title">Payroll Records</span></div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Staff</th>
+                        <th>Period</th>
+                        <th>Regular Hrs</th>
+                        <th>OT Hrs</th>
+                        <th>Gross</th>
+                        <th>Deductions</th>
+                        <th>Net Pay</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pr in payrolls %}
+                    <tr>
+                        <td class="font-semibold">{{ pr.staff.full_name }}</td>
+                        <td class="text-muted" style="font-size:12px;">{{ pr.pay_period_start.strftime('%b %d') }} – {{ pr.pay_period_end.strftime('%b %d, %Y') }}</td>
+                        <td>{{ pr.regular_hours }}</td>
+                        <td>{{ pr.overtime_hours }}</td>
+                        <td>₱{{ "{:,.2f}".format(pr.gross_pay) }}</td>
+                        <td class="text-danger">-₱{{ "{:,.2f}".format(pr.deductions) }}</td>
+                        <td class="font-bold" style="color:var(--success);">₱{{ "{:,.2f}".format(pr.net_pay) }}</td>
+                        <td><span class="badge badge-{{ pr.status }}">{{ pr.status.title() }}</span></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8" class="text-center text-muted" style="padding:36px;">No payroll records. Generate payroll below.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card" style="align-self:start;">
+        <div class="card-header"><span class="card-title">Generate Payroll</span></div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('attendance_payroll.generate_payroll') }}"
+                  data-confirm="Generate payroll for all active staff for this period?">
+                <div class="form-group">
+                    <label class="form-label">Period Start</label>
+                    <input type="date" name="period_start" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Period End</label>
+                    <input type="date" name="period_end" class="form-input" required>
+                </div>
+                <p class="form-hint">Will calculate hours from attendance logs for all {{ staff_list | length }} active staff.</p>
+                <div class="mt-16">
+                    <button type="submit" class="btn btn-primary w-full" style="justify-content:center;">Generate Payroll</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- REGISTER RFID MODAL -->
+<div class="modal-overlay" id="registerRfidModal">
+    <div class="modal rfid-register-modal" role="dialog" aria-modal="true" aria-labelledby="rfidRegisterTitle">
+        <div class="rfid-register-header">
+            <span style="display:grid;place-items:center;color:#2E4A3D;" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/><path d="M7 10h10M7 14h2m3 0h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </span>
+            <h2 class="modal-title" id="rfidRegisterTitle">Register RFID Card</h2>
+            <button type="button" class="modal-close" onclick="closeRfidRegisterModal()" aria-label="Close">×</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('attendance_payroll.register_rfid') }}" id="rfidRegisterForm">
+            <div class="rfid-register-body">
+                <div class="rfid-wizard-stepper" aria-label="Registration progress">
+                    <div class="rfid-wizard-stage active" data-rfid-stage="1"><span>1</span> Scan Card</div>
+                    <div class="rfid-wizard-line" data-rfid-line="1"></div>
+                    <div class="rfid-wizard-stage" data-rfid-stage="2"><span>2</span> Assign Staff</div>
+                    <div class="rfid-wizard-line" data-rfid-line="2"></div>
+                    <div class="rfid-wizard-stage" data-rfid-stage="3"><span>3</span> Confirm</div>
+                </div>
+
+                <section class="rfid-wizard-panel active" data-rfid-panel="1">
+                    <div class="rfid-scan-zone" id="rfidScanZone" aria-live="polite">
+                        <div class="rfid-scan-icon" aria-hidden="true">
+                            <svg width="34" height="34" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2.2"/><path d="M7 10h10M7 14h2m3 0h2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+                        </div>
+                        <p class="rfid-scan-heading" id="rfidScanHeading">Click Start Scan ID below to activate the reader</p>
+                        <p class="rfid-scan-help" id="rfidScanHelp">Click Start Scan ID, then tap the card.</p>
+                    </div>
+                    <div class="rfid-card-details" id="rfidExistingCard" aria-live="polite">
+                        <div id="rfidExistingMessage">This RFID is registered but inactive.</div>
+                        <div style="margin-top:12px;font-size:12px;font-weight:700;letter-spacing:.04em;">PHYSICAL CARD UID</div>
+                        <div class="rfid-card-uid" id="rfidExistingUid"></div>
+                        <div style="margin-top:12px;" id="rfidExistingOwner"></div>
+                        <button type="button" class="rfid-reactivate" id="rfidReactivateButton" hidden>Reactivate</button>
+                    </div>
+                    <input class="rfid-scan-capture" id="rfidScanCapture" type="text" autocomplete="off" aria-label="RFID reader input">
+                    <div class="rfid-scan-actions">
+                        <button type="button" class="rfid-scan-action" id="rfidStartScanButton">
+                            ▣ &nbsp; Start Scan ID
+                        </button>
+                        <button type="button" class="rfid-scan-action secondary" id="rfidScanAgainButton" hidden>
+                            ▣ &nbsp; Scan Again
+                        </button>
+                    </div>
+                    <details style="margin-top:14px;color:var(--text-secondary);font-size:13px;">
+                        <summary style="cursor:pointer;">Reader not working? Enter the UID manually</summary>
+                        <div style="display:flex;gap:8px;margin-top:10px;">
+                            <input type="text" id="rfidManualUid" class="form-input" placeholder="Card UID" autocomplete="off" style="text-transform:uppercase;font-family:monospace;">
+                            <button type="button" id="rfidManualUseButton" class="btn btn-secondary">Use UID</button>
+                        </div>
+                    </details>
+                </section>
+
+                <section class="rfid-wizard-panel" data-rfid-panel="2">
+                    <div class="rfid-assign-summary"><strong>Scanned Card UID</strong><br><span id="rfidAssignUid">—</span></div>
+                    <label for="rfidStaffSearch" style="display:block;margin-bottom:8px;font-weight:750;color:var(--text-primary);">Assign to Staff <span style="font-weight:400;color:var(--text-secondary);">(optional — can be assigned later)</span></label>
+                    <div class="rfid-assign-search"><span aria-hidden="true">⌕</span><input type="search" id="rfidStaffSearch" placeholder="Search staff by name, role, or shift"></div>
+                    <div class="rfid-staff-list" id="rfidStaffList">
+                        <button type="button" class="rfid-staff-option selected" data-staff-id="0" data-search="unassigned spare pool">
+                            <strong>— Leave Unassigned (Spare Card) —</strong>
+                        </button>
+                        {% for s in staff_list %}
+                        <button type="button" class="rfid-staff-option" data-staff-id="{{ s.id }}" data-search="{{ (s.full_name ~ ' ' ~ s.role ~ ' ' ~ (s.shift or ''))|lower|e }}">
+                            <strong>{{ s.full_name }}</strong>
+                            <small>{{ s.role.replace('_', ' ').title() }} · {{ s.shift.title() if s.shift else 'Default shift' }}{% if s.rfid_tag %} · Current card: {{ s.rfid_tag }}{% endif %}</small>
+                        </button>
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="staff_id" id="rfidSelectedStaffId" value="0">
+                    <div class="form-group rfid-notes-field">
+                        <label class="form-label" for="rfidRegistrationNotes">Notes (optional)</label>
+                        <input type="text" name="notes" id="rfidRegistrationNotes" class="form-input" maxlength="256" placeholder="e.g. Front desk spare card">
+                    </div>
+                </section>
+
+                <section class="rfid-wizard-panel" data-rfid-panel="3">
+                    <div class="rfid-confirm-card">
+                        <h3>Registration Summary</h3>
+                        <div class="rfid-confirm-row"><span>Card UID</span><strong id="rfidConfirmUid">—</strong></div>
+                        <div class="rfid-confirm-row"><span>Assigned To</span><strong id="rfidConfirmStaff">Unassigned / Spare Card</strong></div>
+                        <div class="rfid-confirm-row"><span>Initial Status</span><strong style="color:var(--confirmed-text);">Active</strong></div>
+                    </div>
+                    <p style="margin:14px 2px 0;color:var(--text-secondary);font-size:13px;">Confirm to register this RFID card for staff attendance.</p>
+                </section>
+
+                <div class="rfid-wizard-footer">
+                    <button type="button" class="btn btn-secondary" id="rfidCancelButton" onclick="closeRfidRegisterModal()">Cancel</button>
+                    <div class="right">
+                        <button type="button" class="btn btn-secondary" id="rfidBackButton" hidden>‹ &nbsp; Back</button>
+                        <button type="button" class="btn btn-primary" id="rfidNextButton" disabled>Next: Assign Staff &nbsp; ›</button>
+                        <button type="submit" class="btn btn-primary" id="rfidRegisterSubmit" hidden>Register Card</button>
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" name="card_uid" id="rfidRegisterUid">
+            <input type="hidden" name="status" value="active">
+        </form>
+    </div>
+</div>
+
+<!-- EDIT RFID MODAL -->
+<div class="modal-overlay" id="editRfidModal">
+    <div class="modal">
+        <h2 class="modal-title">Edit RFID Card</h2>
+        <button class="modal-close" onclick="closeModal('editRfidModal')" aria-label="Close">×</button>
+        <div class="divider"></div>
+        <form method="POST" id="editRfidForm" action="">
+            <div class="form-group">
+                <label class="form-label">Card Tag UID *</label>
+                <input type="text" name="card_uid" id="edit_card_uid" class="form-input" required style="font-family:monospace;letter-spacing:1px;text-transform:uppercase;">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Assigned Staff Member</label>
+                <select name="staff_id" id="edit_staff_id" class="form-select">
+                    <option value="0">-- Unassigned / Spare Card --</option>
+                    {% for s in staff_list %}
+                    <option value="{{ s.id }}">
+                        {{ s.full_name }} — {{ s.role.replace('_', ' ').title() }} (Shift: {{ s.shift.title() if s.shift else 'Default' }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Card Status</label>
+                <select name="status" id="edit_status" class="form-select">
+                    <option value="active">Active (Usable for scanning)</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="blocked">Blocked / Suspended</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Notes</label>
+                <input type="text" name="notes" id="edit_notes" class="form-input" placeholder="e.g. Front desk card">
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('editRfidModal')" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- TAP / SCAN RFID MODAL -->
+<div class="modal-overlay" id="tapRfidModal">
+    <div class="modal">
+        <h2 class="modal-title">Tap / Scan RFID Attendance</h2>
+        <button class="modal-close" onclick="closeModal('tapRfidModal')" aria-label="Close">×</button>
+        <div class="divider"></div>
+        <form method="POST" action="{{ url_for('attendance_payroll.tap_rfid') }}">
+            <div style="text-align:center;padding:12px 0 16px 0;">
+                <div style="width:52px;height:52px;border-radius:50%;background:rgba(212,175,55,0.15);color:var(--accent,#d4af37);display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;">
+                    <svg width="26" height="26" fill="none" viewBox="0 0 24 24">
+                        <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
+                        <path d="M7 10h4M7 14h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <circle cx="16.5" cy="12" r="1.5" fill="currentColor"/>
+                    </svg>
+                </div>
+                <p style="font-size:14px;color:var(--text-primary);margin:0 0 4px 0;font-weight:600;">Scan Card or Select Staff</p>
+                <p style="font-size:12px;color:var(--text-muted);margin:0;">Tap in to start shift (Clock In) or tap again to end shift (Clock Out).</p>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Card Tag UID *</label>
+                <input type="text" name="card_uid" id="tap_card_uid" class="form-input" required placeholder="Scan RFID card or type UID (e.g. RFID001)" autofocus style="font-family:monospace;letter-spacing:1px;text-align:center;font-size:15px;text-transform:uppercase;">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Or Quick Select Staff Member</label>
+                <select class="form-select" onchange="if(this.value){ document.getElementById('tap_card_uid').value = this.value; }">
+                    <option value="">-- Choose Staff with Registered RFID --</option>
+                    {% for s in staff_list %}
+                        {% if s.rfid_tag %}
+                        <option value="{{ s.rfid_tag }}">{{ s.full_name }} ({{ s.rfid_tag }} - {{ s.role.replace('_', ' ').title() }})</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('tapRfidModal')" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="min-width:140px;">Process Tap</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const rfidLookupUrl = {{ url_for('attendance_payroll.lookup_rfid')|tojson }};
+const rfidListUrl = {{ url_for('attendance_payroll.index', tab='rfid')|tojson }};
+let rfidRegistrationStep = 1;
+let rfidScanTimer = null;
+let rfidScanning = false;
+let rfidDetectedUid = '';
+let rfidSelectedStaffLabel = 'Unassigned / Spare Card';
+
+function showRfidRegisterModal() {
+    resetRfidRegistration();
+    openModal('registerRfidModal');
+}
+
+function closeRfidRegisterModal() {
+    stopRfidScan();
+    closeModal('registerRfidModal');
+}
+
+function resetRfidRegistration() {
+    stopRfidScan();
+    rfidDetectedUid = '';
+    rfidSelectedStaffLabel = 'Unassigned / Spare Card';
+    document.getElementById('rfidRegisterForm').reset();
+    document.getElementById('rfidRegisterUid').value = '';
+    document.getElementById('rfidSelectedStaffId').value = '0';
+    document.getElementById('rfidRegistrationNotes').value = '';
+    document.getElementById('rfidStaffSearch').value = '';
+    document.getElementById('rfidManualUid').value = '';
+    document.getElementById('rfidExistingCard').classList.remove('visible');
+    document.getElementById('rfidExistingCard').dataset.reactivateUrl = '';
+    document.getElementById('rfidReactivateButton').hidden = true;
+    document.getElementById('rfidNextButton').disabled = true;
+    document.getElementById('rfidScanAgainButton').hidden = true;
+    document.getElementById('rfidStartScanButton').hidden = false;
+    document.getElementById('rfidStartScanButton').classList.remove('scanning');
+    document.getElementById('rfidStartScanButton').innerHTML = '▣ &nbsp; Start Scan ID';
+    document.getElementById('rfidScanZone').className = 'rfid-scan-zone';
+    document.getElementById('rfidScanHeading').textContent = 'Click Start Scan ID below to activate the reader';
+    document.getElementById('rfidScanHelp').textContent = 'Click Start Scan ID, then tap the card.';
+    document.querySelectorAll('.rfid-staff-option').forEach(function(option) {
+        option.classList.toggle('selected', option.dataset.staffId === '0');
+        option.hidden = false;
+    });
+    setRfidRegistrationStep(1);
+}
+
+function stopRfidScan() {
+    rfidScanning = false;
+    if (rfidScanTimer) clearTimeout(rfidScanTimer);
+}
+
+function setRfidRegistrationStep(step) {
+    rfidRegistrationStep = step;
+    document.querySelectorAll('[data-rfid-panel]').forEach(function(panel) {
+        panel.classList.toggle('active', Number(panel.dataset.rfidPanel) === step);
+    });
+    document.querySelectorAll('[data-rfid-stage]').forEach(function(stage) {
+        const number = Number(stage.dataset.rfidStage);
+        stage.classList.toggle('active', number === step);
+        stage.classList.toggle('complete', number < step);
+    });
+    document.querySelectorAll('[data-rfid-line]').forEach(function(line) {
+        line.classList.toggle('complete', Number(line.dataset.rfidLine) < step);
+    });
+
+    const back = document.getElementById('rfidBackButton');
+    const next = document.getElementById('rfidNextButton');
+    const submit = document.getElementById('rfidRegisterSubmit');
+    back.hidden = step === 1;
+    next.hidden = step === 3;
+    submit.hidden = step !== 3;
+    document.getElementById('rfidCancelButton').hidden = step !== 1;
+    if (step === 1) {
+        next.textContent = 'Next: Assign Staff  ›';
+        next.disabled = !rfidDetectedUid;
+    } else if (step === 2) {
+        next.textContent = 'Next: Confirm  ›';
+        next.disabled = false;
+    }
+}
+
+function startRfidScan() {
+    const zone = document.getElementById('rfidScanZone');
+    const startButton = document.getElementById('rfidStartScanButton');
+    document.getElementById('rfidExistingCard').classList.remove('visible');
+    rfidDetectedUid = '';
+    document.getElementById('rfidRegisterUid').value = '';
+    document.getElementById('rfidNextButton').disabled = true;
+    zone.className = 'rfid-scan-zone';
+    document.getElementById('rfidScanHeading').textContent = 'Ready — tap your RFID card now.';
+    document.getElementById('rfidScanHelp').textContent = 'Keep the card near the reader until it beeps.';
+    startButton.textContent = '▣  Scanning...';
+    startButton.classList.add('scanning');
+    rfidScanning = true;
+    const capture = document.getElementById('rfidScanCapture');
+    capture.value = '';
+    capture.focus();
+}
+
+async function processRfidScan(rawUid) {
+    if (!rfidScanning) return;
+    stopRfidScan();
+    document.getElementById('rfidStartScanButton').classList.remove('scanning');
+    const uid = (rawUid || '').toUpperCase().replace(/\s+/g, '').trim();
+    document.getElementById('rfidScanCapture').value = '';
+    if (!uid) {
+        document.getElementById('rfidScanHeading').textContent = 'No card ID received';
+        document.getElementById('rfidScanHelp').textContent = 'Try again or enter the UID manually.';
+        document.getElementById('rfidScanZone').className = 'rfid-scan-zone error';
+        document.getElementById('rfidStartScanButton').innerHTML = '▣ &nbsp; Start Scan ID';
+        return;
+    }
+
+    document.getElementById('rfidScanHeading').textContent = 'Card detected — checking registration…';
+    document.getElementById('rfidScanHelp').textContent = 'Card UID: ' + uid;
+    try {
+        const response = await fetch(rfidLookupUrl + '?card_uid=' + encodeURIComponent(uid), {
+            headers: {'Accept': 'application/json'}
+        });
+        if (!response.ok) throw new Error('lookup failed');
+        const result = await response.json();
+        if (result.found) {
+            showExistingRfidCard(result);
+            return;
+        }
+        rfidDetectedUid = uid;
+        document.getElementById('rfidRegisterUid').value = uid;
+        document.getElementById('rfidAssignUid').textContent = uid;
+        document.getElementById('rfidScanZone').className = 'rfid-scan-zone success';
+        document.getElementById('rfidScanHeading').textContent = 'Card detected — ready to continue.';
+        document.getElementById('rfidScanHelp').textContent = 'Card UID: ' + uid;
+        document.getElementById('rfidStartScanButton').hidden = true;
+        document.getElementById('rfidScanAgainButton').hidden = false;
+        document.getElementById('rfidNextButton').disabled = false;
+    } catch (error) {
+        document.getElementById('rfidScanZone').className = 'rfid-scan-zone error';
+        document.getElementById('rfidScanHeading').textContent = 'Could not verify this card.';
+        document.getElementById('rfidScanHelp').textContent = 'Check your connection, then scan again.';
+        document.getElementById('rfidStartScanButton').innerHTML = '▣ &nbsp; Start Scan ID';
+        document.getElementById('rfidScanAgainButton').hidden = false;
+    }
+}
+
+function showExistingRfidCard(card) {
+    const zone = document.getElementById('rfidScanZone');
+    const details = document.getElementById('rfidExistingCard');
+    const reactivate = document.getElementById('rfidReactivateButton');
+    zone.className = 'rfid-scan-zone error';
+    document.getElementById('rfidScanHeading').textContent = card.status === 'inactive'
+        ? 'This RFID is registered but inactive.'
+        : (card.status === 'blocked' ? 'This RFID card is blocked.' : 'This RFID card is already active.');
+    document.getElementById('rfidScanHelp').textContent = 'Scan a different card or review its current owner.';
+    document.getElementById('rfidExistingMessage').textContent = card.status === 'inactive'
+        ? 'This RFID is registered but inactive.'
+        : (card.status === 'blocked' ? 'This RFID card is blocked.' : 'This RFID card is already active.');
+    document.getElementById('rfidExistingUid').textContent = card.card_uid;
+    document.getElementById('rfidExistingOwner').textContent = 'Assigned to: ' + card.owner;
+    details.dataset.reactivateUrl = card.reactivate_url || '';
+    details.classList.add('visible');
+    reactivate.hidden = card.status !== 'inactive';
+    document.getElementById('rfidStartScanButton').hidden = true;
+    document.getElementById('rfidScanAgainButton').hidden = false;
+    document.getElementById('rfidNextButton').disabled = true;
+}
+
+async function reactivateScannedRfid() {
+    const button = document.getElementById('rfidReactivateButton');
+    const url = document.getElementById('rfidExistingCard').dataset.reactivateUrl;
+    if (!url) return;
+    button.disabled = true;
+    button.textContent = 'Reactivating…';
+    try {
+        const response = await fetch(url, {method: 'POST', headers: {'Accept': 'application/json'}});
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || 'Unable to reactivate');
+        window.location.assign(rfidListUrl);
+    } catch (error) {
+        button.disabled = false;
+        button.textContent = 'Reactivate';
+        document.getElementById('rfidExistingMessage').textContent = error.message || 'Could not reactivate this card.';
+    }
+}
+
+function openEditRfid(id, uid, staffId, status, notes) {
+    var form = document.getElementById('editRfidForm');
+    if (form) form.action = '/attendance-payroll/rfid/' + id + '/edit';
+    
+    var uidInput = document.getElementById('edit_card_uid');
+    if (uidInput) uidInput.value = uid;
+    
+    var notesInput = document.getElementById('edit_notes');
+    if (notesInput) notesInput.value = notes || '';
+    
+    var staffSelect = document.getElementById('edit_staff_id');
+    if (staffSelect) {
+        for (var i = 0; i < staffSelect.options.length; i++) {
+            staffSelect.options[i].selected = (staffSelect.options[i].value == staffId);
+        }
+    }
+    
+    var statusSelect = document.getElementById('edit_status');
+    if (statusSelect) {
+        for (var j = 0; j < statusSelect.options.length; j++) {
+            statusSelect.options[j].selected = (statusSelect.options[j].value === status);
+        }
+    }
+    
+    openModal('editRfidModal');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto uppercase UID inputs
+    ['new_card_uid', 'edit_card_uid', 'tap_card_uid'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', function(e) {
+                e.target.value = e.target.value.toUpperCase();
+            });
+        }
+    });
+
+    document.getElementById('rfidStartScanButton').addEventListener('click', startRfidScan);
+    document.getElementById('rfidScanAgainButton').addEventListener('click', function() {
+        document.getElementById('rfidExistingCard').classList.remove('visible');
+        document.getElementById('rfidStartScanButton').hidden = false;
+        document.getElementById('rfidScanAgainButton').hidden = true;
+        document.getElementById('rfidStartScanButton').innerHTML = '▣ &nbsp; Start Scan ID';
+        startRfidScan();
+    });
+    document.getElementById('rfidReactivateButton').addEventListener('click', reactivateScannedRfid);
+    document.getElementById('rfidBackButton').addEventListener('click', function() {
+        setRfidRegistrationStep(Math.max(1, rfidRegistrationStep - 1));
+    });
+    document.getElementById('rfidNextButton').addEventListener('click', function() {
+        if (rfidRegistrationStep === 2) {
+            document.getElementById('rfidConfirmUid').textContent = rfidDetectedUid;
+            document.getElementById('rfidConfirmStaff').textContent = rfidSelectedStaffLabel;
+            setRfidRegistrationStep(3);
+        } else if (rfidDetectedUid) {
+            setRfidRegistrationStep(2);
+        }
+    });
+    const capture = document.getElementById('rfidScanCapture');
+    capture.addEventListener('input', function() {
+        if (!rfidScanning) return;
+        if (rfidScanTimer) clearTimeout(rfidScanTimer);
+        rfidScanTimer = setTimeout(function() { processRfidScan(capture.value); }, 300);
+    });
+    capture.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' && rfidScanning) {
+            event.preventDefault();
+            processRfidScan(capture.value);
+        }
+    });
+    document.getElementById('rfidManualUseButton').addEventListener('click', function() {
+        const manual = document.getElementById('rfidManualUid');
+        if (manual.value.trim()) {
+            rfidScanning = true;
+            processRfidScan(manual.value);
+        }
+    });
+    document.getElementById('rfidManualUid').addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            document.getElementById('rfidManualUseButton').click();
+        }
+    });
+    document.querySelectorAll('.rfid-staff-option').forEach(function(option) {
+        option.addEventListener('click', function() {
+            document.querySelectorAll('.rfid-staff-option').forEach(function(item) {
+                item.classList.toggle('selected', item === option);
+            });
+            document.getElementById('rfidSelectedStaffId').value = option.dataset.staffId;
+            rfidSelectedStaffLabel = option.querySelector('strong').textContent.trim();
+        });
+    });
+    document.getElementById('rfidStaffSearch').addEventListener('input', function() {
+        const query = this.value.toLowerCase().trim();
+        document.querySelectorAll('.rfid-staff-option').forEach(function(option) {
+            option.hidden = (option.dataset.search + ' ' + option.innerText).toLowerCase().indexOf(query) === -1;
+        });
+    });
+
+    // Real-time client-side table filter
+    var rfidSearch = document.getElementById('rfidSearchInput');
+    if (rfidSearch) {
+        rfidSearch.addEventListener('input', function() {
+            var query = this.value.toLowerCase().trim();
+            var rows = document.querySelectorAll('#rfidTable tbody tr.rfid-row');
+            rows.forEach(function(row) {
+                var text = row.innerText.toLowerCase();
+                row.style.display = text.indexOf(query) !== -1 ? '' : 'none';
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

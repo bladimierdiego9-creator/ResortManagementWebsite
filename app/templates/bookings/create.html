@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}New Booking - {{ resort_name }}{% endblock %}
+{% block content %}
+<h1><i class="fas fa-plus-circle"></i> Create New Booking</h1>
+<div class="card mt-4">
+    <div class="card-body">
+        <form method="POST">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Guest Name</label>
+                    <input type="text" class="form-control" name="guest_name" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" name="guest_email" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" class="form-control" name="guest_phone" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Facility</label>
+                    <select class="form-select" name="facility_id" required>
+                        {% for facility in facilities %}
+                        <option value="{{ facility.id }}">{{ facility.name }} - {{ format_currency(facility.base_price) }}/night</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Check-in Date</label>
+                    <input type="date" class="form-control" name="check_in_date" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Check-out Date</label>
+                    <input type="date" class="form-control" name="check_out_date" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Number of Guests</label>
+                    <input type="number" class="form-control" name="number_of_guests" min="1" value="1" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Booking Source</label>
+                    <select class="form-select" name="booking_source">
+                        <option value="direct">Direct</option>
+                        <option value="phone">Phone</option>
+                        <option value="email">Email</option>
+                        <option value="online">Online</option>
+                        <option value="walk_in">Walk-in</option>
+                    </select>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label">Special Requests</label>
+                    <textarea class="form-control" name="special_requests" rows="3"></textarea>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Create Booking</button>
+            <a href="{{ url_for('bookings.index') }}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Bookings - {{ resort_name }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h1><i class="fas fa-calendar-check"></i> Bookings</h1>
+    </div>
+    <div class="col-md-6 text-end">
+        <a href="{{ url_for('bookings.create') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> New Booking
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <input type="text" class="form-control" name="search" placeholder="Search by name, email, or booking #" value="{{ search }}">
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" name="status">
+                    <option value="all" {% if status == 'all' %}selected{% endif %}>All Status</option>
+                    <option value="pending" {% if status == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="confirmed" {% if status == 'confirmed' %}selected{% endif %}>Confirmed</option>
+                    <option value="checked_in" {% if status == 'checked_in' %}selected{% endif %}>Checked In</option>
+                    <option value="checked_out" {% if status == 'checked_out' %}selected{% endif %}>Checked Out</option>
+                    <option value="cancelled" {% if status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-secondary w-100">
+                    <i class="fas fa-filter"></i> Filter
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bookings Table -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Booking #</th>
+                        <th>Guest</th>
+                        <th>Facility</th>
+                        <th>Check-in</th>
+                        <th>Check-out</th>
+                        <th>Guests</th>
+                        <th>Status</th>
+                        <th>Amount</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for booking in bookings.items %}
+                    <tr>
+                        <td><a href="{{ url_for('bookings.view', booking_id=booking.id) }}">{{ booking.booking_number }}</a></td>
+                        <td>{{ booking.guest_name }}</td>
+                        <td>{{ booking.facility.name }}</td>
+                        <td>{{ format_date(booking.check_in_date) }}</td>
+                        <td>{{ format_date(booking.check_out_date) }}</td>
+                        <td>{{ booking.number_of_guests }}</td>
+                        <td><span class="badge bg-{{ 'success' if booking.status == 'confirmed' else 'warning' }}">{{ booking.status }}</span></td>
+                        <td>{{ format_currency(booking.final_amount) }}</td>
+                        <td>
+                            <a href="{{ url_for('bookings.view', booking_id=booking.id) }}" class="btn btn-sm btn-info">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if bookings.pages > 1 %}
+        <nav>
+            <ul class="pagination justify-content-center">
+                {% if bookings.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('bookings.index', page=bookings.prev_num, status=status, search=search) }}">Previous</a>
+                </li>
+                {% endif %}
+                
+                {% for page in range(1, bookings.pages + 1) %}
+                <li class="page-item {% if page == bookings.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('bookings.index', page=page, status=status, search=search) }}">{{ page }}</a>
+                </li>
+                {% endfor %}
+                
+                {% if bookings.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('bookings.index', page=bookings.next_num, status=status, search=search) }}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Announcements — A&D Thysia Admin{% endblock %}
+{% block breadcrumb %}Announcements{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Announcements</h1>
+        <p class="page-subtitle">Manage announcements for staff and guests</p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('announcements.create') }}" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Create Announcement
+        </a>
+    </div>
+</div>
+
+<!-- Announcements List -->
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Target Audience</th>
+                    <th>Created By</th>
+                    <th>Created At</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for announcement in announcements %}
+                <tr>
+                    <td>
+                        <strong>{{ announcement.title }}</strong>
+                        <div class="text-muted" style="font-size:12px;margin-top:4px;">
+                            {{ announcement.content[:100] }}{% if announcement.content|length > 100 %}...{% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if announcement.target_audience == 'staff' %}
+                            <span class="badge badge-info">Staff</span>
+                        {% elif announcement.target_audience == 'guest' %}
+                            <span class="badge badge-success">Guest</span>
+                        {% else %}
+                            <span class="badge badge-warning">All</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted" style="font-size:13px;">{{ announcement.created_by_name }}</td>
+                    <td class="text-muted" style="font-size:12px;">
+                        {% if announcement.created_at %}
+                            {{ announcement.created_at.strftime('%b %d, %Y %H:%M') if announcement.created_at is not string else announcement.created_at }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge {% if announcement.is_active %}badge-success{% else %}badge-muted{% endif %}">
+                            {{ 'Active' if announcement.is_active else 'Inactive' }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="flex gap-8">
+                            <a href="{{ url_for('announcements.detail', announcement_id=announcement.id) }}" 
+                               class="btn btn-xs btn-soft">View</a>
+                            <a href="{{ url_for('announcements.edit', announcement_id=announcement.id) }}" 
+                               class="btn btn-xs btn-primary">Edit</a>
+                            <form method="POST" action="{{ url_for('announcements.delete', announcement_id=announcement.id) }}" 
+                                  style="display:inline;" 
+                                  onsubmit="return confirm('Are you sure you want to delete this announcement?');">
+                                <button type="submit" class="btn btn-xs btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted" style="padding:36px;">
+                        No announcements found. 
+                        <a href="{{ url_for('announcements.create') }}" class="text-link">Create your first announcement</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

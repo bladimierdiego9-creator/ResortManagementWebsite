@@ -1,0 +1,678 @@
+{% extends "base.html" %}
+{% block title %}Create Announcement — A&D Thysia Admin{% endblock %}
+{% block breadcrumb %}<a href="{{ url_for('announcements.index') }}">Announcements</a> / Create{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Create Announcement</h1>
+        <p class="page-subtitle">Broadcast important messages to your team and guests</p>
+    </div>
+</div>
+
+<div class="announcement-create-container">
+    <div class="announcement-form-card">
+        <form method="POST" action="{{ url_for('announcements.create') }}" id="announcementForm">
+            <!-- Title Section -->
+            <div class="form-section">
+                <div class="section-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                    </svg>
+                    <h3>Announcement Details</h3>
+                </div>
+                
+                <div class="form-group">
+                    <label for="title">
+                        <span class="label-text">Title</span>
+                        <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="title"
+                        name="title" 
+                        class="form-input" 
+                        placeholder="e.g., Pool Maintenance Schedule"
+                        required 
+                        maxlength="200"
+                        autocomplete="off">
+                    <div class="input-hint">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="16" x2="12" y2="12"/>
+                            <line x1="12" y1="8" x2="12.01" y2="8"/>
+                        </svg>
+                        Keep it short and descriptive (max 200 characters)
+                    </div>
+                </div>
+            </div>
+
+            <!-- Target Audience Section -->
+            <div class="form-section">
+                <div class="section-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <h3>Target Audience</h3>
+                </div>
+                
+                <div class="audience-selector">
+                    <label class="audience-option">
+                        <input type="radio" name="target_audience" value="all" checked>
+                        <div class="option-card">
+                            <div class="option-icon all">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                            </div>
+                            <div class="option-content">
+                                <span class="option-title">Everyone</span>
+                                <span class="option-desc">Staff & Guests</span>
+                            </div>
+                            <div class="option-check">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </label>
+                    
+                    <label class="audience-option">
+                        <input type="radio" name="target_audience" value="staff">
+                        <div class="option-card">
+                            <div class="option-icon staff">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                            </div>
+                            <div class="option-content">
+                                <span class="option-title">Staff Only</span>
+                                <span class="option-desc">Internal team</span>
+                            </div>
+                            <div class="option-check">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </label>
+                    
+                    <label class="audience-option">
+                        <input type="radio" name="target_audience" value="guest">
+                        <div class="option-card">
+                            <div class="option-icon guest">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                            </div>
+                            <div class="option-content">
+                                <span class="option-title">Guests Only</span>
+                                <span class="option-desc">Resort visitors</span>
+                            </div>
+                            <div class="option-check">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Content Section -->
+            <div class="form-section">
+                <div class="section-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <line x1="10" y1="9" x2="8" y2="9"/>
+                    </svg>
+                    <h3>Message Content</h3>
+                </div>
+                
+                <div class="form-group">
+                    <label for="content">
+                        <span class="label-text">Content</span>
+                        <span class="required">*</span>
+                    </label>
+                    <textarea 
+                        id="content"
+                        name="content" 
+                        class="form-textarea"
+                        placeholder="Write your announcement message here...&#10;&#10;Example:&#10;The main pool will be closed for maintenance on Saturday, October 5th from 8:00 AM to 12:00 PM. We apologize for any inconvenience."
+                        required 
+                        rows="8"></textarea>
+                    <div class="textarea-footer">
+                        <div class="input-hint">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="16" x2="12" y2="12"/>
+                                <line x1="12" y1="8" x2="12.01" y2="8"/>
+                            </svg>
+                            Provide clear and detailed information
+                        </div>
+                        <div class="char-count">
+                            <span id="charCount">0</span> characters
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions">
+                <a href="{{ url_for('announcements.index') }}" class="btn btn-soft btn-lg">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                    Cancel
+                </a>
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    Create Announcement
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Preview Card -->
+    <div class="announcement-preview-card">
+        <div class="preview-header">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <h3>Live Preview</h3>
+        </div>
+        <div class="preview-content">
+            <div class="preview-announcement">
+                <div class="preview-title" id="previewTitle">Announcement Title</div>
+                <div class="preview-audience" id="previewAudience">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    Everyone
+                </div>
+                <div class="preview-body" id="previewContent">Your announcement content will appear here...</div>
+                <div class="preview-meta">
+                    <div class="preview-author">
+                        <div class="author-avatar">{{ current_user.full_name[:2].upper() }}</div>
+                        <div>
+                            <div class="author-name">{{ current_user.full_name }}</div>
+                            <div class="author-role">{{ current_user.role.replace('_', ' ').title() }}</div>
+                        </div>
+                    </div>
+                    <div class="preview-time">Just now</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.announcement-create-container {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+    gap: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.announcement-form-card,
+.announcement-preview-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.15);
+}
+
+.announcement-form-card {
+    padding: 32px;
+}
+
+.form-section {
+    margin-bottom: 32px;
+}
+
+.form-section:last-of-type {
+    margin-bottom: 24px;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+}
+
+.section-header svg {
+    color: var(--emerald-light);
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.required {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+.form-input,
+.form-textarea {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-container-high);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--emerald-light);
+    box-shadow: 0 0 0 3px rgba(78, 222, 163, 0.15);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 180px;
+    line-height: 1.6;
+}
+
+.input-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.input-hint svg {
+    flex-shrink: 0;
+}
+
+.textarea-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.char-count {
+    color: var(--muted-2);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Audience Selector */
+.audience-selector {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.audience-option {
+    cursor: pointer;
+}
+
+.audience-option input[type="radio"] {
+    display: none;
+}
+
+.option-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 16px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-container-high);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+.option-card:hover {
+    border-color: var(--emerald);
+    background: var(--surface-container-highest);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(78, 222, 163, 0.15);
+}
+
+.audience-option input:checked + .option-card {
+    border-color: var(--emerald-light);
+    background: rgba(78, 222, 163, 0.08);
+    box-shadow: 0 0 0 3px rgba(78, 222, 163, 0.12);
+}
+
+.option-icon {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    transition: all 0.25s ease;
+}
+
+.option-icon.all {
+    background: rgba(78, 222, 163, 0.12);
+    color: var(--emerald-light);
+}
+
+.option-icon.staff {
+    background: rgba(112, 185, 255, 0.12);
+    color: var(--blue);
+}
+
+.option-icon.guest {
+    background: rgba(255, 185, 95, 0.12);
+    color: var(--gold);
+}
+
+.audience-option input:checked + .option-card .option-icon {
+    transform: scale(1.1);
+}
+
+.option-content {
+    text-align: center;
+}
+
+.option-title {
+    display: block;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
+.option-desc {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.option-check {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--emerald-light);
+    color: #052016;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.audience-option input:checked + .option-card .option-check {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Actions */
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+}
+
+.btn-lg {
+    padding: 14px 24px;
+    font-size: 15px;
+}
+
+/* Preview Card */
+.announcement-preview-card {
+    position: sticky;
+    top: 24px;
+    height: fit-content;
+    padding: 24px;
+}
+
+.preview-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+}
+
+.preview-header svg {
+    color: var(--emerald-light);
+}
+
+.preview-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.preview-content {
+    padding: 16px;
+    border-radius: 10px;
+    background: var(--surface-container-high);
+}
+
+.preview-announcement {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.preview-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.4;
+}
+
+.preview-audience {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    padding: 6px 12px;
+    border-radius: 99px;
+    background: rgba(78, 222, 163, 0.12);
+    color: var(--emerald-light);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.preview-body {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+}
+
+.preview-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+}
+
+.preview-author {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.author-avatar {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(78, 222, 163, 0.15);
+    color: var(--emerald-light);
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.author-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.author-role {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.preview-time {
+    font-size: 11px;
+    color: var(--muted-2);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .announcement-create-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .announcement-preview-card {
+        position: relative;
+        top: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .audience-selector {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+    
+    .form-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+// Live preview
+const titleInput = document.getElementById('title');
+const contentInput = document.getElementById('content');
+const audienceInputs = document.querySelectorAll('input[name="target_audience"]');
+const charCount = document.getElementById('charCount');
+
+const previewTitle = document.getElementById('previewTitle');
+const previewContent = document.getElementById('previewContent');
+const previewAudience = document.getElementById('previewAudience');
+
+// Update title preview
+titleInput.addEventListener('input', function() {
+    const value = this.value.trim();
+    previewTitle.textContent = value || 'Announcement Title';
+});
+
+// Update content preview with character count
+contentInput.addEventListener('input', function() {
+    const value = this.value.trim();
+    previewContent.textContent = value || 'Your announcement content will appear here...';
+    charCount.textContent = value.length;
+});
+
+// Update audience preview
+audienceInputs.forEach(input => {
+    input.addEventListener('change', function() {
+        const audienceIcons = {
+            'all': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>`,
+            'staff': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+            </svg>`,
+            'guest': `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>`
+        };
+        
+        const audienceLabels = {
+            'all': 'Everyone',
+            'staff': 'Staff Only',
+            'guest': 'Guests Only'
+        };
+        
+        previewAudience.innerHTML = audienceIcons[this.value] + audienceLabels[this.value];
+    });
+});
+
+// Form validation
+document.getElementById('announcementForm').addEventListener('submit', function(e) {
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+    
+    if (!title || !content) {
+        e.preventDefault();
+        alert('Please fill in all required fields');
+    }
+});
+</script>
+{% endblock %}

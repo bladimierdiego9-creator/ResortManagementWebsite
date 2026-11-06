@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Edit Booking - {{ resort_name }}{% endblock %}
+{% block content %}
+<h1>Edit Booking #{{ booking.booking_number }}</h1>
+<div class="card mt-4">
+    <div class="card-body">
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">Guest Name</label>
+                <input type="text" class="form-control" name="guest_name" value="{{ booking.guest_name }}" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" name="guest_email" value="{{ booking.guest_email }}" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-control" name="guest_phone" value="{{ booking.guest_phone }}" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Notes</label>
+                <textarea class="form-control" name="notes" rows="3">{{ booking.notes }}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Update Booking</button>
+            <a href="{{ url_for('bookings.view', booking_id=booking.id) }}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

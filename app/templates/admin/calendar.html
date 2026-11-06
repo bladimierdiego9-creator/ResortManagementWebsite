@@ -1,0 +1,597 @@
+{% extends "base.html" %}
+{% block title %}Booking Calendar — A&D Thysia{% endblock %}
+{% block breadcrumb %}Booking Calendar{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Booking Calendar</h1>
+        <p class="page-subtitle">All bookings across every facility, at a glance.</p>
+    </div>
+</div>
+
+<!-- ── CALENDAR CARD ─────────────────────────────────── -->
+<div class="card">
+    <div class="card-header">
+        <div>
+            <div class="card-title">Booking Calendar</div>
+            <div style="font-size:11.5px;color:var(--text-muted);">Click any booking to view details</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <span style="display:flex;align-items:center;gap:5px;font-size:12px;">
+                <span style="width:11px;height:11px;border-radius:3px;background:#10b981;display:inline-block;"></span> Confirmed
+            </span>
+            <span style="display:flex;align-items:center;gap:5px;font-size:12px;">
+                <span style="width:11px;height:11px;border-radius:3px;background:#ee9800;display:inline-block;"></span> Pending
+            </span>
+            <span style="display:flex;align-items:center;gap:5px;font-size:12px;">
+                <span style="width:11px;height:11px;border-radius:3px;background:#6f8e7d;display:inline-block;"></span> Cancelled
+            </span>
+            <span style="display:flex;align-items:center;gap:5px;font-size:12px;margin-left:8px;padding-left:12px;border-left:1px solid #24483a;">
+                <span style="width:11px;height:11px;border-radius:3px;background:#10b981;border-left:3px solid rgba(255,255,255,0.6);display:inline-block;"></span> Multi-day
+            </span>
+            <button onclick="refreshCalendar()" class="btn btn-sm btn-secondary btn-pill" style="font-size:11.5px;display:flex;align-items:center;gap:5px;">
+                <svg id="refreshIcon" width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 9A9 9 0 0 0 5.64 5.64M4 15a9 9 0 0 0 14.36 3.36" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                Refresh
+            </button>
+        </div>
+    </div>
+    <div class="card-body" style="padding:16px;">
+        <div id="reservationCalendar"></div>
+    </div>
+</div>
+
+<!-- ── BOOKING DETAIL MODAL ──────────────────────────── -->
+<div id="bookingModal" style="
+    display:none;position:fixed;inset:0;z-index:1000;        background:rgba(0,10,6,.7);align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+    <div style="
+        background:#0a271b;border:1px solid #24483a;border-radius:16px;padding:28px 28px 22px;
+        width:100%;max-width:420px;margin:16px;box-shadow:0 30px 80px rgba(0,0,0,.6);
+        position:relative;">
+        <button onclick="closeBookingModal()" style="
+            position:absolute;top:14px;right:16px;background:none;border:none;
+            font-size:20px;color:#6f8e7d;cursor:pointer;line-height:1;" aria-label="Close">×</button>
+        <div id="modalBadge" style="
+            display:inline-block;padding:3px 10px;border-radius:99px;
+            font-size:11px;font-weight:700;letter-spacing:.5px;
+            text-transform:uppercase;margin-bottom:12px;"></div>
+        <div style="font-size:11px;color:#6f8e7d;font-weight:600;letter-spacing:.5px;margin-bottom:2px;" id="modalRef"></div>
+        <div style="font-size:20px;font-weight:800;color:#ecfdf5;margin-bottom:18px;" id="modalGuest"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="modal-field"><div class="modal-field-label">Facility</div><div class="modal-field-val" id="modalFacility"></div></div>
+            <div class="modal-field"><div class="modal-field-label">Date</div><div class="modal-field-val" id="modalDate"></div></div>
+            <div class="modal-field"><div class="modal-field-label">Time</div><div class="modal-field-val" id="modalTime"></div></div>
+            <div class="modal-field"><div class="modal-field-label">Guests</div><div class="modal-field-val" id="modalGuests"></div></div>
+            <div class="modal-field"><div class="modal-field-label">Contact</div><div class="modal-field-val" id="modalPhone"></div></div>
+            <div class="modal-field"><div class="modal-field-label">Amount</div><div class="modal-field-val" id="modalAmount"></div></div>
+        </div>
+        <div id="modalNotesWrap" style="margin-top:12px;display:none;">
+            <div class="modal-field-label">Notes</div>
+            <div id="modalNotes" style="font-size:12.5px;color:#9ab9aa;margin-top:3px;"></div>
+        </div>
+        <div style="margin-top:20px;text-align:right;">
+            <a id="modalViewLink" href="#" class="btn btn-sm btn-primary">View reservation →</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+<style>
+#reservationCalendar { font-family: 'Plus Jakarta Sans', sans-serif; }
+.fc .fc-toolbar-title { font-size: 15px; font-weight: 700; color: #ecfdf5; }
+.fc .fc-button {
+    background: #152f24; border: 1px solid #24483a; color: #cbe9d9;
+    border-radius: 8px; font-size: 12px; font-weight: 600;
+    padding: 5px 12px; box-shadow: none;
+}
+.fc .fc-button:hover { background: #203a2f; border-color: #4edea3; color: #ecfdf5; }
+.fc .fc-button-primary:not(:disabled).fc-button-active,
+.fc .fc-button-primary:not(:disabled):active { background: #10b981; border-color: #10b981; color: #032b1c; }
+.fc .fc-col-header-cell-cushion { font-size: 11px; font-weight: 700; color: #6f8e7d; text-decoration: none; text-transform: uppercase; letter-spacing: .5px; }
+.fc .fc-daygrid-day-number { font-size: 11.5px; color: #9ab9aa; text-decoration: none; padding: 4px 6px; }
+.fc .fc-day-today { background: rgba(78,222,163,.08) !important; }
+.fc .fc-day-today .fc-daygrid-day-number { color: #4edea3; font-weight: 800; }
+
+/* Disable ALL hover effects on day cells */
+.fc .fc-daygrid-day,
+.fc .fc-daygrid-day:hover,
+.fc .fc-daygrid-day-frame,
+.fc .fc-daygrid-day-frame:hover,
+.fc .fc-daygrid-day-bg,
+.fc .fc-daygrid-day-bg:hover,
+.fc .fc-daygrid-day-top,
+.fc .fc-daygrid-day-top:hover,
+.fc-theme-standard td:hover,
+.fc-theme-standard .fc-scrollgrid tbody tr:hover,
+.fc .fc-col-header-cell:hover {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+/* Keep today's background even on hover */
+.fc .fc-day-today,
+.fc .fc-day-today:hover {
+    background: rgba(78,222,163,.08) !important;
+}
+.fc-theme-standard td, .fc-theme-standard th { border-color: #1d3a2e; }
+.fc .fc-daygrid-day-frame { 
+    min-height: 132px; 
+    height: auto;
+    position: relative; 
+}
+.fc .fc-daygrid-day {
+    min-height: 132px;
+}
+.fc-theme-standard td {
+    position: relative;
+}
+.fc .fc-daygrid-day-events { 
+    padding-bottom: 4px; 
+    margin-bottom: 2px;
+    position: relative;
+    z-index: 1;
+}
+.fc .fc-daygrid-day-bg { z-index: 0; }
+.fc .fc-event,
+.fc .fc-event:hover { 
+    background: none !important; 
+    border: none !important; 
+    box-shadow: none !important; 
+    padding: 0 !important; 
+    margin: 0 0 2px 0 !important;
+    position: relative !important;
+}
+.fc .fc-event-main { 
+    padding: 0 !important; 
+    position: relative;
+    z-index: auto;
+}
+.fc .fc-daygrid-event-harness { 
+    margin: 0 0 2px 0 !important;
+    position: relative !important;
+}
+.fc .fc-daygrid-event { 
+    margin: 0 !important;
+    position: relative !important;
+}
+.fc .fc-daygrid-block-event { 
+    padding: 0 !important;
+    position: relative !important;
+}
+.fc .fc-daygrid-event-harness-abs {
+    position: relative !important;
+    top: auto !important;
+    margin-bottom: 2px !important;
+}
+.fc .fc-daygrid-more-link {
+    font-size: 10px; font-weight: 600; color: #4edea3;
+    background: rgba(78,222,163,.1); border-radius: 4px;
+    padding: 2px 6px; margin: 2px 2px 0;
+    text-decoration: none; display: inline-block;
+}
+.fc .fc-daygrid-more-link:hover {
+    background: rgba(78,222,163,.2); color: #ecfdf5;
+}
+.fc .fc-popover {
+    background: #0a271b; border: 1px solid #24483a;
+    border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,.5);
+}
+.fc .fc-popover-header {
+    background: #152f24; color: #ecfdf5;
+    border-bottom: 1px solid #24483a; padding: 8px 12px;
+    font-weight: 600; font-size: 12px;
+}
+.fc .fc-popover-close {
+    color: #6f8e7d; opacity: 1;
+}
+.fc .fc-popover-close:hover {
+    color: #ecfdf5;
+}
+
+/* LIST VIEW STYLING */
+.fc-theme-standard .fc-list {
+    border: none;
+}
+.fc .fc-list-day-cushion {
+    background: #152f24 !important;
+    padding: 10px 14px;
+}
+.fc .fc-list-day-text {
+    font-size: 13px;
+    font-weight: 700;
+    color: #ecfdf5;
+    text-transform: capitalize;
+}
+.fc .fc-list-day-side-text {
+    font-size: 11px;
+    font-weight: 600;
+    color: #9ab9aa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.fc .fc-list-event {
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.fc .fc-list-event:hover {
+    background: rgba(78,222,163,.05) !important;
+}
+.fc .fc-list-event-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    margin-right: 12px;
+}
+.fc .fc-list-event-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #ecfdf5;
+    padding: 12px 14px;
+}
+.fc .fc-list-event-time {
+    font-size: 12px;
+    font-weight: 500;
+    color: #9ab9aa;
+    padding: 12px 14px;
+    white-space: nowrap;
+}
+.fc .fc-list-empty {
+    background: #09241a;
+    color: #6f8e7d;
+    text-align: center;
+    padding: 48px 20px;
+    font-size: 13px;
+}
+.fc .fc-list-table {
+    border: 1px solid #1d3a2e;
+    border-radius: 12px;
+    overflow: hidden;
+}
+.fc .fc-list-event-graphic {
+    padding: 12px 14px;
+}
+.fc-theme-standard .fc-list-day-frame {
+    background: #09241a;
+}
+.fc .fc-list-sticky .fc-list-day > * {
+    background: #152f24 !important;
+}
+
+.cal-event-card {
+    display: flex; 
+    flex-direction: column; 
+    gap: 2px;
+    border-radius: 6px;
+    padding: 3px 6px;
+    margin: 2px 1px;
+    cursor: pointer; 
+    overflow: hidden;
+    min-height: 46px;
+    position: relative;
+    z-index: 2;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    border-left: 3px solid rgba(255, 255, 255, 0.8);
+}
+.cal-event-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+}
+.cal-event-card:active {
+    transform: scale(0.98);
+}
+.cal-event-guest {
+    font-size: 11px;
+    font-weight: 700; 
+    color: #ffffff;
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    line-height: 1.2;
+}
+.cal-event-times {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.95); 
+    line-height: 1.15;
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis;
+}
+.cal-event-meta {
+    font-size: 9.5px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.78);
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.modal-field { background: #052016; border: 1px solid #1d3a2e; border-radius: 8px; padding: 8px 10px; }
+.modal-field-label { font-size: 10.5px; color: #6f8e7d; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
+.modal-field-val { font-size: 13px; font-weight: 600; color: #ecfdf5; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<script>
+let calendarInstance = null;
+
+/* Scheduled-time label for an event.
+   Reservations run inside a single day, so a plain range reads best.
+   Bookings span nights, so the check-in and check-out clock times are labelled. */
+function eventTimeText(p) {
+    const start = p.start_time || '—';
+    const end   = p.end_time   || '—';
+    if (start === '—' && end === '—') {
+        return p.date_label || 'Time not set';
+    }
+    if (p.type === 'booking' && start !== end) {
+        return `In ${start} · Out ${end}`;
+    }
+    return `${start} – ${end}`;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    console.log('🚀 Calendar initialization started...');
+    const calEl = document.getElementById('reservationCalendar');
+    console.log('📍 Calendar element found:', calEl ? 'Yes' : 'No');
+    console.log('📚 FullCalendar loaded:', typeof FullCalendar !== 'undefined' ? 'Yes' : 'No');
+
+    calendarInstance = new FullCalendar.Calendar(calEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+            left:   'prev,next today',
+            center: 'title',
+            right:  'dayGridMonth,listMonth'
+        },
+        buttonText: { today: 'Today', month: 'Month', list: 'List' },
+        height: 'calc(100vh - 300px)',  // Reduced height to fit viewport better
+        contentHeight: 'auto',
+        dayMaxEvents: 3,  // Each card shows name + time + facility, so 3 fits a row
+        moreLinkText: 'more',
+        eventDisplay: 'block',
+        displayEventTime: false,
+        displayEventEnd: false,
+        eventOrder: 'start,-duration,title',
+        slotEventOverlap: false,
+
+        events: function (info, successCallback, failureCallback) {
+            const url = `/admin/api/bookings?start=${info.startStr}&end=${info.endStr}&_=${Date.now()}`;
+            console.log('📡 Fetching events from:', url);
+            
+            fetch(url)
+                .then(r => {
+                    console.log('📥 Response status:', r.status);
+                    return r.json();
+                })
+                .then(data => {
+                    console.log('✅ Events received:', data.length, 'events');
+                    console.log('📋 Sample event:', data[0]);
+                    successCallback(data);
+                })
+                .catch(err => {
+                    console.error('❌ Error fetching events:', err);
+                    failureCallback();
+                });
+        },
+        refetchResourcesOnNavigate: true,
+
+        eventContent: function (arg) {
+            const p = arg.event.extendedProps;
+            // Theme colors by status
+            const statusColors = { 
+                confirmed: '#059669', 
+                pending: '#d97706', 
+                cancel_requested: '#ea580c', 
+                cancelled: '#475569' 
+            };
+            const bg = statusColors[p.status] || arg.event.backgroundColor || '#059669';
+            const name = (p.guest || arg.event.title || 'Guest').trim();
+            const facility = p.facility || '';
+            const paxInfo = p.guests ? `${p.guests} pax` : '';
+            const timeText = eventTimeText(p);
+
+            const card = document.createElement('div');
+            card.className = 'cal-event-card';
+            card.style.backgroundColor = bg;
+            card.setAttribute('title',
+                `${name} • ${timeText}${facility ? ' • ' + facility : ''} (${(p.status || '').toUpperCase()})`);
+
+            // Line 1 — who booked
+            const guestEl = document.createElement('div');
+            guestEl.className = 'cal-event-guest';
+            guestEl.textContent = `👤 ${name}`;
+
+            // Line 2 — the scheduled time, always visible
+            const timeEl = document.createElement('div');
+            timeEl.className = 'cal-event-times';
+            timeEl.textContent = `🕘 ${timeText}`;
+
+            card.appendChild(guestEl);
+            card.appendChild(timeEl);
+
+            // Line 3 — facility / pax (kept small so the time and name stay readable)
+            const metaText = p.type === 'booking'
+                ? [facility, paxInfo].filter(Boolean).join(' • ')
+                : facility;
+            if (metaText) {
+                const metaEl = document.createElement('div');
+                metaEl.className = 'cal-event-meta';
+                metaEl.textContent = metaText;
+                card.appendChild(metaEl);
+            }
+
+            return { domNodes: [card] };
+        },
+
+        eventClick: function (info) {
+            openBookingModal(info.event);
+            info.jsEvent.preventDefault();
+        },
+
+        listDaySideFormat: { weekday: 'short' },
+        
+        // Custom list view formatting
+        listDayFormat: { month: 'long', day: 'numeric', year: 'numeric' },
+        
+        // Override event rendering in list view
+        eventDidMount: function(info) {
+            if (info.view.type === 'listMonth') {
+                const p = info.event.extendedProps;
+                const titleEl = info.el.querySelector('.fc-list-event-title');
+                
+                if (titleEl) {
+                    const listTimeText = eventTimeText(p);
+                    // Create custom content for list view
+                    const container = document.createElement('div');
+                    container.style.cssText = 'display:flex;align-items:center;justify-content:space-between;width:100%;';
+                    
+                    const leftSide = document.createElement('div');
+                    leftSide.style.cssText = 'display:flex;align-items:center;gap:12px;';
+                    
+                    const guestName = document.createElement('div');
+                    guestName.textContent = p.guest || info.event.title;
+                    guestName.style.cssText = 'font-weight:700;color:#ecfdf5;font-size:13.5px;';
+                    
+                    const facility = document.createElement('div');
+                    facility.textContent = `${listTimeText}${p.facility ? ' · ' + p.facility : ''}${p.type === 'booking' && p.guests ? ' · ' + p.guests + ' pax' : ''}`;
+                    facility.style.cssText = 'font-size:12px;color:#9ab9aa;font-weight:500;';
+                    
+                    leftSide.appendChild(guestName);
+                    leftSide.appendChild(facility);
+                    
+                    const rightSide = document.createElement('div');
+                    rightSide.style.cssText = 'display:flex;align-items:center;gap:14px;';
+                    
+                    const amount = document.createElement('div');
+                    amount.textContent = p.amount ? `₱${Number(p.amount).toLocaleString('en-PH', { minimumFractionDigits: 0 })}` : '—';
+                    amount.style.cssText = 'font-weight:700;color:#ffb95f;font-size:13px;';
+                    
+                    const badge = document.createElement('span');
+                    badge.textContent = (p.status || '').toUpperCase();
+                    badge.style.cssText = 'padding:4px 10px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:0.5px;';
+                    
+                    if (p.status === 'confirmed') {
+                        badge.style.background = 'rgba(78,222,163,.14)';
+                        badge.style.color = '#4edea3';
+                    } else if (p.status === 'pending') {
+                        badge.style.background = 'rgba(255,185,95,.14)';
+                        badge.style.color = '#ffb95f';
+                    } else {
+                        badge.style.background = 'rgba(148,163,184,.14)';
+                        badge.style.color = '#9ab9aa';
+                    }
+                    
+                    rightSide.appendChild(amount);
+                    rightSide.appendChild(badge);
+                    
+                    container.appendChild(leftSide);
+                    container.appendChild(rightSide);
+                    
+                    titleEl.innerHTML = '';
+                    titleEl.appendChild(container);
+                }
+                
+                // Update time column
+                const timeEl = info.el.querySelector('.fc-list-event-time');
+                if (timeEl && p.start_time) {
+                    timeEl.textContent = listTimeText;
+                }
+            }
+        },
+    });
+
+    console.log('🎨 Rendering calendar...');
+    calendarInstance.render();
+    console.log('✅ Calendar rendered successfully!');
+});
+
+function refreshCalendar() {
+    if (!calendarInstance) return;
+    const icon = document.getElementById('refreshIcon');
+    if (icon) icon.style.animation = 'spin 0.6s linear';
+    calendarInstance.refetchEvents();
+    setTimeout(() => { if (icon) icon.style.animation = ''; }, 700);
+}
+window.refreshCalendar = refreshCalendar;
+
+function openBookingModal(event) {
+    const p = event.extendedProps;
+    const badgeColors = {
+        confirmed: { bg: 'rgba(78,222,163,.14)', color: '#4edea3' },
+        pending:   { bg: 'rgba(255,185,95,.14)', color: '#ffb95f' },
+        cancel_requested: { bg: 'rgba(234,88,12,.18)', color: '#fb923c' },
+        cancelled: { bg: 'rgba(148,163,184,.14)', color: '#9ab9aa' },
+    };
+    const bc = badgeColors[p.status] || badgeColors.cancelled;
+    const badge = document.getElementById('modalBadge');
+    badge.textContent = p.status.toUpperCase();
+    badge.style.background = bc.bg;
+    badge.style.color = bc.color;
+
+    document.getElementById('modalRef').textContent      = p.ref;
+    document.getElementById('modalGuest').textContent    = p.guest;
+    document.getElementById('modalFacility').textContent = p.facility;
+    
+    // Handle date display differently for multi-day bookings
+    if (p.type === 'booking') {
+        const checkIn = new Date(event.start);
+        const checkOut = new Date(event.end);
+        checkOut.setDate(checkOut.getDate() - 1); // Adjust for FullCalendar's exclusive end
+        document.getElementById('modalDate').textContent = 
+            `${checkIn.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} - ${checkOut.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    } else {
+        document.getElementById('modalDate').textContent =
+            new Date(event.startStr + 'T00:00:00')
+                .toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    
+    document.getElementById('modalTime').textContent     = eventTimeText(p);
+    document.getElementById('modalGuests').textContent   = `${p.guests} pax`;
+    document.getElementById('modalPhone').textContent    = p.phone;
+    document.getElementById('modalAmount').textContent   =
+        p.amount ? `₱${Number(p.amount).toLocaleString('en-PH', { minimumFractionDigits: 0 })}` : '—';
+
+    const notesWrap = document.getElementById('modalNotesWrap');
+    if (p.notes) {
+        document.getElementById('modalNotes').textContent = p.notes;
+        notesWrap.style.display = 'block';
+    } else {
+        notesWrap.style.display = 'none';
+    }
+
+    // Set correct detail link based on booking type
+    if (p.type === 'booking') {
+        document.getElementById('modalViewLink').href = `/reservations/${event.id}`;
+    } else {
+        document.getElementById('modalViewLink').href = `/reservations/${event.id}`;
+    }
+    
+    document.getElementById('bookingModal').style.display = 'flex';
+}
+
+function closeBookingModal() {
+    document.getElementById('bookingModal').style.display = 'none';
+}
+window.closeBookingModal = closeBookingModal;
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('bookingModal').addEventListener('click', function (e) {
+        if (e.target === this) closeBookingModal();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeBookingModal();
+    });
+});
+</script>
+{% endblock %}

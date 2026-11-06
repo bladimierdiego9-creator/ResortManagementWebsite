@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Booking Details - {{ resort_name }}{% endblock %}
+{% block content %}
+<h1>Booking #{{ booking.booking_number }}</h1>
+<div class="card mt-4">
+    <div class="card-body">
+        <h5>Guest Information</h5>
+        <p><strong>Name:</strong> {{ booking.guest_name }}</p>
+        <p><strong>Email:</strong> {{ booking.guest_email }}</p>
+        <p><strong>Phone:</strong> {{ booking.guest_phone }}</p>
+        <hr>
+        <h5>Booking Details</h5>
+        <p><strong>Facility:</strong> {{ booking.facility.name }}</p>
+        <p><strong>Check-in:</strong> {{ format_date(booking.check_in_date) }}</p>
+        <p><strong>Check-out:</strong> {{ format_date(booking.check_out_date) }}</p>
+        <p><strong>Status:</strong> <span class="badge bg-success">{{ booking.status }}</span></p>
+        <p><strong>Amount:</strong> {{ format_currency(booking.final_amount) }}</p>
+    </div>
+</div>
+{% endblock %}

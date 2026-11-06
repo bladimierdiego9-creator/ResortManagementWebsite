@@ -1,0 +1,498 @@
+{% extends "base.html" %}
+{% block title %}Overview — A&D Thysia{% endblock %}
+{% block breadcrumb %}Overview{% endblock %}
+
+{% block content %}
+
+<!-- Page header -->
+<div style="margin-bottom:6px;">
+    <div class="page-eyebrow">{{ today.strftime('%A, %d %B %Y').upper() }}</div>
+    <div class="page-header">
+        <div class="page-header-left">
+            <h1 class="page-title">Good {{ 'morning' if now.hour < 12 else ('afternoon' if now.hour < 17 else 'evening') }}, {{ current_user.full_name.split()[0] }}.</h1>
+            <p class="page-subtitle">Here's what's happening across A&amp;D Thysia today.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ── STAT CARDS ────────────────────────────────────── -->
+<div class="stats-grid">
+
+    <!-- Today's bookings -->
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <span class="stat-label">Today's Bookings</span>
+            <span class="stat-icon">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </span>
+        </div>
+        <span class="stat-value">{{ stats.todays_bookings }}</span>
+        <span class="stat-change up">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M5 1l4 5H1z"/></svg>
+            12.5% vs last Monday
+        </span>
+        <canvas id="sparkBookings" class="stat-sparkline"></canvas>
+    </div>
+
+    <!-- Revenue this month -->
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <span class="stat-label">Revenue This Month</span>
+            <span class="stat-icon">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M8.5 14c0 .828 1.343 1.5 3 1.5s3-.672 3-1.5-1.343-1.5-3-1.5-3-.672-3-1.5 1.343-1.5 3-1.5 3 .672 3 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M11.5 8.5V9m0 6v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/></svg>
+            </span>
+        </div>
+        <span class="stat-value" style="font-size:22px;">₱{{ "{:,.0f}".format(stats.revenue_this_month) }}</span>
+        <span class="stat-change {% if stats.revenue_change >= 0 %}up{% else %}down{% endif %}">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                {% if stats.revenue_change >= 0 %}<path d="M5 1l4 5H1z"/>{% else %}<path d="M5 9L1 4h8z"/>{% endif %}
+            </svg>
+            {{ stats.revenue_change|abs }}% vs August
+        </span>
+        <canvas id="sparkRevenue" class="stat-sparkline"></canvas>
+    </div>
+
+    <!-- Active staff -->
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <span class="stat-label">Active Staff</span>
+            <span class="stat-icon">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </span>
+        </div>
+        <span class="stat-value">{{ stats.clocked_in }} <span style="font-size:16px;font-weight:500;color:var(--text-muted);">/ {{ stats.total_staff }}</span></span>
+        <span class="stat-meta">{{ ((stats.clocked_in / stats.total_staff * 100) | round(0) | int) if stats.total_staff else 0 }}% clocked in today</span>
+    </div>
+
+    <!-- Needs attention -->
+    <div class="stat-card attention">
+        <div class="flex items-center justify-between">
+            <span class="stat-label">Needs Attention</span>
+            <span class="stat-icon">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </span>
+        </div>
+        <span class="stat-value" style="color:var(--pending-text);">{{ stats.needs_attention }}</span>
+        <span class="stat-meta" style="color:var(--pending-text);font-weight:600;">
+            AI escalations awaiting response
+        </span>
+        <div style="height:4px;background:var(--border);border-radius:99px;margin-top:10px;overflow:hidden;">
+            <div style="height:100%;width:{{ [((stats.needs_attention / 10 * 100)|int), 100]|min }}%;background:var(--accent);border-radius:99px;"></div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── CHARTS ROW ────────────────────────────────────── -->
+<div class="grid-2-1 mb-24">
+
+    <!-- Booking activity -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Booking activity</div>
+                <div style="font-size:11.5px;color:var(--text-muted);">Bookings across all facilities</div>
+            </div>
+            <div class="flex gap-8">
+                <button class="btn btn-sm btn-secondary btn-pill active" style="font-size:11.5px;" onclick="switchBookingView('chart')">Chart</button>
+                <button class="btn btn-sm btn-secondary btn-pill" style="font-size:11.5px;" onclick="switchBookingView('recent')">Recent</button>
+                <button class="btn btn-sm btn-secondary btn-pill" style="font-size:11.5px;" onclick="switchBookingView('calendar')">Calendar</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Chart View -->
+            <div id="chartView" class="booking-view active">
+                <div class="chart-container">
+                    <canvas id="bookingChart"></canvas>
+                </div>
+                <div style="margin-top:10px;font-size:12px;color:var(--text-muted);">
+                    <span style="display:inline-block;width:10px;height:10px;background:var(--accent);border-radius:2px;margin-right:5px;"></span>
+                    All bookings &amp; reservations
+                    <span style="float:right;font-weight:700;color:var(--text-primary);font-size:13px;" id="chartTotalLabel">
+                        {{ chart_data.booking.data | sum }} total bookings
+                    </span>
+                </div>
+            </div>
+
+            <!-- Recent Bookings View -->
+            <div id="recentView" class="booking-view">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Guest</th>
+                                <th>Facility</th>
+                                <th>Date &amp; Time</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- DEBUG INFO -->
+                            <tr style="background:#ffffcc;"><td colspan="5"><strong>DEBUG:</strong> {{ recent_bookings|length }} items loaded</td></tr>
+                            {% for item in recent_bookings %}
+                            <tr style="cursor:pointer;" onclick="window.location='{% if item.type == 'booking' %}{{ url_for('reservations.detail', id='book-' ~ item.id) }}{% else %}{{ url_for('reservations.detail', id=item.id) }}{% endif %}'">
+                                <td>
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <div class="guest-chip">{{ item.guest_name[:2].upper() }}</div>
+                                        <span class="font-semibold">{{ item.guest_name }}</span>
+                                    </div>
+                                </td>
+                                <td style="color:var(--text-secondary);">{{ item.facility }}</td>
+                                <td style="color:var(--text-secondary);">
+                                    {% if item.type == 'reservation' %}
+                                        {% if item.event_date %}
+                                            {% set date_parts = item.event_date.split('-') %}
+                                            {% set formatted_date = date_parts[2] ~ ' ' ~ ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date_parts[1]|int] ~ ' ' ~ date_parts[0] %}
+                                            {{ formatted_date }} · {{ item.start_time[:5] if item.start_time else '—' }}
+                                        {% else %}
+                                            — · —
+                                        {% endif %}
+                                    {% else %}
+                                        {% if item.event_date %}
+                                            {% set date_parts = item.event_date.split('-') %}
+                                            {% set formatted_date = date_parts[2] ~ ' ' ~ ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date_parts[1]|int] ~ ' ' ~ date_parts[0] %}
+                                            {{ formatted_date }} · Check-in
+                                        {% else %}
+                                            — · Check-in
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td class="font-semibold">₱{{ "{:,.0f}".format(item.amount) }}</td>
+                                <td>
+                                    {% if item.status == 'cancel_requested' %}
+                                        <span class="badge badge-cancel_requested">Cancel Requested</span>
+                                    {% else %}
+                                        <span class="badge badge-{{ item.status }}">{{ item.status.replace('_', ' ').title() }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-center text-muted" style="padding:28px;">No bookings yet.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top:15px;text-align:center;">
+                    <a href="{{ url_for('reservations.index') }}" class="btn btn-sm btn-secondary">View all bookings →</a>
+                </div>
+            </div>
+
+            <!-- Calendar View -->
+            <div id="calendarView" class="booking-view">
+                <div id="bookingCalendar" style="min-height:350px;"></div>
+                <div style="margin-top:15px;font-size:12px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <span style="display:inline-block;width:10px;height:10px;background:#10b981;border-radius:2px;margin-right:5px;"></span>
+                        Confirmed bookings
+                        <span style="margin-left:15px;display:inline-block;width:10px;height:10px;background:#ffb95f;border-radius:2px;margin-right:5px;"></span>
+                        Pending bookings
+                    </div>
+                    <span style="font-weight:700;color:var(--text-primary);font-size:13px;">
+                        {{ recent_bookings|length }} recent bookings
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Facility occupancy -->
+    <div class="card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">Facility occupancy</div>
+                <div style="font-size:11.5px;color:var(--text-muted);">For today</div>
+            </div>
+            <span style="font-size:18px;cursor:pointer;color:var(--text-muted);">···</span>
+        </div>
+        <div class="card-body">
+            <div style="position:relative;height:180px;">
+                <canvas id="occupancyChart"></canvas>
+                <!-- Center label -->
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);text-align:center;pointer-events:none;">
+                    <div style="font-size:22px;font-weight:800;color:var(--text-primary);">
+                        {% set total = chart_data.occupancy.booked + chart_data.occupancy.available + chart_data.occupancy.blocked %}
+                        {{ ((chart_data.occupancy.booked / total * 100)|round(0)|int) if total else 0 }}%
+                    </div>
+                    <div style="font-size:10.5px;color:var(--text-muted);font-weight:600;">occupied</div>
+                </div>
+            </div>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:5px;">
+                <div class="flex items-center justify-between" style="font-size:12px;">
+                    <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--sidebar-bg);margin-right:6px;"></span>Booked</span>
+                    <span class="font-semibold">{{ chart_data.occupancy.booked }}</span>
+                </div>
+                <div class="flex items-center justify-between" style="font-size:12px;">
+                    <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:6px;"></span>Available</span>
+                    <span class="font-semibold">{{ chart_data.occupancy.available }}</span>
+                </div>
+                <div class="flex items-center justify-between" style="font-size:12px;">
+                    <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cancelled-text);margin-right:6px;"></span>Blocked</span>
+                    <span class="font-semibold">{{ chart_data.occupancy.blocked }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.js"></script>
+<script>
+/* ── Charts ── */
+const bookingLabels     = {{ chart_data.booking.labels | tojson }};
+const bookingData       = {{ chart_data.booking.data   | tojson }};
+const lastBookingLabels = {{ chart_data.last_booking.labels | tojson }};
+const lastBookingData   = {{ chart_data.last_booking.data   | tojson }};
+
+// Calendar data
+const calendarBookings = {{ recent_bookings | tojson }};
+console.log('DEBUG: Calendar bookings data loaded:', calendarBookings);
+console.log('DEBUG: Number of items:', calendarBookings ? calendarBookings.length : 0);
+
+// main.js is an ES module (deferred) — wait for it before calling its helpers
+function bootOverviewCharts() {
+renderSparkline('sparkBookings', {{ stats.sparkline | tojson }}, '#4edea3');
+renderSparkline('sparkRevenue',  [80,95,70,110,130,120,145], '#ffb95f');
+initBookingChart(bookingLabels, bookingData);
+initBookingCalendar();
+(function () {
+    const canvas = document.getElementById('occupancyChart');
+    if (!canvas) return;
+    new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+            labels: ['Booked', 'Available', 'Blocked'],
+            datasets: [{ data: [{{ chart_data.occupancy.booked }}, {{ chart_data.occupancy.available }}, {{ chart_data.occupancy.blocked }}], backgroundColor: ['#10b981', '#ffb95f', '#ffb4ab'], borderWidth: 3, borderColor: '#09241a' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '72%', plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0a271b', borderColor: '#24483a', borderWidth: 1, titleColor: '#ecfdf5', bodyColor: '#9ab9aa' } } }
+    });
+})();
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootOverviewCharts);
+} else {
+    bootOverviewCharts();
+}
+
+let bookingChart;
+function initBookingChart(labels, data) {
+    const canvas = document.getElementById('bookingChart');
+    if (!canvas) return;
+    if (bookingChart) bookingChart.destroy();
+    bookingChart = new Chart(canvas, {
+        type: 'bar',
+        data: { labels, datasets: [{ label: 'Bookings', data, backgroundColor: '#10b981', borderRadius: 4, borderSkipped: false }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0a271b', borderColor: '#24483a', borderWidth: 1, titleColor: '#ecfdf5', bodyColor: '#9ab9aa' } },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#6f8e7d', maxTicksLimit: 8 } },
+                y: { grid: { color: 'rgba(60,74,66,.35)' }, ticks: { font: { size: 10 }, color: '#6f8e7d', stepSize: 1 }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+let calendar;
+function initBookingCalendar() {
+    console.log('DEBUG: initBookingCalendar called');
+    const calendarEl = document.getElementById('bookingCalendar');
+    if (!calendarEl) {
+        console.error('DEBUG: Calendar element not found');
+        return;
+    }
+    console.log('DEBUG: Calendar element found:', calendarEl);
+    
+    // Convert booking data to calendar events
+    const events = calendarBookings.map(booking => {
+        console.log('DEBUG: Processing booking:', booking);
+        // Parse the ISO date string for the calendar
+        let eventDate = null;
+        if (booking.event_date) {
+            try {
+                eventDate = new Date(booking.event_date).toISOString().split('T')[0];
+            } catch (e) {
+                console.error('Error parsing date:', booking.event_date, e);
+                return null;
+            }
+        }
+        
+        return {
+            title: `${booking.guest_name} - ${booking.facility}`,
+            start: eventDate,
+            backgroundColor: booking.status === 'confirmed' ? '#10b981' : '#ffb95f',
+            borderColor: booking.status === 'confirmed' ? '#10b981' : '#ffb95f',
+            textColor: booking.status === 'confirmed' ? '#fff' : '#000',
+            extendedProps: {
+                amount: booking.amount,
+                status: booking.status,
+                type: booking.type,
+                id: booking.id
+            }
+        };
+    }).filter(event => event && event.start); // Filter out null events and events without valid dates
+    
+    console.log('DEBUG: Calendar events created:', events);
+    console.log('DEBUG: Number of valid events:', events.length);
+    
+    if (calendar) {
+        calendar.destroy();
+    }
+    
+    calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        height: 350,
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,listWeek'
+        },
+        events: events,
+        eventClick: function(info) {
+            const props = info.event.extendedProps;
+            const url = props.type === 'booking' ? 
+                `/reservations/book-${props.id}` : 
+                `/reservations/${props.id}`;
+            window.open(url, '_blank');
+        },
+        eventMouseEnter: function(info) {
+            const props = info.event.extendedProps;
+            info.el.title = `${info.event.title}\nAmount: ₱${props.amount.toLocaleString()}\nStatus: ${props.status}\nClick to view details`;
+        },
+        eventDidMount: function(info) {
+            console.log('Event mounted:', info.event.title);
+        }
+    });
+    
+    try {
+        calendar.render();
+        console.log('DEBUG: Calendar rendered successfully');
+    } catch (e) {
+        console.error('DEBUG: Calendar render error:', e);
+    }
+}
+
+function switchBookingView(viewType) {
+    // Hide all views
+    document.querySelectorAll('.booking-view').forEach(view => {
+        view.classList.remove('active');
+    });
+    
+    // Remove active state from all buttons in the booking activity card
+    document.querySelectorAll('.card .btn-pill').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected view
+    document.getElementById(viewType + 'View').classList.add('active');
+    
+    // Add active state to clicked button
+    event.target.classList.add('active');
+    
+    // Re-render calendar if switching to calendar view
+    if (viewType === 'calendar' && calendar) {
+        setTimeout(() => {
+            calendar.updateSize();
+            calendar.render();
+        }, 100);
+    }
+}
+
+function switchBookingChart(period) {
+    const totalLabel = document.getElementById('chartTotalLabel');
+    if (period === 'last') {
+        initBookingChart(lastBookingLabels, lastBookingData);
+        const total = lastBookingData.reduce((a, b) => a + b, 0);
+        if (totalLabel) totalLabel.textContent = `${total} total bookings (last month)`;
+    } else {
+        initBookingChart(bookingLabels, bookingData);
+        const total = bookingData.reduce((a, b) => a + b, 0);
+        if (totalLabel) totalLabel.textContent = `${total} total bookings`;
+    }
+}
+</script>
+
+<style>
+/* Booking view styles */
+.booking-view {
+    display: none;
+}
+
+.booking-view.active {
+    display: block;
+}
+
+.btn-pill.active {
+    background: var(--accent) !important;
+    color: #000 !important;
+}
+
+/* Calendar styles */
+.fc {
+    font-family: inherit;
+    font-size: 12px;
+}
+
+.fc-theme-standard .fc-scrollgrid {
+    border-color: var(--border);
+}
+
+.fc-theme-standard td, .fc-theme-standard th {
+    border-color: var(--border);
+}
+
+.fc-col-header-cell {
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.fc-daygrid-day {
+    background: var(--surface);
+}
+
+.fc-daygrid-day:hover {
+    background: var(--surface-2);
+}
+
+.fc-event {
+    border-radius: 3px;
+    font-size: 10px;
+    padding: 1px 4px;
+    margin: 1px 0;
+    cursor: pointer;
+}
+
+.fc-button {
+    background: var(--surface-2) !important;
+    border-color: var(--border) !important;
+    color: var(--text-primary) !important;
+    font-size: 11px !important;
+}
+
+.fc-button:hover {
+    background: var(--accent) !important;
+    color: #000 !important;
+}
+
+.fc-button-active {
+    background: var(--accent) !important;
+    color: #000 !important;
+}
+
+.fc-toolbar-title {
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.fc-today {
+    background: rgba(78, 222, 163, 0.1) !important;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,678 @@
+{% extends "base.html" %}
+{% block title %}Payments — A&amp;D Thysia Admin{% endblock %}
+{% block breadcrumb %}Payments &amp; Reports{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Payments &amp; Reports</h1>
+        <p class="page-subtitle">Track and manage all payment transactions</p>
+    </div>
+    <div class="page-header-right">
+        <a href="{{ url_for('payments.verification') }}" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="margin-right: 8px;">
+                <path d="M9 11L12 14L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M21 12V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            GCash Verification
+        </a>
+    </div>
+</div>
+
+<!-- SUMMARY STATS -->
+<div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));margin-bottom:20px;">
+    <div class="stat-card">
+        <span class="stat-label">Total Revenue (Paid)</span>
+        <span class="stat-value" style="font-size:22px;">₱{{ "{:,.0f}".format(total_revenue) }}</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Pending Amount</span>
+        <span class="stat-value" style="font-size:22px;color:var(--warning);">₱{{ "{:,.0f}".format(pending_amount) }}</span>
+    </div>
+</div>
+
+<!-- FILTERS -->
+<form method="GET" action="{{ url_for('payments.index') }}" class="filter-bar">
+    <div class="custom-select-wrapper">
+        <div class="custom-dropdown" data-name="status" data-value="{{ status_filter or '' }}">
+            <div class="dropdown-selected">
+                {% if status_filter == 'pending' %}
+                    Pending
+                {% elif status_filter == 'paid' %}
+                    Paid
+                {% elif status_filter == 'refunded' %}
+                    Refunded
+                {% else %}
+                    All Statuses
+                {% endif %}
+            </div>
+            <div class="dropdown-options">
+                <div class="dropdown-option" data-value="">
+                    All Statuses
+                </div>
+                <div class="dropdown-option" data-value="pending">
+                    Pending
+                </div>
+                <div class="dropdown-option" data-value="paid">
+                    Paid
+                </div>
+                <div class="dropdown-option" data-value="refunded">
+                    Refunded
+                </div>
+            </div>
+        </div>
+        <input type="hidden" name="status" value="{{ status_filter or '' }}">
+        <div class="select-arrow">
+            <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
+                <path d="M1 1L6 6L11 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+    </div>
+    <div class="custom-select-wrapper">
+        <div class="custom-dropdown" data-name="mode" data-value="{{ mode_filter or '' }}">
+            <div class="dropdown-selected">
+                {% if mode_filter == 'cash' %}
+                    Cash
+                {% elif mode_filter == 'gcash' %}
+                    GCash
+                {% else %}
+                    All Modes
+                {% endif %}
+            </div>
+            <div class="dropdown-options">
+                <div class="dropdown-option" data-value="">
+                    All Modes
+                </div>
+                <div class="dropdown-option" data-value="cash">
+                    Cash
+                </div>
+                <div class="dropdown-option" data-value="gcash">
+                    GCash
+                </div>
+            </div>
+        </div>
+        <input type="hidden" name="mode" value="{{ mode_filter or '' }}">
+        <div class="select-arrow">
+            <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
+                <path d="M1 1L6 6L11 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+    </div>
+    <button type="submit" class="btn btn-secondary filter-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M22 3H2L10 12.46V19L14 21V12.46L22 3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Filter
+    </button>
+    <a href="{{ url_for('payments.index') }}" class="btn btn-secondary reset-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M3 12A9 9 0 0 1 12 3A9 9 0 0 1 21 12A9 9 0 0 1 12 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M8 12L12 16L16 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Reset
+    </a>
+</form>
+
+<!-- TABLE -->
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Reservation</th>
+                    <th>Guest</th>
+                    <th>Amount</th>
+                    <th>Mode</th>
+                    <th>Receipt #</th>
+                    <th>Status</th>
+                    <th>Paid At</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payments %}
+                <tr>
+                    <td class="text-muted" style="font-size:12px;">#{{ p.id }}</td>
+                    <td>
+                        <a href="{{ url_for('reservations.detail', id=p.reservation_id) }}" class="text-secondary" style="text-decoration:underline;">
+                            Res #{{ p.reservation_id }}
+                        </a>
+                    </td>
+                    <td>{{ p.reservation.guest.full_name }}</td>
+                    <td class="font-bold">₱{{ "{:,.2f}".format(p.amount) }}</td>
+                    <td>
+                        <span class="badge badge-info">{{ p.payment_mode.title() }}</span>
+                        {% if p.payment_mode == 'gcash' %}
+                        <div style="margin-top:4px;">
+                            <a href="{{ url_for('payments.verification') }}#{{ 'verified' if p.verification_status == 'verified' else 'unverified' }}" class="badge badge-{{ p.verification_status }}" style="font-size:10px; text-decoration:none;">
+                                {{ p.verification_status.title() }}
+                            </a>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td style="font-size:12px;">{{ p.receipt_number or '—' }}</td>
+                    <td><span class="badge badge-{{ p.status }}">{{ p.status.title() }}</span></td>
+                    <td class="text-muted" style="font-size:12px;">
+                        {{ p.paid_at.strftime('%b %d, %H:%M') if p.paid_at else '—' }}
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('payments.update', id=p.id) }}" class="flex gap-8 items-center">
+                            <select name="status" class="form-select" style="padding:4px 8px;font-size:12px;width:auto;">
+                                <option value="pending" {% if p.status == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="paid" {% if p.status == 'paid' %}selected{% endif %}>Paid</option>
+                                <option value="refunded" {% if p.status == 'refunded' %}selected{% endif %}>Refunded</option>
+                            </select>
+                            <button type="submit" class="btn btn-xs btn-primary">Save</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted" style="padding:36px;">No payments found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if pagination.pages > 1 %}
+    <div class="card-footer flex items-center justify-between">
+        <span class="text-muted" style="font-size:13px;">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+        <nav class="pagination" aria-label="Pagination">
+            {% if pagination.has_prev %}
+            <a href="{{ url_for('payments.index', page=pagination.prev_num, status=status_filter, mode=mode_filter) }}">&laquo;</a>
+            {% endif %}
+            {% for p in pagination.iter_pages() %}
+                {% if p %}
+                    {% if p == pagination.page %}
+                    <span class="current">{{ p }}</span>
+                    {% else %}
+                    <a href="{{ url_for('payments.index', page=p, status=status_filter, mode=mode_filter) }}">{{ p }}</a>
+                    {% endif %}
+                {% else %}
+                <span>…</span>
+                {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+            <a href="{{ url_for('payments.index', page=pagination.next_num, status=status_filter, mode=mode_filter) }}">&raquo;</a>
+            {% endif %}
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* Enhanced Filter Dropdowns - Force Dark Theme */
+.filter-bar {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 16px;
+    background: var(--surface-container-low);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.custom-select-wrapper {
+    position: relative;
+    min-width: 160px;
+}
+
+/* Custom Dropdown Styling */
+.custom-dropdown {
+    position: relative;
+    width: 100%;
+}
+
+.dropdown-selected {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 40px 6px 12px;
+    background: rgba(21, 47, 36, 0.72);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    user-select: none;
+    height: 36px;
+}
+
+.dropdown-selected:hover {
+    background: rgba(32, 58, 47, 0.95);
+    border-color: var(--line-bright);
+    box-shadow: 0 4px 12px rgba(78, 222, 163, 0.15);
+    transform: translateY(-1px);
+}
+
+.dropdown-options {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background-color: #09241a !important;
+    background: #09241a !important;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    overflow: hidden;
+    animation: dropdownFadeIn 0.2s ease;
+    opacity: 1 !important;
+}
+
+.dropdown-options.show {
+    display: block !important;
+    opacity: 1 !important;
+    background-color: #09241a !important;
+    background: #09241a !important;
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 1;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dropdown-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: #09241a !important;
+    background: #09241a !important;
+    opacity: 1 !important;
+}
+
+.dropdown-option:hover {
+    background-color: #152f24 !important;
+    background: #152f24 !important;
+    color: var(--primary);
+    opacity: 1 !important;
+}
+
+.dropdown-option:active {
+    background-color: var(--primary-container) !important;
+    background: var(--primary-container) !important;
+    color: var(--on-primary-container);
+    opacity: 1 !important;
+}
+
+.dropdown-icon {
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dropdown-icon-img {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.custom-select {
+    width: 100%;
+    padding: 10px 40px 10px 14px;
+    background: var(--surface-container-high);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    appearance: none;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.custom-select:hover {
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(78, 222, 163, 0.15);
+    transform: translateY(-1px);
+}
+
+.custom-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(78, 222, 163, 0.2);
+    transform: translateY(-1px);
+}
+
+/* Show icons in selected dropdown display */
+.custom-select[value="gcash"] {
+    background-image: url('/static/images/gcash-logo.svg');
+    background-repeat: no-repeat;
+    background-position: 14px center;
+    background-size: 16px 16px;
+    padding-left: 36px;
+}
+
+.custom-select[value="cash"] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='10' y='35' width='80' height='30' rx='5' fill='%2327AE60' stroke='%231e7e34' stroke-width='2'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='white' font-family='Arial' font-size='16' font-weight='bold'%3E₱%3C/text%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 14px center;
+    background-size: 16px 16px;
+    padding-left: 36px;
+}
+
+.select-arrow {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+}
+
+.custom-select:hover + .select-arrow {
+    color: var(--primary);
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.custom-select:focus + .select-arrow {
+    color: var(--primary);
+    transform: translateY(-50%) rotate(180deg);
+}
+
+/* Enhanced Buttons */
+.filter-btn, .reset-btn {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px !important;
+    height: 36px;
+    font-size: 13px;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.filter-btn:hover, .reset-btn:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2) !important;
+}
+
+.filter-btn:active, .reset-btn:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Filter Animation */
+@keyframes filterPulse {
+    0% { box-shadow: 0 0 0 0 rgba(78, 222, 163, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(78, 222, 163, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(78, 222, 163, 0); }
+}
+
+.filter-btn:active {
+    animation: filterPulse 0.6s ease-out;
+}
+
+/* Dropdown Options Styling - Force Dark Theme */
+.custom-select option {
+    padding: 10px 14px !important;
+    background-color: var(--surface-container-high) !important;
+    background: var(--surface-container-high) !important;
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+    border: none !important;
+}
+
+.custom-select option:hover {
+    background-color: var(--surface-container-highest) !important;
+    background: var(--surface-container-highest) !important;
+}
+
+.custom-select option:checked,
+.custom-select option:focus {
+    background-color: var(--primary-container) !important;
+    background: var(--primary-container) !important;
+    color: var(--on-primary-container) !important;
+}
+
+/* Force dark background for entire dropdown */
+.custom-select {
+    width: 100%;
+    padding: 10px 40px 10px 14px;
+    background-color: var(--surface-container-high) !important;
+    background: var(--surface-container-high) !important;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary) !important;
+    font-size: 14px;
+    font-weight: 500;
+    appearance: none;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Override browser default dropdown styling */
+.custom-select::-webkit-scrollbar {
+    background: var(--surface-container-high);
+}
+
+.custom-select::-webkit-scrollbar-thumb {
+    background: var(--surface-container-highest);
+}
+
+/* Force option styling in WebKit browsers */
+.custom-select option {
+    background-color: var(--surface-container-high) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Enhanced styling with icons for options */
+.custom-select option[value=""] {
+    background-color: var(--surface-container-high) !important;
+    color: var(--text-primary) !important;
+}
+
+.custom-select option[value="cash"] {
+    background-color: var(--surface-container-high) !important;
+    color: var(--text-primary) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='10' y='35' width='80' height='30' rx='5' fill='%2327AE60' stroke='%231e7e34' stroke-width='2'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='white' font-family='Arial' font-size='16' font-weight='bold'%3E₱%3C/text%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: 8px center !important;
+    background-size: 16px 16px !important;
+    padding-left: 30px !important;
+}
+
+.custom-select option[value="gcash"] {
+    background-color: var(--surface-container-high) !important;
+    color: var(--text-primary) !important;
+    background-image: url('/static/images/gcash-logo.svg') !important;
+    background-repeat: no-repeat !important;
+    background-position: 8px center !important;
+    background-size: 16px 16px !important;
+    padding-left: 30px !important;
+}
+
+/* Custom option styling with icons */
+.custom-select option[value="gcash"]::before {
+    content: "";
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    background-image: url('/static/images/gcash-logo.svg');
+    background-size: contain;
+    background-repeat: no-repeat;
+    vertical-align: middle;
+}
+
+.custom-select option[value="cash"]::before {
+    content: "";
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='10' y='35' width='80' height='30' rx='5' fill='%2327AE60' stroke='%231e7e34' stroke-width='2'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='white' font-family='Arial' font-size='16' font-weight='bold'%3E₱%3C/text%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    vertical-align: middle;
+}
+
+/* Enhanced option styling - consistent with theme */
+.custom-select option[value="gcash"] {
+    background: var(--surface-container-high);
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.custom-select option[value="gcash"]:hover {
+    background: var(--surface-container-highest);
+}
+
+.custom-select option[value="cash"] {
+    background: var(--surface-container-high);
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.custom-select option[value="cash"]:hover {
+    background: var(--surface-container-highest);
+}
+
+/* Show icons in selected dropdown display */
+.custom-select[value="gcash"] {
+    background-image: url('/static/images/gcash-logo.svg');
+    background-repeat: no-repeat;
+    background-position: 14px center;
+    background-size: 16px 16px;
+    padding-left: 36px;
+}
+
+.custom-select[value="cash"] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect x='10' y='35' width='80' height='30' rx='5' fill='%2327AE60' stroke='%231e7e34' stroke-width='2'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='white' font-family='Arial' font-size='16' font-weight='bold'%3E₱%3C/text%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 14px center;
+    background-size: 16px 16px;
+    padding-left: 36px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .filter-bar {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+    
+    .custom-select-wrapper {
+        min-width: auto;
+    }
+    
+    .filter-btn, .reset-btn {
+        justify-content: center;
+    }
+}
+
+/* Loading Animation for Form Submit */
+.filter-bar.loading .custom-select {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.filter-bar.loading .filter-btn {
+    pointer-events: none;
+}
+
+.filter-bar.loading .filter-btn svg {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.filter-bar');
+    
+    // Handle custom dropdown
+    const customDropdowns = document.querySelectorAll('.custom-dropdown');
+    
+    customDropdowns.forEach(dropdown => {
+        const selected = dropdown.querySelector('.dropdown-selected');
+        const options = dropdown.querySelector('.dropdown-options');
+        const hiddenInput = dropdown.parentElement.querySelector('input[type="hidden"]');
+        
+        // Toggle dropdown
+        selected.addEventListener('click', function(e) {
+            e.stopPropagation();
+            
+            // Close other dropdowns
+            document.querySelectorAll('.dropdown-options.show').forEach(opt => {
+                if (opt !== options) {
+                    opt.classList.remove('show');
+                }
+            });
+            
+            options.classList.toggle('show');
+        });
+        
+        // Handle option selection
+        const optionElements = options.querySelectorAll('.dropdown-option');
+        optionElements.forEach(option => {
+            option.addEventListener('click', function() {
+                const value = this.getAttribute('data-value');
+                const text = this.innerHTML;
+                
+                // Update selected display
+                selected.innerHTML = text;
+                
+                // Update hidden input
+                hiddenInput.value = value;
+                
+                // Close dropdown
+                options.classList.remove('show');
+                
+                // Submit form
+                form.classList.add('loading');
+                form.submit();
+            });
+        });
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.custom-dropdown')) {
+            document.querySelectorAll('.dropdown-options.show').forEach(opt => {
+                opt.classList.remove('show');
+            });
+        }
+    });
+    
+    // Remove loading after page loads
+    window.addEventListener('load', function() {
+        form.classList.remove('loading');
+    });
+});
+</script>
+{% endblock %}

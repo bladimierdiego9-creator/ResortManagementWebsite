@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Analytics — A&amp;D Thysia Admin{% endblock %}
+{% block breadcrumb %}Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Analytics</h1>
+        <p class="page-subtitle">Business performance insights and trends</p>
+    </div>
+    <div class="page-actions">
+        <form method="GET" action="{{ url_for('analytics.index') }}" class="flex gap-8 items-center">
+            <input type="date" name="date_from" class="form-input date-input" value="{{ date_from }}">
+            <span class="text-muted">—</span>
+            <input type="date" name="date_to" class="form-input date-input" value="{{ date_to }}">
+            <button type="submit" class="btn btn-secondary">Apply</button>
+        </form>
+    </div>
+</div>
+
+<!-- TOP ROW CHARTS -->
+<div class="grid-2 mb-24">
+    <div class="card">
+        <div class="card-header"><span class="card-title">Booking Trends</span></div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="bookingTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header"><span class="card-title">Reservation Status Breakdown</span></div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="reservationStatusChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- BOTTOM ROW CHARTS -->
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header"><span class="card-title">Revenue by Payment Mode</span></div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="revenueByModeChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header"><span class="card-title">Attendance Summary (Period)</span></div>
+        <div class="card-body">
+            <div class="chart-container">
+                <canvas id="attendanceChart"></canvas>
+            </div>
+            <div class="flex gap-8 mt-8" style="justify-content:center;">
+                <span class="badge badge-confirmed">On Time: {{ chart_data.attendance.on_time }}</span>
+                <span class="badge badge-pending">Late: {{ chart_data.attendance.late }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const cd = {{ chart_data | tojson }};
+
+// main.js is an ES module (deferred) — wait for it before calling its helpers
+function bootAnalyticsCharts() {
+renderLineChart('bookingTrendChart', cd.bookingTrends.labels, [{
+    label: 'Bookings',
+    data: cd.bookingTrends.data,
+    borderColor: '#4edea3',
+    backgroundColor: 'rgba(78,222,163,.13)',
+    fill: true,
+    tension: 0.4,
+    pointRadius: 3,
+}]);
+
+renderDoughnutChart('reservationStatusChart',
+    ['Confirmed', 'Pending', 'Cancelled'],
+    [cd.reservationStatus.confirmed, cd.reservationStatus.pending, cd.reservationStatus.cancelled],
+    ['#10b981', '#ffb95f', '#ffb4ab']
+);
+
+renderDoughnutChart('revenueByModeChart',
+    ['Cash', 'GCash', 'Bank', 'Card'],
+    [cd.revenueByMode.cash, cd.revenueByMode.gcash, cd.revenueByMode.bank, cd.revenueByMode.card],
+    ['#10b981', '#8cc6ff', '#ffb95f', '#68dba9']
+);
+
+renderDoughnutChart('attendanceChart',
+    ['On Time', 'Late'],
+    [cd.attendance.on_time, cd.attendance.late],
+    ['#10b981', '#ffb95f']
+);
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootAnalyticsCharts);
+} else {
+    bootAnalyticsCharts();
+}
+</script>
+{% endblock %}
