@@ -555,8 +555,8 @@
                         <div class="rfid-scan-icon" aria-hidden="true">
                             <svg width="34" height="34" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2.2"/><path d="M7 10h10M7 14h2m3 0h2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
                         </div>
-                        <p class="rfid-scan-heading" id="rfidScanHeading">Click Start Scan ID below to activate the reader</p>
-                        <p class="rfid-scan-help" id="rfidScanHelp">Click Start Scan ID, then tap the card.</p>
+                        <p class="rfid-scan-heading" id="rfidScanHeading">Click Start Scan ID, then tap the card on the ESP32 reader.</p>
+                        <p class="rfid-scan-help" id="rfidScanHelp">The scanner must be online and connected to this website.</p>
                     </div>
                     <div class="rfid-card-details" id="rfidExistingCard" aria-live="polite">
                         <div id="rfidExistingMessage">This RFID is registered but inactive.</div>
@@ -565,7 +565,6 @@
                         <div style="margin-top:12px;" id="rfidExistingOwner"></div>
                         <button type="button" class="rfid-reactivate" id="rfidReactivateButton" hidden>Reactivate</button>
                     </div>
-                    <input class="rfid-scan-capture" id="rfidScanCapture" type="text" autocomplete="off" aria-label="RFID reader input">
                     <div class="rfid-scan-actions">
                         <button type="button" class="rfid-scan-action" id="rfidStartScanButton">
                             ▣ &nbsp; Start Scan ID
@@ -574,13 +573,6 @@
                             ▣ &nbsp; Scan Again
                         </button>
                     </div>
-                    <details style="margin-top:14px;color:var(--text-secondary);font-size:13px;">
-                        <summary style="cursor:pointer;">Reader not working? Enter the UID manually</summary>
-                        <div style="display:flex;gap:8px;margin-top:10px;">
-                            <input type="text" id="rfidManualUid" class="form-input" placeholder="Card UID" autocomplete="off" style="text-transform:uppercase;font-family:monospace;">
-                            <button type="button" id="rfidManualUseButton" class="btn btn-secondary">Use UID</button>
-                        </div>
-                    </details>
                 </section>
 
                 <section class="rfid-wizard-panel" data-rfid-panel="2">
@@ -717,11 +709,13 @@
 {% block scripts %}
 <script>
 const rfidLookupUrl = {{ url_for('attendance_payroll.lookup_rfid')|tojson }};
+const rfidPendingScanUrl = {{ url_for('attendance_payroll.pending_rfid_scan')|tojson }};
 const rfidListUrl = {{ url_for('attendance_payroll.index', tab='rfid')|tojson }};
 let rfidRegistrationStep = 1;
 let rfidScanTimer = null;
 let rfidScanning = false;
 let rfidDetectedUid = '';
+let rfidScanCursor = '';
 let rfidSelectedStaffLabel = 'Unassigned / Spare Card';
 
 function showRfidRegisterModal() {
@@ -743,7 +737,6 @@ function resetRfidRegistration() {
     document.getElementById('rfidSelectedStaffId').value = '0';
     document.getElementById('rfidRegistrationNotes').value = '';
     document.getElementById('rfidStaffSearch').value = '';
-    document.getElementById('rfidManualUid').value = '';
     document.getElementById('rfidExistingCard').classList.remove('visible');
     document.getElementById('rfidExistingCard').dataset.reactivateUrl = '';
     document.getElementById('rfidReactivateButton').hidden = true;
@@ -753,8 +746,8 @@ function resetRfidRegistration() {
     document.getElementById('rfidStartScanButton').classList.remove('scanning');
     document.getElementById('rfidStartScanButton').innerHTML = '▣ &nbsp; Start Scan ID';
     document.getElementById('rfidScanZone').className = 'rfid-scan-zone';
-    document.getElementById('rfidScanHeading').textContent = 'Click Start Scan ID below to activate the reader';
-    document.getElementById('rfidScanHelp').textContent = 'Click Start Scan ID, then tap the card.';
+    document.getElementById('rfidScanHeading').textContent = 'Click Start Scan ID, then tap the card on the ESP32 reader.';
+    document.getElementById('rfidScanHelp').textContent = 'The scanner must be online and connected to this website.';
     document.querySelectorAll('.rfid-staff-option').forEach(function(option) {
         option.classList.toggle('selected', option.dataset.staffId === '0');
         option.hidden = false;
@@ -764,7 +757,10 @@ function resetRfidRegistration() {
 
 function stopRfidScan() {
     rfidScanning = false;
-    if (rfidScanTimer) clearTimeout(rfidScanTimer);
+    if (rfidScanTimer) {
+        clearTimeout(rfidScanTimer);
+        rfidScanTimer = null;
+    }
 }
 
 function setRfidRegistrationStep(step) {
@@ -797,7 +793,7 @@ function setRfidRegistrationStep(step) {
     }
 }
 
-function startRfidScan() {
+async function startRfidScan() {
     const zone = document.getElementById('rfidScanZone');
     const startButton = document.getElementById('rfidStartScanButton');
     document.getElementById('rfidExistingCard').classList.remove('visible');
@@ -805,14 +801,63 @@ function startRfidScan() {
     document.getElementById('rfidRegisterUid').value = '';
     document.getElementById('rfidNextButton').disabled = true;
     zone.className = 'rfid-scan-zone';
-    document.getElementById('rfidScanHeading').textContent = 'Ready — tap your RFID card now.';
-    document.getElementById('rfidScanHelp').textContent = 'Keep the card near the reader until it beeps.';
+    document.getElementById('rfidScanHeading').textContent = 'Connecting to ESP32 scanner…';
+    document.getElementById('rfidScanHelp').textContent = 'Wait for the scanner connection, then tap an unregistered card.';
     startButton.textContent = '▣  Scanning...';
     startButton.classList.add('scanning');
+    startButton.disabled = true;
     rfidScanning = true;
-    const capture = document.getElementById('rfidScanCapture');
-    capture.value = '';
-    capture.focus();
+
+    try {
+        const response = await fetch(rfidPendingScanUrl + '?baseline=1', {
+            headers: {'Accept': 'application/json'}
+        });
+        if (!response.ok) throw new Error('Could not connect to the registration scanner.');
+        const result = await response.json();
+        rfidScanCursor = result.cursor;
+        startButton.disabled = false;
+        document.getElementById('rfidScanHeading').textContent = 'Ready — tap your RFID card now.';
+        document.getElementById('rfidScanHelp').textContent = 'Tap the unregistered card on the ESP32 reader.';
+        pollRfidRegistrationScan();
+    } catch (error) {
+        stopRfidScan();
+        startButton.disabled = false;
+        startButton.classList.remove('scanning');
+        startButton.innerHTML = '▣ &nbsp; Start Scan ID';
+        zone.className = 'rfid-scan-zone error';
+        document.getElementById('rfidScanHeading').textContent = 'Could not connect to the scanner.';
+        document.getElementById('rfidScanHelp').textContent = 'Refresh the page and check that the ESP32 is online.';
+    }
+}
+
+async function pollRfidRegistrationScan() {
+    if (!rfidScanning) return;
+
+    try {
+        const response = await fetch(
+            rfidPendingScanUrl + '?after=' + encodeURIComponent(rfidScanCursor),
+            {headers: {'Accept': 'application/json'}}
+        );
+        if (!response.ok) throw new Error('Scanner polling failed.');
+        const result = await response.json();
+
+        if (result.found) {
+            rfidScanCursor = result.cursor;
+            await processRfidScan(result.uid);
+            return;
+        }
+
+        rfidScanCursor = result.cursor || rfidScanCursor;
+        rfidScanTimer = setTimeout(pollRfidRegistrationScan, 700);
+    } catch (error) {
+        stopRfidScan();
+        document.getElementById('rfidScanZone').className = 'rfid-scan-zone error';
+        document.getElementById('rfidScanHeading').textContent = 'Lost connection to the scanner.';
+        document.getElementById('rfidScanHelp').textContent = 'Check the ESP32 connection, then scan again.';
+        document.getElementById('rfidStartScanButton').classList.remove('scanning');
+        document.getElementById('rfidStartScanButton').innerHTML = '▣ &nbsp; Start Scan ID';
+        document.getElementById('rfidScanAgainButton').hidden = false;
+    }
 }
 
 async function processRfidScan(rawUid) {
@@ -820,10 +865,9 @@ async function processRfidScan(rawUid) {
     stopRfidScan();
     document.getElementById('rfidStartScanButton').classList.remove('scanning');
     const uid = (rawUid || '').toUpperCase().replace(/\s+/g, '').trim();
-    document.getElementById('rfidScanCapture').value = '';
     if (!uid) {
         document.getElementById('rfidScanHeading').textContent = 'No card ID received';
-        document.getElementById('rfidScanHelp').textContent = 'Try again or enter the UID manually.';
+        document.getElementById('rfidScanHelp').textContent = 'Tap the card again.';
         document.getElementById('rfidScanZone').className = 'rfid-scan-zone error';
         document.getElementById('rfidStartScanButton').innerHTML = '▣ &nbsp; Start Scan ID';
         return;
@@ -956,31 +1000,6 @@ document.addEventListener('DOMContentLoaded', function() {
             setRfidRegistrationStep(3);
         } else if (rfidDetectedUid) {
             setRfidRegistrationStep(2);
-        }
-    });
-    const capture = document.getElementById('rfidScanCapture');
-    capture.addEventListener('input', function() {
-        if (!rfidScanning) return;
-        if (rfidScanTimer) clearTimeout(rfidScanTimer);
-        rfidScanTimer = setTimeout(function() { processRfidScan(capture.value); }, 300);
-    });
-    capture.addEventListener('keydown', function(event) {
-        if (event.key === 'Enter' && rfidScanning) {
-            event.preventDefault();
-            processRfidScan(capture.value);
-        }
-    });
-    document.getElementById('rfidManualUseButton').addEventListener('click', function() {
-        const manual = document.getElementById('rfidManualUid');
-        if (manual.value.trim()) {
-            rfidScanning = true;
-            processRfidScan(manual.value);
-        }
-    });
-    document.getElementById('rfidManualUid').addEventListener('keydown', function(event) {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            document.getElementById('rfidManualUseButton').click();
         }
     });
     document.querySelectorAll('.rfid-staff-option').forEach(function(option) {

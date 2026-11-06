@@ -135,7 +135,32 @@ def device_rfid_scan():
             db.session.add(card)
             db.session.flush()
         else:
-            return jsonify(ok=False, message='Card is not registered'), 404
+            # An unknown card scan is the first step of the admin registration
+            # wizard. Save it as pending so the open browser wizard can receive it.
+            try:
+                card = RFIDCard(
+                    card_uid=card_uid,
+                    status='pending',
+                    notes='Scanned by ESP32; awaiting staff assignment',
+                    created_at=datetime.utcnow(),
+                    last_used_at=datetime.utcnow(),
+                )
+                db.session.add(card)
+                db.session.commit()
+                return jsonify(ok=True, action='REGISTRATION_PENDING', uid=card_uid)
+            except Exception:
+                db.session.rollback()
+                current_app.logger.exception('Unable to save pending RFID registration scan')
+                return jsonify(ok=False, message='Could not save card scan'), 500
+    if card.status == 'pending' and card.staff_id is None:
+        try:
+            card.last_used_at = datetime.utcnow()
+            db.session.commit()
+            return jsonify(ok=True, action='REGISTRATION_PENDING', uid=card_uid)
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('Unable to update pending RFID registration scan')
+            return jsonify(ok=False, message='Could not save card scan'), 500
     if card.status != 'active':
         return jsonify(ok=False, message=f'Card is {card.status}'), 403
     if not card.staff or card.staff.status != 'active':
@@ -199,7 +224,7 @@ def register_rfid():
         status = 'active'
 
     existing = RFIDCard.query.filter_by(card_uid=card_uid).first()
-    if existing:
+    if existing and existing.status != 'pending':
         flash(f'RFID card with Tag UID "{card_uid}" is already registered.', 'error')
         return redirect(url_for('attendance_payroll.index', tab='rfid'))
 
@@ -213,20 +238,30 @@ def register_rfid():
     try:
         if target_staff:
             # If target staff already has another card, unassign that card first
-            old_card = RFIDCard.query.filter_by(staff_id=target_staff.id).first()
+            old_card_query = RFIDCard.query.filter_by(staff_id=target_staff.id)
+            if existing:
+                old_card_query = old_card_query.filter(RFIDCard.id != existing.id)
+            old_card = old_card_query.first()
             if old_card:
                 old_card.staff_id = None
             target_staff.rfid_tag = card_uid
             if target_staff.account:
                 target_staff.account.rfid_tag = card_uid
 
-        new_card = RFIDCard(
-            card_uid=card_uid,
-            staff_id=target_staff.id if target_staff else None,
-            status=status,
-            notes=notes
-        )
-        db.session.add(new_card)
+        if existing:
+            # Promote the ESP32-created pending row instead of inserting a duplicate.
+            existing.staff_id = target_staff.id if target_staff else None
+            existing.status = status
+            existing.notes = notes or 'Registered from ESP32 scan'
+            new_card = existing
+        else:
+            new_card = RFIDCard(
+                card_uid=card_uid,
+                staff_id=target_staff.id if target_staff else None,
+                status=status,
+                notes=notes
+            )
+            db.session.add(new_card)
         db.session.commit()
         log_action(f"Registered RFID card: {card_uid}", "RFIDCard", new_card.id)
         owner_msg = f" and assigned to {target_staff.full_name}" if target_staff else " (Unassigned)"
@@ -248,7 +283,7 @@ def lookup_rfid():
         return jsonify({'error': 'Card UID is required.'}), 400
 
     card = RFIDCard.query.filter_by(card_uid=card_uid).first()
-    if not card:
+    if not card or card.status == 'pending':
         return jsonify({'found': False})
 
     return jsonify({
@@ -259,6 +294,36 @@ def lookup_rfid():
         'owner': card.owner_name,
         'reactivate_url': url_for('attendance_payroll.reactivate_rfid', id=card.id),
     })
+
+
+@attendance_payroll_bp.route('/rfid/pending-scan')
+@login_required
+@admin_required
+def pending_rfid_scan():
+    """Browser poll endpoint for an unregistered UID scanned by the ESP32."""
+    if request.args.get('baseline') == '1':
+        return jsonify(cursor=datetime.utcnow().isoformat(timespec='microseconds'))
+
+    cursor_value = request.args.get('after', '')
+    try:
+        cursor_time = datetime.fromisoformat(cursor_value)
+    except (TypeError, ValueError):
+        return jsonify(error='Invalid scan cursor'), 400
+
+    card = RFIDCard.query.filter(
+        RFIDCard.status == 'pending',
+        RFIDCard.staff_id.is_(None),
+        RFIDCard.last_used_at > cursor_time,
+    ).order_by(RFIDCard.last_used_at.desc(), RFIDCard.id.desc()).first()
+
+    if not card:
+        return jsonify(found=False, cursor=cursor_value)
+
+    return jsonify(
+        found=True,
+        uid=card.card_uid,
+        cursor=card.last_used_at.isoformat(timespec='microseconds'),
+    )
 
 
 @attendance_payroll_bp.route('/rfid/<int:id>/reactivate', methods=['POST'])

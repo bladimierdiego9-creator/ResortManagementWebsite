@@ -2,7 +2,7 @@
 #include <SPI.h>
 #include <Wire.h>
 #include <WiFi.h>
-#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <MFRC522.h>
 #include <U8g2lib.h>
@@ -19,17 +19,29 @@
 #define OLED_SCL_PIN  22
 #define OLED_ADDR     0x3C
 
-// For local testing, the computer and ESP32 must be on the same Wi-Fi.
 const char *WIFI_SSID = "YOUR_WIFI_NAME";
 const char *WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
-const char *API_URL = "http://192.168.1.22:5000/attendance-payroll/api/rfid/scan";
+const char *API_URL = "https://resort-management-website.vercel.app/attendance-payroll/api/rfid/scan";
 const char *DEVICE_TOKEN = "PASTE_THE_SAME_RFID_DEVICE_TOKEN_FROM_SERVER_ENV";
 
 MFRC522 rfid(RFID_SS_PIN, RFID_RST_PIN);
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 String lastUid = "-";
 String statusText = "Connecting WiFi";
-unsigned long lastWifiAttempt = 0;
+bool wifiStarted = false;
+bool wifiWasConnected = false;
+unsigned long lastWifiStatusLog = 0;
+
+void onWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
+  if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+    Serial.printf(
+        "WiFi disconnect reason: %u\n",
+        (unsigned int)info.wifi_sta_disconnected.reason);
+  } else if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
+    Serial.print("WiFi obtained IP: ");
+    Serial.println(WiFi.localIP());
+  }
+}
 
 String uidToString(const MFRC522::Uid &uid) {
   String out;
@@ -45,12 +57,19 @@ String uidToString(const MFRC522::Uid &uid) {
 void showStatus(const String &message) {
   statusText = message;
   u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_6x12_tr);
-  u8g2.drawStr(0, 12, "RFID Attendance");
-  u8g2.drawHLine(0, 14, 128);
-  u8g2.drawStr(0, 30, "Status:");
-  u8g2.drawStr(0, 44, statusText.substring(0, 21).c_str());
-  u8g2.drawStr(0, 60, (String("UID: ") + lastUid).substring(0, 21).c_str());
+  u8g2.setFont(u8g2_font_5x8_tr);
+  u8g2.drawStr(0, 8, "RFID Attendance");
+  u8g2.drawHLine(0, 11, 128);
+  u8g2.drawStr(0, 23, (String("Status: ") + statusText).substring(0, 25).c_str());
+  u8g2.drawStr(0, 36, "UID:");
+
+  // Raw 4- and 7-byte UIDs fit on one row; longer UIDs wrap to row two.
+  if (lastUid.length() <= 25) {
+    u8g2.drawStr(0, 49, lastUid.c_str());
+  } else {
+    u8g2.drawStr(0, 49, lastUid.substring(0, 25).c_str());
+    u8g2.drawStr(0, 62, lastUid.substring(25).c_str());
+  }
   u8g2.sendBuffer();
 }
 
@@ -69,23 +88,46 @@ void feedback(bool success) {
 }
 
 bool connectWiFi() {
-  if (WiFi.status() == WL_CONNECTED) return true;
-  if (millis() - lastWifiAttempt < 10000) return false;
-  lastWifiAttempt = millis();
-  showStatus("Connecting WiFi");
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  const unsigned long started = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - started < 12000) delay(250);
-  if (WiFi.status() == WL_CONNECTED) showStatus("Ready - scan card");
-  else showStatus("WiFi unavailable");
-  return WiFi.status() == WL_CONNECTED;
+  const wl_status_t wifiStatus = WiFi.status();
+  if (wifiStatus == WL_CONNECTED) {
+    if (!wifiWasConnected) {
+      showStatus("Ready - scan card");
+      Serial.print("WiFi connected. ESP32 IP: ");
+      Serial.println(WiFi.localIP());
+    }
+    wifiWasConnected = true;
+    return true;
+  }
+
+  wifiWasConnected = false;
+
+  // Start Wi-Fi once. Let the ESP32 driver's auto-reconnect handle retries.
+  // Calling WiFi.begin() while association is pending triggers
+  // "sta is connecting, cannot set config".
+  if (!wifiStarted) {
+    wifiStarted = true;
+    showStatus("Connecting WiFi");
+    WiFi.mode(WIFI_STA);
+    WiFi.setSleep(false);
+    WiFi.setAutoReconnect(true);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    Serial.println("Started WiFi connection; auto-reconnect enabled");
+  }
+
+  if (millis() - lastWifiStatusLog >= 5000) {
+    lastWifiStatusLog = millis();
+    Serial.printf("Waiting for WiFi; status code: %d\n", (int)wifiStatus);
+    if (millis() >= 20000) showStatus("WiFi not connected");
+  }
+  return false;
 }
 
 bool sendScan(const String &uid) {
   if (!connectWiFi()) return false;
-  // Flask's local development server at 192.168.1.22:5000 uses HTTP.
-  WiFiClient client;
+  WiFiClientSecure client;
+  // Temporary certificate bypass for initial connectivity testing.
+  // Replace with client.setCACert(ROOT_CA) before production use.
+  client.setInsecure();
   HTTPClient http;
   if (!http.begin(client, API_URL)) {
     showStatus("Server unavailable");
@@ -100,7 +142,14 @@ bool sendScan(const String &uid) {
   http.end();
 
   if (code >= 200 && code < 300 && response.indexOf("\"ok\":true") >= 0) {
-    const String action = response.indexOf("CLOCK_OUT") >= 0 ? "Clocked out" : "Clocked in";
+    String action;
+    if (response.indexOf("REGISTRATION_PENDING") >= 0) {
+      action = "Card ready to register";
+    } else if (response.indexOf("CLOCK_OUT") >= 0) {
+      action = "Clocked out";
+    } else {
+      action = "Clocked in";
+    }
     showStatus(action);
     return true;
   }
@@ -119,6 +168,7 @@ void setup() {
   digitalWrite(LED_PIN, LOW);
   digitalWrite(BUZZER_PIN, LOW);
   Serial.begin(115200);
+  WiFi.onEvent(onWiFiEvent);
 
   Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
   u8g2.setI2CAddress(OLED_ADDR << 1);
