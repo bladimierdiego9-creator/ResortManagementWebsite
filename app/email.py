@@ -1,6 +1,7 @@
 """Email utilities for sending password reset and other system emails."""
 import smtplib
 import ssl
+import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import current_app, render_template
@@ -85,19 +86,25 @@ def send_email(to: str, subject: str, html_body: str, text_body: Optional[str] =
             candidate = None
             try:
                 print(f"[EMAIL] Trying transport port={port}, SSL={use_ssl}, TLS={use_tls}...")
+                
+                # Create SSL context - disable verification for development/corporate networks
+                ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+                
                 if use_ssl:
                     candidate = smtplib.SMTP_SSL(
                         mail_server,
                         port,
                         timeout=timeout,
-                        context=ssl.create_default_context(),
+                        context=ssl_context,
                     )
                     candidate.ehlo()
                 else:
                     candidate = smtplib.SMTP(mail_server, port, timeout=timeout)
                     candidate.ehlo()
                     if use_tls:
-                        candidate.starttls(context=ssl.create_default_context())
+                        candidate.starttls(context=ssl_context)
                         candidate.ehlo()
 
                 candidate.login(mail_username, mail_password)

@@ -91,18 +91,53 @@
         </div>
 
         <div class="card">
-            <div class="card-header"><span class="card-title">Current User</span></div>
+            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="card-title">Current User</span>
+                <button type="button" onclick="openModal('editProfileModal')" class="btn btn-sm btn-secondary">Edit Profile</button>
+            </div>
             <div class="card-body">
                 <table style="width:100%;">
                     <tbody>
                         <tr><td class="text-secondary" style="padding:7px 0;width:120px;">Name</td><td class="font-semibold">{{ current_user.full_name }}</td></tr>
                         <tr><td class="text-secondary" style="padding:7px 0;">Username</td><td>{{ current_user.username }}</td></tr>
+                        <tr><td class="text-secondary" style="padding:7px 0;">Email</td><td>{{ current_user.email }}</td></tr>
                         <tr><td class="text-secondary" style="padding:7px 0;">Role</td><td><span class="badge badge-gold">{{ current_user.role.replace('_', ' ').title() }}</span></td></tr>
                         <tr><td class="text-secondary" style="padding:7px 0;">Last Login</td><td>{{ current_user.last_login.strftime('%b %d, %Y %H:%M') if current_user.last_login else 'N/A' }}</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- EDIT PROFILE MODAL -->
+<div class="modal-overlay" id="editProfileModal">
+    <div class="modal">
+        <h2 class="modal-title">Edit Your Information</h2>
+        <button class="modal-close" onclick="closeModal('editProfileModal')" aria-label="Close">×</button>
+        <div class="divider"></div>
+        <form method="POST" action="{{ url_for('system.update_profile') }}">
+            <div class="form-group">
+                <label class="form-label">Full Name *</label>
+                <input type="text" name="full_name" class="form-input" value="{{ current_user.full_name }}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Username *</label>
+                <input type="text" name="username" class="form-input" value="{{ current_user.username }}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email *</label>
+                <input type="email" name="email" class="form-input" value="{{ current_user.email }}" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" name="new_password" class="form-input" placeholder="Leave blank to keep current">
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('editProfileModal')" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

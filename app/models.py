@@ -445,6 +445,30 @@ class AttendanceLog(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class RFIDCard(db.Model):
+    __tablename__ = 'rfid_cards'
+    id = db.Column(db.Integer, primary_key=True)
+    card_uid = db.Column(db.String(64), unique=True, nullable=False, index=True)
+    staff_id = db.Column(db.Integer, db.ForeignKey('staff.id', ondelete='SET NULL'), nullable=True)
+    status = db.Column(db.String(32), nullable=False, default='active')  # active, inactive, blocked
+    notes = db.Column(db.String(256), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_used_at = db.Column(db.DateTime, nullable=True)
+
+    staff = db.relationship('Staff', backref=db.backref('rfid_cards', lazy='dynamic'))
+
+    @property
+    def owner_name(self):
+        return self.staff.full_name if self.staff else 'Unassigned'
+
+    @property
+    def is_assigned(self):
+        return self.staff_id is not None
+
+    def __repr__(self):
+        return f'<RFIDCard {self.card_uid} ({self.owner_name})>'
+
+
 class Payroll(db.Model):
     __tablename__ = 'payrolls'
     id = db.Column(db.Integer, primary_key=True)

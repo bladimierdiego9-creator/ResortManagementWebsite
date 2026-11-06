@@ -77,7 +77,23 @@ with app.app_context():
 
     guests = []
     for name, email, phone in guest_data:
-        g = Guest(full_name=name, email=email, phone=phone)
+        parts = name.split(' ', 1)
+        f_name = parts[0]
+        l_name = parts[1] if len(parts) > 1 else ''
+        username = email.split('@')[0]
+        acct = Account(
+            username=username,
+            email=email,
+            first_name=f_name,
+            last_name=l_name,
+            role='guest',
+            status='active'
+        )
+        acct.set_password('Guest@123')
+        db.session.add(acct)
+        db.session.flush()
+
+        g = Guest(account_id=acct.id, full_name=name, email=email, phone=phone)
         db.session.add(g)
         guests.append(g)
     db.session.commit()
@@ -174,7 +190,25 @@ with app.app_context():
 
     staff_objects = []
     for name, role, shift, rfid in staff_data:
-        s = Staff(full_name=name, role=role, shift=shift, rfid_tag=rfid, status='active')
+        parts = name.split(' ', 1)
+        f_name = parts[0]
+        l_name = parts[1] if len(parts) > 1 else ''
+        username = name.lower().replace(' ', '')
+        email = f"{username}@adthysia.com"
+        acct = Account(
+            username=username,
+            email=email,
+            first_name=f_name,
+            last_name=l_name,
+            role='staff',
+            rfid_tag=rfid,
+            status='active'
+        )
+        acct.set_password('Staff@123')
+        db.session.add(acct)
+        db.session.flush()
+
+        s = Staff(account_id=acct.id, full_name=name, role=role, shift=shift, rfid_tag=rfid, email=email, status='active')
         db.session.add(s)
         staff_objects.append(s)
     db.session.commit()

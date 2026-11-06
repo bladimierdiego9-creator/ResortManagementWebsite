@@ -200,22 +200,69 @@ def new_account():
 def edit_account(id):
     account = Account.query.get_or_404(id)
     full_name = request.form.get('full_name', '').strip()
-    
-    if full_name:
-        first_name, last_name = _split_name(full_name)
-        account.first_name = first_name
-        account.last_name = last_name
-    
-    account.email      = request.form.get('email', account.email).strip()
-    account.role       = request.form.get('role', account.role)
-    account.rfid_tag   = request.form.get('rfid_tag', '').strip() or None
-    account.status     = request.form.get('status', account.status)
+    username = request.form.get('username', '').strip().lower()
+    email = request.form.get('email', '').strip().lower()
+    role = request.form.get('role', account.role)
+    rfid_tag = request.form.get('rfid_tag', '').strip() or None
+    status = request.form.get('status', account.status)
     new_password = request.form.get('new_password', '').strip()
+
+    if not full_name:
+        flash('Full name is required.', 'error')
+        return redirect(url_for('accounts.index', tab='admins'))
+
+    if username and username != account.username.lower():
+        if len(username) < 3:
+            flash('Username must be at least 3 characters long.', 'error')
+            return redirect(url_for('accounts.index', tab='admins'))
+        existing = Account.query.filter(Account.username == username, Account.id != id).first()
+        if existing:
+            flash(f'Username "{username}" is already taken.', 'error')
+            return redirect(url_for('accounts.index', tab='admins'))
+        account.username = username
+
+    if email and email != account.email.lower():
+        if '@' not in email or '.' not in email:
+            flash('Please enter a valid email address.', 'error')
+            return redirect(url_for('accounts.index', tab='admins'))
+        existing = Account.query.filter(Account.email == email, Account.id != id).first()
+        if existing:
+            flash(f'Email "{email}" is already in use.', 'error')
+            return redirect(url_for('accounts.index', tab='admins'))
+        account.email = email
+
+    if rfid_tag and rfid_tag != account.rfid_tag:
+        existing = Account.query.filter(Account.rfid_tag == rfid_tag, Account.id != id).first()
+        if existing:
+            flash(f'RFID tag "{rfid_tag}" is already in use.', 'error')
+            return redirect(url_for('accounts.index', tab='admins'))
+        account.rfid_tag = rfid_tag
+    elif not rfid_tag:
+        account.rfid_tag = None
+
+    first_name, last_name = _split_name(full_name)
+    account.first_name = first_name
+    account.last_name = last_name
+
+    if role in ('admin', 'super_admin'):
+        account.role = role
+
+    account.status = status
+
     if new_password:
+        if len(new_password) < 8:
+            flash('Password must be at least 8 characters long.', 'error')
+            return redirect(url_for('accounts.index', tab='admins'))
         account.set_password(new_password)
-    db.session.commit()
-    log_action(f'Updated account: {account.username}', 'Account', id)
-    flash('Account updated successfully.', 'success')
+
+    try:
+        db.session.commit()
+        log_action(f'Updated admin account: {account.username}', 'Account', id)
+        flash(f'Account for {account.full_name} updated successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating account: {str(e)}', 'error')
+
     return redirect(url_for('accounts.index', tab=_tab_for_role(account.role)))
 
 
@@ -377,32 +424,91 @@ def edit_staff(id):
         return redirect(url_for('accounts.index', tab='staff'))
 
     full_name = request.form.get('full_name', '').strip()
-    if full_name:
-        first_name, last_name = _split_name(full_name)
-        account.first_name = first_name
-        account.last_name = last_name
-
-    account.email      = request.form.get('email', account.email).strip()
-    account.rfid_tag   = request.form.get('rfid_tag', '').strip() or None
-    account.status     = request.form.get('status', account.status)
+    username = request.form.get('username', '').strip().lower()
+    email = request.form.get('email', '').strip().lower()
+    role = request.form.get('role', '').strip()
+    shift = request.form.get('shift', 'morning')
+    phone = request.form.get('phone', '').strip()
+    rfid_tag = request.form.get('rfid_tag', '').strip() or None
+    status = request.form.get('status', account.status)
     new_password = request.form.get('new_password', '').strip()
+
+    if not full_name:
+        flash('Full name is required.', 'error')
+        return redirect(url_for('accounts.index', tab='staff'))
+
+    if username and username != account.username.lower():
+        if len(username) < 3:
+            flash('Username must be at least 3 characters long.', 'error')
+            return redirect(url_for('accounts.index', tab='staff'))
+        existing = Account.query.filter(Account.username == username, Account.id != id).first()
+        if existing:
+            flash(f'Username "{username}" is already taken.', 'error')
+            return redirect(url_for('accounts.index', tab='staff'))
+        account.username = username
+
+    if email and email != account.email.lower():
+        if '@' not in email or '.' not in email:
+            flash('Please enter a valid email address.', 'error')
+            return redirect(url_for('accounts.index', tab='staff'))
+        existing = Account.query.filter(Account.email == email, Account.id != id).first()
+        if existing:
+            flash(f'Email "{email}" is already in use.', 'error')
+            return redirect(url_for('accounts.index', tab='staff'))
+        account.email = email
+
+    if rfid_tag and rfid_tag != account.rfid_tag:
+        existing = Account.query.filter(Account.rfid_tag == rfid_tag, Account.id != id).first()
+        if existing:
+            flash(f'RFID tag "{rfid_tag}" is already in use.', 'error')
+            return redirect(url_for('accounts.index', tab='staff'))
+        account.rfid_tag = rfid_tag
+    elif not rfid_tag:
+        account.rfid_tag = None
+
+    first_name, last_name = _split_name(full_name)
+    account.first_name = first_name
+    account.last_name = last_name
+    account.status = status
+
     if new_password:
+        if len(new_password) < 6:
+            flash('Password must be at least 6 characters long.', 'error')
+            return redirect(url_for('accounts.index', tab='staff'))
         account.set_password(new_password)
 
-    # Sync the staff operational row if it exists
+    # Sync the staff operational row if it exists, or create it
     if account.staff_profile:
         sp = account.staff_profile
         sp.full_name = account.full_name
-        sp.role      = request.form.get('role', sp.role).strip()  # Changed from job_role to role
-        sp.shift     = request.form.get('shift', sp.shift)
-        sp.phone     = request.form.get('phone', '').strip() or None
-        sp.rfid_tag  = account.rfid_tag
-        sp.email     = account.email
-        sp.status    = account.status
+        if role:
+            sp.role = role
+        sp.shift = shift
+        sp.phone = phone or None
+        sp.rfid_tag = account.rfid_tag
+        sp.email = account.email
+        sp.status = account.status
+    else:
+        sp = Staff(
+            account_id=account.id,
+            full_name=account.full_name,
+            role=role or 'staff',
+            shift=shift,
+            phone=phone or None,
+            rfid_tag=account.rfid_tag,
+            email=account.email,
+            status=account.status,
+        )
+        db.session.add(sp)
 
-    db.session.commit()
-    log_action(f'Updated staff account: {account.username}', 'Account', id)
-    flash('Staff member updated successfully.', 'success')
+    try:
+        db.session.commit()
+        log_action(f'Updated staff account: {account.username}', 'Account', id)
+        flash(f'Staff member {account.full_name} updated successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating staff member: {str(e)}', 'error')
+
     return redirect(url_for('accounts.index', tab='staff'))
 
 
@@ -428,16 +534,37 @@ def delete_staff(id):
 @login_required
 @admin_required
 def new_guest():
+    full_name  = request.form.get('full_name', '').strip()
     first_name = request.form.get('first_name', '').strip()
     last_name  = request.form.get('last_name', '').strip()
-    username   = request.form.get('username', '').strip()
-    email      = request.form.get('email', '').strip()
-    password   = request.form.get('password', '')
+    if full_name and (not first_name or not last_name):
+        f_name, l_name = _split_name(full_name)
+        first_name = first_name or f_name
+        last_name  = last_name or l_name
+    elif not full_name and (first_name or last_name):
+        full_name = f"{first_name} {last_name}".strip()
+
+    username   = request.form.get('username', '').strip().lower()
+    email      = request.form.get('email', '').strip().lower()
+    password   = request.form.get('password', '').strip()
+    confirm_password = request.form.get('confirm_password', '').strip()
     phone      = request.form.get('phone', '').strip() or None
     address    = request.form.get('address', '').strip() or None
 
-    if not first_name or not last_name or not username or not password:
-        flash('First name, last name, username, and password are required.', 'error')
+    if not first_name or not username or not password:
+        flash('Name, username, and password are required.', 'error')
+        return redirect(url_for('accounts.index', tab='guests'))
+
+    if len(username) < 3:
+        flash('Username must be at least 3 characters long.', 'error')
+        return redirect(url_for('accounts.index', tab='guests'))
+
+    if len(password) < 6:
+        flash('Password must be at least 6 characters long.', 'error')
+        return redirect(url_for('accounts.index', tab='guests'))
+
+    if confirm_password and password != confirm_password:
+        flash('Passwords do not match.', 'error')
         return redirect(url_for('accounts.index', tab='guests'))
 
     if Account.query.filter_by(username=username).first():
@@ -451,9 +578,9 @@ def new_guest():
     try:
         account = Account(
             first_name=first_name,
-            last_name=last_name,
+            last_name=last_name or '',
             username=username,
-            email=email or f'{username}@thysia.local',
+            email=email or f'{username}@adthysia.com',
             role='guest',
             status='active',
         )
@@ -464,7 +591,7 @@ def new_guest():
         guest = Guest(
             account_id=account.id,
             full_name=account.full_name,
-            email=email or None,
+            email=account.email,
             phone=phone,
             address=address,
         )
@@ -490,25 +617,80 @@ def edit_guest(id):
         flash('Account is not a guest.', 'error')
         return redirect(url_for('accounts.index', tab='guests'))
 
-    account.first_name = request.form.get('first_name', account.first_name).strip()
-    account.last_name  = request.form.get('last_name', account.last_name).strip()
-    account.email      = request.form.get('email', account.email).strip()
-    account.status     = request.form.get('status', account.status)
+    full_name = request.form.get('full_name', '').strip()
+    if not full_name:
+        first_name = request.form.get('first_name', '').strip()
+        last_name  = request.form.get('last_name', '').strip()
+        if first_name:
+            full_name = f"{first_name} {last_name}".strip()
+
+    username = request.form.get('username', '').strip().lower()
+    email    = request.form.get('email', '').strip().lower()
+    phone    = request.form.get('phone', '').strip() or None
+    address  = request.form.get('address', '').strip() or None
+    status   = request.form.get('status', account.status)
     new_password = request.form.get('new_password', '').strip()
+
+    if not full_name:
+        flash('Name is required.', 'error')
+        return redirect(url_for('accounts.index', tab='guests'))
+
+    if username and username != account.username.lower():
+        if len(username) < 3:
+            flash('Username must be at least 3 characters long.', 'error')
+            return redirect(url_for('accounts.index', tab='guests'))
+        existing = Account.query.filter(Account.username == username, Account.id != id).first()
+        if existing:
+            flash(f'Username "{username}" is already taken.', 'error')
+            return redirect(url_for('accounts.index', tab='guests'))
+        account.username = username
+
+    if email and email != account.email.lower():
+        if '@' not in email or '.' not in email:
+            flash('Please enter a valid email address.', 'error')
+            return redirect(url_for('accounts.index', tab='guests'))
+        existing = Account.query.filter(Account.email == email, Account.id != id).first()
+        if existing:
+            flash(f'Email "{email}" is already in use.', 'error')
+            return redirect(url_for('accounts.index', tab='guests'))
+        account.email = email
+
+    first_name, last_name = _split_name(full_name)
+    account.first_name = first_name
+    account.last_name  = last_name
+    account.status     = status
+
     if new_password:
+        if len(new_password) < 6:
+            flash('Password must be at least 6 characters long.', 'error')
+            return redirect(url_for('accounts.index', tab='guests'))
         account.set_password(new_password)
 
-    # Sync the guest profile row if it exists
+    # Sync the guest profile row if it exists, or create it
     if account.guest_profile:
         gp = account.guest_profile
         gp.full_name = account.full_name
         gp.email     = account.email
-        gp.phone     = request.form.get('phone', '').strip() or None
-        gp.address   = request.form.get('address', '').strip() or None
+        gp.phone     = phone
+        gp.address   = address
+    else:
+        gp = Guest(
+            account_id=account.id,
+            full_name=account.full_name,
+            email=account.email,
+            phone=phone,
+            address=address,
+        )
+        db.session.add(gp)
 
-    db.session.commit()
-    log_action(f'Updated guest account: {account.username}', 'Account', id)
-    flash('Guest account updated successfully.', 'success')
+    try:
+        db.session.commit()
+        log_action(f'Updated guest account: {account.username}', 'Account', id)
+        flash(f'Guest account for {account.full_name} updated successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating guest account: {str(e)}', 'error')
+
     return redirect(url_for('accounts.index', tab='guests'))
 
 

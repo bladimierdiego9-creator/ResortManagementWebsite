@@ -93,6 +93,7 @@ if not _is_sqlite:
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'thysia-dev-secret-key-change-in-production'
+    RFID_DEVICE_TOKEN = os.environ.get('RFID_DEVICE_TOKEN', '')
     SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_ENGINE_OPTIONS = _engine_options
     SQLALCHEMY_TRACK_MODIFICATIONS = False

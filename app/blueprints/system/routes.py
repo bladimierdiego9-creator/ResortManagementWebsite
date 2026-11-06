@@ -33,6 +33,61 @@ def update_settings():
     return redirect(url_for('system.settings'))
 
 
+@system_bp.route('/profile', methods=['POST'])
+@login_required
+def update_profile():
+    """Update current user's profile information."""
+    from flask_login import current_user
+    full_name = request.form.get('full_name', '').strip()
+    username = request.form.get('username', '').strip().lower()
+    email = request.form.get('email', '').strip().lower()
+    new_password = request.form.get('new_password', '').strip()
+
+    if not full_name:
+        flash('Full name is required.', 'error')
+        return redirect(url_for('system.settings'))
+
+    if username and username != current_user.username.lower():
+        if len(username) < 3:
+            flash('Username must be at least 3 characters long.', 'error')
+            return redirect(url_for('system.settings'))
+        existing = Account.query.filter(Account.username == username, Account.id != current_user.id).first()
+        if existing:
+            flash(f'Username "{username}" is already taken.', 'error')
+            return redirect(url_for('system.settings'))
+        current_user.username = username
+
+    if email and email != current_user.email.lower():
+        if '@' not in email or '.' not in email:
+            flash('Please enter a valid email address.', 'error')
+            return redirect(url_for('system.settings'))
+        existing = Account.query.filter(Account.email == email, Account.id != current_user.id).first()
+        if existing:
+            flash(f'Email "{email}" is already in use.', 'error')
+            return redirect(url_for('system.settings'))
+        current_user.email = email
+
+    name_parts = full_name.split(' ', 1)
+    current_user.first_name = name_parts[0]
+    current_user.last_name = name_parts[1] if len(name_parts) > 1 else ''
+
+    if new_password:
+        if len(new_password) < 8:
+            flash('Password must be at least 8 characters long.', 'error')
+            return redirect(url_for('system.settings'))
+        current_user.set_password(new_password)
+
+    try:
+        db.session.commit()
+        log_action(f'Updated own profile: {current_user.username}', 'Account', current_user.id)
+        flash('Your user information has been updated successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating profile: {str(e)}', 'error')
+
+    return redirect(url_for('system.settings'))
+
+
 @system_bp.route('/audit-log')
 @login_required
 @super_admin_required

@@ -135,7 +135,7 @@
             </li>
             <li>
                 <a href="{{ url_for('attendance_payroll.index') }}"
-                   class="nav-item {% if request.blueprint == 'attendance_payroll' %}active{% endif %}" data-nav-link>
+                   class="nav-item {% if request.blueprint == 'attendance_payroll' and request.args.get('tab') != 'rfid' %}active{% endif %}" data-nav-link>
                     <span class="nav-icon">
                         <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                             <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
@@ -143,6 +143,19 @@
                         </svg>
                     </span>
                     Attendance
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('attendance_payroll.index', tab='rfid') }}"
+                   class="nav-item {% if request.blueprint == 'attendance_payroll' and request.args.get('tab') == 'rfid' %}active{% endif %}" data-nav-link>
+                    <span class="nav-icon">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M7 10h4M7 14h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <circle cx="16.5" cy="12" r="1.5" fill="currentColor"/>
+                        </svg>
+                    </span>
+                    RFID Management
                 </a>
             </li>
         </ul>

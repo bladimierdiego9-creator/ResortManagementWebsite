@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Account Management — A&amp;D Thysia Admin{% endblock %}
 {% block breadcrumb %}Account Management{% endblock %}
 
@@ -60,7 +60,7 @@
                     <td class="text-muted" style="font-size:12px;">{{ acct.last_login.strftime('%b %d, %H:%M') if acct.last_login else 'Never' }}</td>
                     <td>
                         <div class="flex gap-8">
-                            <button onclick="openEditAccount({{ acct.id }}, '{{ acct.full_name|e }}', '{{ acct.email|e }}', '{{ acct.role }}', '{{ acct.status }}', '{{ acct.rfid_tag or '' }}')"
+                            <button onclick="openEditAccount({{ acct.id }}, '{{ acct.full_name|e }}', '{{ acct.username|e }}', '{{ acct.email|e }}', '{{ acct.role }}', '{{ acct.status }}', '{{ acct.rfid_tag or '' }}')"
                                     class="btn btn-xs btn-secondary">Edit</button>
                             <form method="POST" action="{{ url_for('accounts.delete_account', id=acct.id) }}"
                                   data-confirm="Delete admin account '{{ acct.full_name|e }}' (@{{ acct.username }})? This cannot be undone.">
@@ -118,7 +118,7 @@
                     <td><span class="badge badge-{{ acc.status }}">{{ acc.status.title() }}</span></td>
                     <td>
                         <div class="flex gap-8">
-                            <button onclick="openEditStaff({{ acc.id }}, '{{ acc.full_name|e }}', '{{ staff.role|e if staff else 'staff' }}', '{{ staff.shift if staff and staff.shift else 'morning' }}', '{{ acc.email or '' }}', '{{ staff.phone if staff else '' }}', '{{ acc.rfid_tag or '' }}', '{{ acc.status }}')"
+                            <button onclick="openEditStaff({{ acc.id }}, '{{ acc.full_name|e }}', '{{ acc.username|e }}', '{{ staff.role|e if staff else 'staff' }}', '{{ staff.shift if staff and staff.shift else 'morning' }}', '{{ acc.email or '' }}', '{{ staff.phone if staff and staff.phone else '' }}', '{{ acc.rfid_tag or '' }}', '{{ acc.status }}')"
                                     class="btn btn-xs btn-secondary">Edit</button>
                             <form method="POST" action="{{ url_for('accounts.delete_staff', id=acc.id) }}"
                                   data-confirm="Remove staff member '{{ acc.full_name|e }}'? This cannot be undone.">
@@ -136,16 +136,25 @@
 </div>
 
 {% elif tab == 'guests' %}
+<div class="page-actions mb-16" style="display:flex;justify-content:flex-end;">
+    <button onclick="openModal('addGuestModal')" class="btn btn-primary">
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        Add Guest Account
+    </button>
+</div>
 <div class="card">
     <div class="table-wrap">
         <table>
             <thead>
                 <tr>
                     <th>Name</th>
+                    <th>Username</th>
                     <th>Email</th>
                     <th>Phone</th>
                     <th>Address</th>
+                    <th>Status</th>
                     <th>Joined</th>
+                    <th style="width:100px;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -153,14 +162,31 @@
                 {% set acc = row[0] %}
                 {% set guest = row[1] %}
                 <tr>
-                    <td class="font-semibold">{{ acc.first_name }} {{ acc.last_name }}</td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div class="guest-chip" style="font-size:11px;">{{ acc.full_name[:2].upper() }}</div>
+                            <span class="font-semibold">{{ acc.full_name }}</span>
+                        </div>
+                    </td>
+                    <td class="text-muted">{{ acc.username }}</td>
                     <td>{{ acc.email or '—' }}</td>
-                    <td>{{ acc.phone or '—' }}</td>
-                    <td class="text-muted">{{ guest.address if guest else '—' }}</td>
+                    <td class="text-muted">{{ (guest.phone if guest and guest.phone else '') or '—' }}</td>
+                    <td class="text-muted">{{ (guest.address if guest and guest.address else '') or '—' }}</td>
+                    <td><span class="badge badge-{{ acc.status }}">{{ acc.status.title() }}</span></td>
                     <td class="text-muted" style="font-size:12px;">{{ acc.created_at.strftime('%b %d, %Y') if acc.created_at else '—' }}</td>
+                    <td>
+                        <div class="flex gap-8">
+                            <button onclick="openEditGuest({{ acc.id }}, '{{ acc.full_name|e }}', '{{ acc.username|e }}', '{{ acc.email|e }}', '{{ (guest.phone if guest and guest.phone else '')|e }}', '{{ (guest.address if guest and guest.address else '')|e }}', '{{ acc.status }}')"
+                                    class="btn btn-xs btn-secondary">Edit</button>
+                            <form method="POST" action="{{ url_for('accounts.delete_guest', id=acc.id) }}"
+                                  data-confirm="Remove guest account '{{ acc.full_name|e }}'? This cannot be undone.">
+                                <button type="submit" class="btn btn-xs btn-danger">Del</button>
+                            </form>
+                        </div>
+                    </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="5" class="text-center text-muted" style="padding:36px;">No guests found.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted" style="padding:36px;">No guests found. Click "Add Guest Account" to get started.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -346,6 +372,12 @@
                     <input type="text" name="full_name" id="editStaffName" class="form-input" required>
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Username *</label>
+                    <input type="text" name="username" id="editStaffUsername" class="form-input" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
                     <label class="form-label">Role *</label>
                     <select name="role" id="editStaffRole" class="form-select" required>
                         <option value="front_desk">Front Desk</option>
@@ -357,21 +389,12 @@
                         <option value="staff">General Staff</option>
                     </select>
                 </div>
-            </div>
-            <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Shift</label>
                     <select name="shift" id="editStaffShift" class="form-select">
                         <option value="morning">Morning</option>
                         <option value="afternoon">Afternoon</option>
                         <option value="evening">Evening</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Status</label>
-                    <select name="status" id="editStaffStatus" class="form-select">
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
                     </select>
                 </div>
             </div>
@@ -385,9 +408,22 @@
                     <input type="text" name="phone" id="editStaffPhone" class="form-input">
                 </div>
             </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="status" id="editStaffStatus" class="form-select">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">RFID Tag</label>
+                    <input type="text" name="rfid_tag" id="editStaffRfid" class="form-input" placeholder="Optional">
+                </div>
+            </div>
             <div class="form-group">
-                <label class="form-label">RFID Tag</label>
-                <input type="text" name="rfid_tag" id="editStaffRfid" class="form-input" placeholder="Optional">
+                <label class="form-label">New Password</label>
+                <input type="password" name="new_password" id="editStaffPassword" class="form-input" placeholder="Leave blank to keep current">
             </div>
             <div class="modal-actions">
                 <button type="button" onclick="closeModal('editStaffModal')" class="btn btn-secondary">Cancel</button>
@@ -410,17 +446,24 @@
                     <input type="text" name="full_name" id="editAccFullName" class="form-input" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Email *</label>
-                    <input type="email" name="email" id="editAccEmail" class="form-input" required>
+                    <label class="form-label">Username *</label>
+                    <input type="text" name="username" id="editAccUsername" class="form-input" required>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
+                    <label class="form-label">Email *</label>
+                    <input type="email" name="email" id="editAccEmail" class="form-input" required>
+                </div>
+                <div class="form-group">
                     <label class="form-label">Role</label>
                     <select name="role" id="editAccRole" class="form-select">
                         <option value="admin">Admin</option>
+                        <option value="super_admin">Super Admin</option>
                     </select>
                 </div>
+            </div>
+            <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Status</label>
                     <select name="status" id="editAccStatus" class="form-select">
@@ -428,19 +471,124 @@
                         <option value="disabled">Disabled</option>
                     </select>
                 </div>
-            </div>
-            <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">RFID Tag</label>
                     <input type="text" name="rfid_tag" id="editAccRfid" class="form-input" placeholder="Optional">
                 </div>
-                <div class="form-group">
-                    <label class="form-label">New Password</label>
-                    <input type="password" name="new_password" id="editAccPassword" class="form-input" placeholder="Leave blank to keep current">
-                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" name="new_password" id="editAccPassword" class="form-input" placeholder="Leave blank to keep current">
             </div>
             <div class="modal-actions">
                 <button type="button" onclick="closeModal('editAccountModal')" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ADD GUEST MODAL -->
+<div class="modal-overlay" id="addGuestModal">
+    <div class="modal">
+        <h2 class="modal-title">Add Guest Account</h2>
+        <button class="modal-close" onclick="closeModal('addGuestModal')" aria-label="Close">×</button>
+        <div class="divider"></div>
+        <form method="POST" action="{{ url_for('accounts.new_guest') }}" id="addGuestForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">First Name *</label>
+                    <input type="text" name="first_name" id="guest_first_name" class="form-input" required placeholder="e.g. Maria">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Last Name *</label>
+                    <input type="text" name="last_name" id="guest_last_name" class="form-input" required placeholder="e.g. Santos">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Username *</label>
+                    <input type="text" name="username" id="guest_username" class="form-input" required placeholder="e.g. mariasantos">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email *</label>
+                    <input type="email" name="email" id="guest_email" class="form-input" required placeholder="user@gmail.com">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="text" name="phone" id="guest_phone" class="form-input" placeholder="09XXXXXXXXX">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Address</label>
+                    <input type="text" name="address" id="guest_address" class="form-input" placeholder="City, Province">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Password *</label>
+                    <input type="password" name="password" id="guest_password" class="form-input" required placeholder="Min 6 characters">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Confirm Password *</label>
+                    <input type="password" name="confirm_password" id="guest_confirm_password" class="form-input" required placeholder="Re-enter password">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('addGuestModal')" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Guest Account</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT GUEST MODAL -->
+<div class="modal-overlay" id="editGuestModal">
+    <div class="modal">
+        <h2 class="modal-title">Edit Guest Account</h2>
+        <button class="modal-close" onclick="closeModal('editGuestModal')" aria-label="Close">×</button>
+        <div class="divider"></div>
+        <form method="POST" id="editGuestForm" action="">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" name="full_name" id="editGuestFullName" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Username *</label>
+                    <input type="text" name="username" id="editGuestUsername" class="form-input" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Email *</label>
+                    <input type="email" name="email" id="editGuestEmail" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select name="status" id="editGuestStatus" class="form-select">
+                        <option value="active">Active</option>
+                        <option value="disabled">Disabled</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="text" name="phone" id="editGuestPhone" class="form-input" placeholder="09XXXXXXXXX">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Address</label>
+                    <input type="text" name="address" id="editGuestAddress" class="form-input" placeholder="City, Province">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">New Password</label>
+                <input type="password" name="new_password" id="editGuestPassword" class="form-input" placeholder="Leave blank to keep current">
+            </div>
+            <div class="modal-actions">
+                <button type="button" onclick="closeModal('editGuestModal')" class="btn btn-secondary">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save Changes</button>
             </div>
         </form>
@@ -764,9 +912,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-function openEditAccount(id, fullName, email, role, status, rfid) {
+function openEditAccount(id, fullName, username, email, role, status, rfid) {
     document.getElementById('editAccountForm').action = `/accounts/${id}/edit`;
     document.getElementById('editAccFullName').value = fullName;
+    document.getElementById('editAccUsername').value = username;
     document.getElementById('editAccEmail').value    = email;
     document.getElementById('editAccRfid').value     = rfid;
     document.getElementById('editAccPassword').value = '';
@@ -780,12 +929,14 @@ function openEditAccount(id, fullName, email, role, status, rfid) {
     openModal('editAccountModal');
 }
 
-function openEditStaff(id, name, role, shift, email, phone, rfid, status) {
+function openEditStaff(id, name, username, role, shift, email, phone, rfid, status) {
     document.getElementById('editStaffForm').action = `/accounts/staff/${id}/edit`;
-    document.getElementById('editStaffName').value  = name;
-    document.getElementById('editStaffEmail').value = email;
-    document.getElementById('editStaffPhone').value = phone;
-    document.getElementById('editStaffRfid').value  = rfid;
+    document.getElementById('editStaffName').value     = name;
+    document.getElementById('editStaffUsername').value = username;
+    document.getElementById('editStaffEmail').value    = email;
+    document.getElementById('editStaffPhone').value    = phone;
+    document.getElementById('editStaffRfid').value     = rfid;
+    document.getElementById('editStaffPassword').value = '';
     ['editStaffRole', 'editStaffShift', 'editStaffStatus'].forEach(function(elId) {
         const val = elId === 'editStaffRole' ? role : elId === 'editStaffShift' ? shift : status;
         const el  = document.getElementById(elId);
@@ -794,6 +945,21 @@ function openEditStaff(id, name, role, shift, email, phone, rfid, status) {
         }
     });
     openModal('editStaffModal');
+}
+
+function openEditGuest(id, fullName, username, email, phone, address, status) {
+    document.getElementById('editGuestForm').action = `/accounts/guests/${id}/edit`;
+    document.getElementById('editGuestFullName').value = fullName;
+    document.getElementById('editGuestUsername').value = username;
+    document.getElementById('editGuestEmail').value    = email;
+    document.getElementById('editGuestPhone').value    = phone;
+    document.getElementById('editGuestAddress').value  = address;
+    document.getElementById('editGuestPassword').value = '';
+    const statusSelect = document.getElementById('editGuestStatus');
+    for (let i = 0; i < statusSelect.options.length; i++) {
+        statusSelect.options[i].selected = (statusSelect.options[i].value === status);
+    }
+    openModal('editGuestModal');
 }
 
 </script>
