@@ -47,6 +47,23 @@ def _to_psycopg_url(url):
 
 
 def get_database_url():
+    # Vercel functions are short-lived. Avoid probing the database with a
+    # separate socket connection at import time; use the configured Supabase
+    # pooler URL directly and let SQLAlchemy establish the actual connection.
+    # Falling back to a local SQLite file is not viable in a serverless
+    # deployment because its filesystem is not a persistent writable database.
+    if os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'):
+        vercel_url = (
+            os.environ.get('DATABASE_POOLER_URL')
+            or os.environ.get('DATABASE_URL')
+        )
+        if not vercel_url:
+            raise RuntimeError(
+                'Set DATABASE_POOLER_URL in the Vercel Production environment.'
+            )
+        print('[DB] Using configured Supabase URL on Vercel')
+        return _to_psycopg_url(vercel_url)
+
     # 1. Direct Supabase connection (port 5432, IPv6 only — may not work on all networks)
     direct_url = os.environ.get('DATABASE_URL')
     if not direct_url:
