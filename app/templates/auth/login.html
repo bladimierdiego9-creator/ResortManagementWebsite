@@ -165,6 +165,7 @@
 
                 <!-- Login Form -->
                 <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-5">
+                    <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
                     <!-- Email -->
                     <div class="space-y-2">
                         <div class="flex items-center justify-between">
@@ -179,7 +180,7 @@
                                    name="username" 
                                    placeholder="Input Email" 
                                    required 
-                                   type="text"
+                                   type="email"
                                    autocomplete="username">
                         </div>
                     </div>
@@ -216,7 +217,7 @@
                                 <span class="material-symbols-outlined text-[16px] text-on-primary-container font-bold peer-checked:block hidden">check</span>
                             </div>
                             <span class="text-xs text-on-surface-variant hover:text-on-surface transition-colors">
-                                Remember this workstation (12h session)
+                                Keep me signed in (7 days)
                             </span>
                         </label>
                         <a href="{{ url_for('auth.forgot_password') }}" 

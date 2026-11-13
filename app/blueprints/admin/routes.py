@@ -3,10 +3,11 @@ from flask_login import login_required, current_user
 from app.blueprints.admin import admin_bp
 from app.decorators import admin_required
 from app.models import Reservation, Payment, Staff, AttendanceLog, AIChatLog, Guest, Facility
-from app.extensions import db
+from app.extensions import db, cache
 from datetime import datetime, date, timedelta
 import calendar as cal_module
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 
 
 def _fmt_clock_time(value):
@@ -25,11 +26,22 @@ def api_bookings():
     FullCalendar sends ?start=YYYY-MM-DD&end=YYYY-MM-DD when navigating months."""
     from app.models import Booking
     
-    start_str = req.args.get('start')
-    end_str   = req.args.get('end')
+    start_str = req.args.get('start', '')
+    end_str   = req.args.get('end', '')
 
-    # Query reservations (admin-created)
-    res_query = db.session.query(Reservation).filter_by(archived=False)
+    cache_key = f"calendar:events:{start_str[:10]}:{end_str[:10]}"
+    cached_events = cache.get(cache_key)
+    if cached_events is not None:
+        return jsonify(cached_events), 200, {
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+            'Pragma': 'no-cache',
+        }
+
+    # Query reservations (admin-created) with eager loading to avoid N+1 queries
+    res_query = db.session.query(Reservation).options(
+        joinedload(Reservation.guest),
+        joinedload(Reservation.payment)
+    ).filter_by(archived=False)
 
     if start_str:
         try:
@@ -44,8 +56,10 @@ def api_bookings():
 
     reservations = res_query.order_by(Reservation.event_date).all()
 
-    # Query bookings (guest-created)
-    book_query = db.session.query(Booking).filter_by(archived=False)
+    # Query bookings (guest-created) with eager loading to avoid N+1 queries
+    book_query = db.session.query(Booking).options(
+        joinedload(Booking.account)
+    ).filter_by(archived=False)
 
     if start_str:
         try:
@@ -161,6 +175,7 @@ def api_bookings():
             }
         })
 
+    cache.set(cache_key, events, timeout=60)
     return jsonify(events), 200, {
         'Cache-Control': 'no-store, no-cache, must-revalidate',
         'Pragma': 'no-cache',
@@ -183,6 +198,20 @@ def calendar():
 def overview():
     now = datetime.now()
     today = now.date()
+
+    # Check in-memory server cache first
+    cached_payload = cache.get("dashboard:overview")
+    if cached_payload is not None:
+        stats, chart_data, recent_bookings, facilities_map, ai_queue = cached_payload
+        return render_template('admin/overview.html',
+                               stats=stats,
+                               chart_data=chart_data,
+                               recent_bookings=recent_bookings,
+                               facilities_map=facilities_map,
+                               ai_queue=ai_queue,
+                               today=today,
+                               now=now)
+
     month_start = today.replace(day=1)
     last_month_start = (month_start - timedelta(days=1)).replace(day=1)
     last_month_end = month_start - timedelta(days=1)
@@ -233,16 +262,21 @@ def overview():
     facilities = Facility.query.all()
     facilities_map = {str(f.id): f.facility_name for f in facilities}
 
-    # Recent reservations and bookings combined
+    # Recent reservations and bookings combined (with eager loading)
     from app.models import Booking
     
-    # Get recent reservations
-    reservations = db.session.query(Reservation).order_by(
+    # Get recent reservations with eager loaded guest and payment
+    reservations = db.session.query(Reservation).options(
+        joinedload(Reservation.guest),
+        joinedload(Reservation.payment)
+    ).order_by(
         Reservation.created_at.desc()
     ).limit(6).all()
     
-    # Get recent bookings
-    bookings = db.session.query(Booking).order_by(
+    # Get recent bookings with eager loaded account
+    bookings = db.session.query(Booking).options(
+        joinedload(Booking.account)
+    ).order_by(
         Booking.created_at.desc()
     ).limit(6).all()
     
@@ -309,43 +343,45 @@ def overview():
         AIChatLog.created_at.desc()
     ).limit(5).all()
 
-    # Booking chart (combined reservations + bookings per day this month)
+    # ── High-Performance Batched Queries for Charts & Sparkline ──────────
+    # Single GROUP BY query for all reservation counts across the entire date range
+    res_counts_raw = db.session.query(
+        Reservation.event_date, func.count(Reservation.id)
+    ).filter(
+        Reservation.event_date >= last_month_start,
+        Reservation.event_date <= today,
+        Reservation.archived == False
+    ).group_by(Reservation.event_date).all()
+    res_map = {row[0]: row[1] for row in res_counts_raw}
+
+    # Single query for active bookings overlapping the date range
+    active_bookings = db.session.query(
+        Booking.check_in, Booking.check_out
+    ).filter(
+        Booking.check_out > last_month_start,
+        Booking.check_in <= today,
+        Booking.archived == False
+    ).all()
+
+    # Fast in-memory tally for this month's booking chart
     days_in_month = (today - month_start).days + 1
     booking_chart_labels, booking_chart_data = [], []
     for i in range(days_in_month):
         d = month_start + timedelta(days=i)
         booking_chart_labels.append(d.strftime('%b %d'))
-        
-        # Count reservations for this date
-        res_count = Reservation.query.filter_by(event_date=d).count()
-        
-        # Count bookings that include this date (check_in <= d <= check_out)
-        book_count = Booking.query.filter(
-            Booking.check_in <= d,
-            Booking.check_out > d,  # Use > instead of >= to avoid double counting
-            Booking.archived == False
-        ).count()
-        
-        booking_chart_data.append(res_count + book_count)
+        r_c = res_map.get(d, 0)
+        b_c = sum(1 for b in active_bookings if b.check_in <= d < b.check_out)
+        booking_chart_data.append(r_c + b_c)
 
-    # Last month booking chart
+    # Fast in-memory tally for last month's booking chart
     last_month_days = (last_month_end - last_month_start).days + 1
     last_month_labels, last_month_data = [], []
     for i in range(last_month_days):
         d = last_month_start + timedelta(days=i)
         last_month_labels.append(d.strftime('%b %d'))
-        
-        # Count reservations for this date
-        res_count = Reservation.query.filter_by(event_date=d).count()
-        
-        # Count bookings that include this date
-        book_count = Booking.query.filter(
-            Booking.check_in <= d,
-            Booking.check_out > d,
-            Booking.archived == False
-        ).count()
-        
-        last_month_data.append(res_count + book_count)
+        r_c = res_map.get(d, 0)
+        b_c = sum(1 for b in active_bookings if b.check_in <= d < b.check_out)
+        last_month_data.append(r_c + b_c)
 
     # Occupancy - include both reservations and bookings
     total_facilities = Facility.query.count()
@@ -356,7 +392,7 @@ def overview():
         Reservation.status == 'confirmed'
     ).scalar() or 0
     
-    # Count bookings active today (simplified - count all active bookings as occupying facilities)
+    # Count bookings active today
     active_bookings_today = Booking.query.filter(
         Booking.check_in <= today,
         Booking.check_out > today,
@@ -376,17 +412,13 @@ def overview():
         'occupancy':    {'booked': booked_facilities, 'available': available_facilities, 'blocked': blocked_facilities},
     }
 
-    # Sparkline (last 7 days combined reservations + bookings)
+    # Fast in-memory tally for sparkline (last 7 days)
     sparkline = []
     for i in range(6, -1, -1):
         day = today - timedelta(days=i)
-        res_count = Reservation.query.filter_by(event_date=day).count()
-        book_count = Booking.query.filter(
-            Booking.check_in <= day,
-            Booking.check_out > day,
-            Booking.archived == False
-        ).count()
-        sparkline.append(res_count + book_count)
+        r_c = res_map.get(day, 0)
+        b_c = sum(1 for b in active_bookings if b.check_in <= day < b.check_out)
+        sparkline.append(r_c + b_c)
 
     stats = {
         'todays_bookings':   todays_bookings,
@@ -398,6 +430,9 @@ def overview():
         'ai_unread':         ai_unread,
         'sparkline':         sparkline,
     }
+
+    # Cache computed dashboard data for 60 seconds
+    cache.set("dashboard:overview", (stats, chart_data, recent_bookings, facilities_map, ai_queue), timeout=60)
 
     return render_template('admin/overview.html',
                            stats=stats,

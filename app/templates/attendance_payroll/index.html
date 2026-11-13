@@ -68,11 +68,15 @@
 .rfid-assign-search input { width:100%; border:1px solid var(--border); border-radius:12px; padding:12px 14px 12px 40px; color:var(--text-primary); background:var(--surface); }
 .rfid-assign-search span { position:absolute; left:14px; top:11px; color:var(--text-secondary); }
 .rfid-staff-list { max-height:210px; overflow:auto; border:1px solid var(--border-light); border-radius:12px; }
-.rfid-staff-option { display:block; width:100%; padding:11px 14px; text-align:left; border:0; border-bottom:1px solid var(--border-light); background:var(--surface); color:var(--text-primary); cursor:pointer; }
+.rfid-staff-option { display:flex; align-items:center; position:relative; z-index:1; width:100%; padding:11px 14px; text-align:left; border:0; border-bottom:1px solid var(--border-light); background:var(--surface); color:var(--text-primary); cursor:pointer; pointer-events:auto; touch-action:manipulation; }
 .rfid-staff-option:last-child { border-bottom:0; }
 .rfid-staff-option:hover,.rfid-staff-option.selected { background:var(--accent-light); }
+.rfid-staff-option:focus-visible { outline:2px solid var(--accent,#d4af37); outline-offset:-2px; }
+.rfid-staff-option input[type="radio"] { flex:0 0 18px; width:18px; height:18px; margin:0 11px 0 0; accent-color:var(--accent,#10b981); cursor:pointer; }
+.rfid-staff-copy { display:block; min-width:0; }
 .rfid-staff-option strong,.rfid-staff-option small { display:block; }
 .rfid-staff-option small { margin-top:3px; color:var(--text-secondary); }
+.rfid-staff-selection-hint { margin:9px 2px 0; color:var(--text-secondary); font-size:12px; }
 .rfid-notes-field { margin-top:15px; }
 .rfid-notes-field input { width:100%; }
 .rfid-confirm-card { padding:20px 22px; border:1px solid var(--border); border-radius:15px; background:var(--surface-2); }
@@ -480,6 +484,7 @@
                         <th>Period</th>
                         <th>Regular Hrs</th>
                         <th>OT Hrs</th>
+                        <th>Rate / Hr</th>
                         <th>Gross</th>
                         <th>Deductions</th>
                         <th>Net Pay</th>
@@ -493,13 +498,14 @@
                         <td class="text-muted" style="font-size:12px;">{{ pr.pay_period_start.strftime('%b %d') }} – {{ pr.pay_period_end.strftime('%b %d, %Y') }}</td>
                         <td>{{ pr.regular_hours }}</td>
                         <td>{{ pr.overtime_hours }}</td>
+                        <td>₱{{ "{:,.2f}".format(pr.hourly_rate) }}</td>
                         <td>₱{{ "{:,.2f}".format(pr.gross_pay) }}</td>
                         <td class="text-danger">-₱{{ "{:,.2f}".format(pr.deductions) }}</td>
                         <td class="font-bold" style="color:var(--success);">₱{{ "{:,.2f}".format(pr.net_pay) }}</td>
                         <td><span class="badge badge-{{ pr.status }}">{{ pr.status.title() }}</span></td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="8" class="text-center text-muted" style="padding:36px;">No payroll records. Generate payroll below.</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted" style="padding:36px;">No payroll records. Generate payroll below.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -519,6 +525,7 @@
                     <label class="form-label">Period End</label>
                     <input type="date" name="period_end" class="form-input" required>
                 </div>
+                <p class="form-hint">Hourly rate: ₱{{ "{:,.2f}".format(payroll_hourly_rate) }}. Overtime: ₱{{ "{:,.2f}".format(payroll_hourly_rate * 1.5) }} per hour (1.5×).</p>
                 <p class="form-hint">Will calculate hours from attendance logs for all {{ staff_list | length }} active staff.</p>
                 <div class="mt-16">
                     <button type="submit" class="btn btn-primary w-full" style="justify-content:center;">Generate Payroll</button>
@@ -541,6 +548,7 @@
         </div>
 
         <form method="POST" action="{{ url_for('attendance_payroll.register_rfid') }}" id="rfidRegisterForm">
+            <input type="hidden" name="scan_event_id" id="rfidScanEventId" value="">
             <div class="rfid-register-body">
                 <div class="rfid-wizard-stepper" aria-label="Registration progress">
                     <div class="rfid-wizard-stage active" data-rfid-stage="1"><span>1</span> Scan Card</div>
@@ -580,17 +588,21 @@
                     <label for="rfidStaffSearch" style="display:block;margin-bottom:8px;font-weight:750;color:var(--text-primary);">Assign to Staff <span style="font-weight:400;color:var(--text-secondary);">(optional — can be assigned later)</span></label>
                     <div class="rfid-assign-search"><span aria-hidden="true">⌕</span><input type="search" id="rfidStaffSearch" placeholder="Search staff by name, role, or shift"></div>
                     <div class="rfid-staff-list" id="rfidStaffList">
-                        <button type="button" class="rfid-staff-option selected" data-staff-id="0" data-search="unassigned spare pool">
-                            <strong>— Leave Unassigned (Spare Card) —</strong>
-                        </button>
+                        <label class="rfid-staff-option selected" data-staff-id="0" data-search="unassigned spare pool">
+                            <input type="radio" name="staff_id" value="0" checked>
+                            <span class="rfid-staff-copy"><strong>— Leave Unassigned (Spare Card) —</strong></span>
+                        </label>
                         {% for s in staff_list %}
-                        <button type="button" class="rfid-staff-option" data-staff-id="{{ s.id }}" data-search="{{ (s.full_name ~ ' ' ~ s.role ~ ' ' ~ (s.shift or ''))|lower|e }}">
-                            <strong>{{ s.full_name }}</strong>
-                            <small>{{ s.role.replace('_', ' ').title() }} · {{ s.shift.title() if s.shift else 'Default shift' }}{% if s.rfid_tag %} · Current card: {{ s.rfid_tag }}{% endif %}</small>
-                        </button>
+                        <label class="rfid-staff-option" data-staff-id="{{ s.id }}" data-search="{{ (s.full_name ~ ' ' ~ s.role ~ ' ' ~ (s.shift or ''))|lower|e }}">
+                            <input type="radio" name="staff_id" value="{{ s.id }}">
+                            <span class="rfid-staff-copy">
+                                <strong>{{ s.full_name }}</strong>
+                                <small>{{ s.role.replace('_', ' ').title() }} · {{ s.shift.title() if s.shift else 'Default shift' }}{% if s.rfid_tag %} · Current card: {{ s.rfid_tag }}{% endif %}</small>
+                            </span>
+                        </label>
                         {% endfor %}
                     </div>
-                    <input type="hidden" name="staff_id" id="rfidSelectedStaffId" value="0">
+                    <p class="rfid-staff-selection-hint" id="rfidStaffSelectionHint" aria-live="polite">Selected: Leave Unassigned (Spare Card)</p>
                     <div class="form-group rfid-notes-field">
                         <label class="form-label" for="rfidRegistrationNotes">Notes (optional)</label>
                         <input type="text" name="notes" id="rfidRegistrationNotes" class="form-input" maxlength="256" placeholder="e.g. Front desk spare card">
@@ -710,12 +722,25 @@
 <script>
 const rfidLookupUrl = {{ url_for('attendance_payroll.lookup_rfid')|tojson }};
 const rfidPendingScanUrl = {{ url_for('attendance_payroll.pending_rfid_scan')|tojson }};
+const rfidStartScanSessionUrl = {{ url_for('attendance_payroll.start_rfid_scan_session')|tojson }};
+const rfidStopScanSessionUrl = {{ url_for('attendance_payroll.stop_rfid_scan_session')|tojson }};
 const rfidListUrl = {{ url_for('attendance_payroll.index', tab='rfid')|tojson }};
+{% if tab == 'rfid' %}
+// Refresh the server-rendered card list while the RFID admin tab is visible.
+// Skip refreshes during modal work or while the admin is typing into a field.
+window.setInterval(function() {
+    if (document.visibilityState !== 'visible') return;
+    if (document.querySelector('.modal-overlay.open')) return;
+    const active = document.activeElement;
+    if (active && ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName)) return;
+    window.location.reload();
+}, 5000);
+{% endif %}
 let rfidRegistrationStep = 1;
 let rfidScanTimer = null;
 let rfidScanning = false;
 let rfidDetectedUid = '';
-let rfidScanCursor = '';
+let rfidScanSessionId = '';
 let rfidSelectedStaffLabel = 'Unassigned / Spare Card';
 
 function showRfidRegisterModal() {
@@ -734,7 +759,7 @@ function resetRfidRegistration() {
     rfidSelectedStaffLabel = 'Unassigned / Spare Card';
     document.getElementById('rfidRegisterForm').reset();
     document.getElementById('rfidRegisterUid').value = '';
-    document.getElementById('rfidSelectedStaffId').value = '0';
+    document.getElementById('rfidScanEventId').value = '';
     document.getElementById('rfidRegistrationNotes').value = '';
     document.getElementById('rfidStaffSearch').value = '';
     document.getElementById('rfidExistingCard').classList.remove('visible');
@@ -749,9 +774,13 @@ function resetRfidRegistration() {
     document.getElementById('rfidScanHeading').textContent = 'Click Start Scan ID, then tap the card on the ESP32 reader.';
     document.getElementById('rfidScanHelp').textContent = 'The scanner must be online and connected to this website.';
     document.querySelectorAll('.rfid-staff-option').forEach(function(option) {
-        option.classList.toggle('selected', option.dataset.staffId === '0');
+        const radio = option.querySelector('input[type="radio"]');
+        const selected = radio && radio.value === '0';
+        if (radio) radio.checked = selected;
+        option.classList.toggle('selected', selected);
         option.hidden = false;
     });
+    document.getElementById('rfidStaffSelectionHint').textContent = 'Selected: Leave Unassigned (Spare Card)';
     setRfidRegistrationStep(1);
 }
 
@@ -760,6 +789,16 @@ function stopRfidScan() {
     if (rfidScanTimer) {
         clearTimeout(rfidScanTimer);
         rfidScanTimer = null;
+    }
+    const sessionId = rfidScanSessionId;
+    rfidScanSessionId = '';
+    if (sessionId) {
+        fetch(rfidStopScanSessionUrl, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+            body: JSON.stringify({session_id: sessionId}),
+            keepalive: true
+        }).catch(function() {});
     }
 }
 
@@ -799,25 +838,32 @@ async function startRfidScan() {
     document.getElementById('rfidExistingCard').classList.remove('visible');
     rfidDetectedUid = '';
     document.getElementById('rfidRegisterUid').value = '';
+    document.getElementById('rfidScanEventId').value = '';
     document.getElementById('rfidNextButton').disabled = true;
     zone.className = 'rfid-scan-zone';
     document.getElementById('rfidScanHeading').textContent = 'Connecting to ESP32 scanner…';
-    document.getElementById('rfidScanHelp').textContent = 'Wait for the scanner connection, then tap an unregistered card.';
+    document.getElementById('rfidScanHelp').textContent = 'The reader will only accept a tap during this admin scan session.';
     startButton.textContent = '▣  Scanning...';
     startButton.classList.add('scanning');
     startButton.disabled = true;
     rfidScanning = true;
 
     try {
-        const response = await fetch(rfidPendingScanUrl + '?baseline=1', {
+        const response = await fetch(rfidStartScanSessionUrl, {
+            method: 'POST',
             headers: {'Accept': 'application/json'}
         });
         if (!response.ok) throw new Error('Could not connect to the registration scanner.');
         const result = await response.json();
-        rfidScanCursor = result.cursor;
+        rfidScanSessionId = result.session_id || '';
+        if (!rfidScanSessionId) throw new Error('The scanner session could not be started.');
+        if (!rfidScanning) {
+            stopRfidScan();
+            return;
+        }
         startButton.disabled = false;
         document.getElementById('rfidScanHeading').textContent = 'Ready — tap your RFID card now.';
-        document.getElementById('rfidScanHelp').textContent = 'Tap the unregistered card on the ESP32 reader.';
+        document.getElementById('rfidScanHelp').textContent = 'Scanner armed for this session. Tap a card to check its status and owner.';
         pollRfidRegistrationScan();
     } catch (error) {
         stopRfidScan();
@@ -835,19 +881,18 @@ async function pollRfidRegistrationScan() {
 
     try {
         const response = await fetch(
-            rfidPendingScanUrl + '?after=' + encodeURIComponent(rfidScanCursor),
+            rfidPendingScanUrl + '?session_id=' + encodeURIComponent(rfidScanSessionId),
             {headers: {'Accept': 'application/json'}}
         );
         if (!response.ok) throw new Error('Scanner polling failed.');
         const result = await response.json();
 
         if (result.found) {
-            rfidScanCursor = result.cursor;
-            await processRfidScan(result.uid);
+            await processRfidScan(result.uid, result.event_id);
             return;
         }
 
-        rfidScanCursor = result.cursor || rfidScanCursor;
+        if (!result.armed) throw new Error('The admin scan session ended.');
         rfidScanTimer = setTimeout(pollRfidRegistrationScan, 700);
     } catch (error) {
         stopRfidScan();
@@ -860,7 +905,7 @@ async function pollRfidRegistrationScan() {
     }
 }
 
-async function processRfidScan(rawUid) {
+async function processRfidScan(rawUid, scanEventId) {
     if (!rfidScanning) return;
     stopRfidScan();
     document.getElementById('rfidStartScanButton').classList.remove('scanning');
@@ -886,11 +931,17 @@ async function processRfidScan(rawUid) {
             return;
         }
         rfidDetectedUid = uid;
+    document.getElementById('rfidScanEventId').value = scanEventId || '';
         document.getElementById('rfidRegisterUid').value = uid;
         document.getElementById('rfidAssignUid').textContent = uid;
         document.getElementById('rfidScanZone').className = 'rfid-scan-zone success';
-        document.getElementById('rfidScanHeading').textContent = 'Card detected — ready to continue.';
-        document.getElementById('rfidScanHelp').textContent = 'Card UID: ' + uid;
+        if (result.status === 'pending' && result.assigned === false) {
+            document.getElementById('rfidScanHeading').textContent = 'RFID status: Pending — Unassigned.';
+            document.getElementById('rfidScanHelp').textContent = 'Card UID: ' + uid + ' · No staff owner is assigned.';
+        } else {
+            document.getElementById('rfidScanHeading').textContent = 'Unregistered RFID — no status yet.';
+            document.getElementById('rfidScanHelp').textContent = 'Card UID: ' + uid + ' · Scan saved for admin registration.';
+        }
         document.getElementById('rfidStartScanButton').hidden = true;
         document.getElementById('rfidScanAgainButton').hidden = false;
         document.getElementById('rfidNextButton').disabled = false;
@@ -907,16 +958,17 @@ function showExistingRfidCard(card) {
     const zone = document.getElementById('rfidScanZone');
     const details = document.getElementById('rfidExistingCard');
     const reactivate = document.getElementById('rfidReactivateButton');
-    zone.className = 'rfid-scan-zone error';
-    document.getElementById('rfidScanHeading').textContent = card.status === 'inactive'
-        ? 'This RFID is registered but inactive.'
-        : (card.status === 'blocked' ? 'This RFID card is blocked.' : 'This RFID card is already active.');
-    document.getElementById('rfidScanHelp').textContent = 'Scan a different card or review its current owner.';
-    document.getElementById('rfidExistingMessage').textContent = card.status === 'inactive'
-        ? 'This RFID is registered but inactive.'
-        : (card.status === 'blocked' ? 'This RFID card is blocked.' : 'This RFID card is already active.');
+    const status = (card.status || 'unknown').replaceAll('_', ' ');
+    const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+    const assignment = card.assigned ? card.owner : 'Unassigned';
+    zone.className = card.status === 'active' ? 'rfid-scan-zone success' : 'rfid-scan-zone error';
+    document.getElementById('rfidScanHeading').textContent = 'Registered RFID — ' + statusLabel + '.';
+    document.getElementById('rfidScanHelp').textContent = 'Card UID: ' + card.card_uid + ' · Status: ' + statusLabel + ' · Owner: ' + assignment;
+    document.getElementById('rfidExistingMessage').textContent = 'Status: ' + statusLabel + ' · Assignment: ' + assignment;
     document.getElementById('rfidExistingUid').textContent = card.card_uid;
-    document.getElementById('rfidExistingOwner').textContent = 'Assigned to: ' + card.owner;
+    document.getElementById('rfidExistingOwner').textContent = card.assigned
+        ? 'Assigned to: ' + card.owner
+        : 'Assignment: Unassigned';
     details.dataset.reactivateUrl = card.reactivate_url || '';
     details.classList.add('visible');
     reactivate.hidden = card.status !== 'inactive';
@@ -995,6 +1047,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     document.getElementById('rfidNextButton').addEventListener('click', function() {
         if (rfidRegistrationStep === 2) {
+            const selectedRadio = document.querySelector('#rfidStaffList input[name="staff_id"]:checked');
+            const selectedOption = selectedRadio ? selectedRadio.closest('.rfid-staff-option') : null;
+            if (selectedOption) {
+                rfidSelectedStaffLabel = selectedOption.querySelector('strong').textContent.trim();
+            }
             document.getElementById('rfidConfirmUid').textContent = rfidDetectedUid;
             document.getElementById('rfidConfirmStaff').textContent = rfidSelectedStaffLabel;
             setRfidRegistrationStep(3);
@@ -1002,14 +1059,17 @@ document.addEventListener('DOMContentLoaded', function() {
             setRfidRegistrationStep(2);
         }
     });
-    document.querySelectorAll('.rfid-staff-option').forEach(function(option) {
-        option.addEventListener('click', function() {
-            document.querySelectorAll('.rfid-staff-option').forEach(function(item) {
-                item.classList.toggle('selected', item === option);
-            });
-            document.getElementById('rfidSelectedStaffId').value = option.dataset.staffId;
-            rfidSelectedStaffLabel = option.querySelector('strong').textContent.trim();
+    document.getElementById('rfidStaffList').addEventListener('change', function(event) {
+        if (!event.target.matches('input[name="staff_id"]')) return;
+        const option = event.target.closest('.rfid-staff-option');
+        if (!option) return;
+        document.querySelectorAll('.rfid-staff-option').forEach(function(item) {
+            const radio = item.querySelector('input[name="staff_id"]');
+            const selected = Boolean(radio && radio.checked);
+            item.classList.toggle('selected', selected);
         });
+        rfidSelectedStaffLabel = option.querySelector('strong').textContent.trim();
+        document.getElementById('rfidStaffSelectionHint').textContent = 'Selected: ' + rfidSelectedStaffLabel;
     });
     document.getElementById('rfidStaffSearch').addEventListener('input', function() {
         const query = this.value.toLowerCase().trim();

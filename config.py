@@ -1,42 +1,11 @@
 import os
-import socket
 from datetime import timedelta
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'), override=True)
-
-
-def _is_reachable(url):
-    """Return True if the host in url can be TCP-connected."""
-    try:
-        parsed = urlparse(url)
-    except Exception:
-        return False
-
-    hostname = parsed.hostname
-    port = parsed.port or 5432
-
-    if not hostname or hostname in {'localhost', '127.0.0.1'}:
-        return True
-
-    for family in (socket.AF_INET, socket.AF_INET6, socket.AF_UNSPEC):
-        try:
-            results = socket.getaddrinfo(hostname, port, family, socket.SOCK_STREAM)
-            if not results:
-                continue
-            ip, actual_port = results[0][4][:2]
-            s = socket.socket(results[0][0], socket.SOCK_STREAM)
-            s.settimeout(5)
-            s.connect((ip, actual_port))
-            s.close()
-            return True
-        except Exception:
-            continue
-
-    return False
 
 
 def _to_psycopg_url(url):
@@ -64,7 +33,16 @@ def get_database_url():
         print('[DB] Using configured Supabase URL on Vercel')
         return _to_psycopg_url(vercel_url)
 
-    # 1. Direct Supabase connection (port 5432, IPv6 only — may not work on all networks)
+    # Prefer the Supabase session pooler for local development. Do not silently
+    # switch to SQLite when a configured remote database is temporarily
+    # unreachable: the scanner writes to Supabase, so the admin app must read
+    # from that same database.
+    pooler_url = os.environ.get('DATABASE_POOLER_URL')
+    if pooler_url:
+        print('[DB] Using configured Supabase session pooler')
+        return _to_psycopg_url(pooler_url)
+
+    # Direct Supabase connection (port 5432; may require IPv6).
     direct_url = os.environ.get('DATABASE_URL')
     if not direct_url:
         host     = os.environ.get('SUPABASE_HOST')
@@ -77,18 +55,11 @@ def get_database_url():
                 f"postgresql://{user}:{quote(password, safe='')}@{host}:{port}/{database}"
             )
 
-    if direct_url and _is_reachable(direct_url):
-        print("[DB] Connected via direct Supabase URL")
+    if direct_url:
+        print("[DB] Using configured direct Supabase URL")
         return _to_psycopg_url(direct_url)
 
-    # 2. Supabase session-mode pooler (IPv4, port 5432 on pooler host)
-    #    Session mode fully supports prepared statements — no workarounds needed
-    pooler_url = os.environ.get('DATABASE_POOLER_URL')
-    if pooler_url and _is_reachable(pooler_url):
-        print("[DB] Connected via Supabase session pooler (IPv4)")
-        return _to_psycopg_url(pooler_url)
-
-    # 3. Local SQLite fallback
+    # Use local SQLite only when no Supabase database URL is configured.
     local_url = os.environ.get('LOCAL_DATABASE_URL') or (
         'sqlite:///' + os.path.join(basedir, 'data', 'thysia_local.db')
     )
@@ -102,7 +73,9 @@ _db_url = get_database_url()
 _is_sqlite = _db_url.startswith('sqlite')
 _engine_options = {
     'pool_pre_ping': True,
-    'pool_recycle': 1800,
+    'pool_recycle': 300,
+    'pool_size': 10,
+    'max_overflow': 20,
 }
 if not _is_sqlite:
     _engine_options['connect_args'] = {'connect_timeout': 10}

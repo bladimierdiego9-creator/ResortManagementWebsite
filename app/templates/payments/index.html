@@ -8,15 +8,6 @@
         <h1 class="page-title">Payments &amp; Reports</h1>
         <p class="page-subtitle">Track and manage all payment transactions</p>
     </div>
-    <div class="page-header-right">
-        <a href="{{ url_for('payments.verification') }}" class="btn btn-primary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="margin-right: 8px;">
-                <path d="M9 11L12 14L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M21 12V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            GCash Verification
-        </a>
-    </div>
 </div>
 
 <!-- SUMMARY STATS -->
@@ -98,19 +89,6 @@
             </svg>
         </div>
     </div>
-    <button type="submit" class="btn btn-secondary filter-btn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M22 3H2L10 12.46V19L14 21V12.46L22 3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Filter
-    </button>
-    <a href="{{ url_for('payments.index') }}" class="btn btn-secondary reset-btn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-            <path d="M3 12A9 9 0 0 1 12 3A9 9 0 0 1 21 12A9 9 0 0 1 12 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M8 12L12 16L16 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Reset
-    </a>
 </form>
 
 <!-- TABLE -->
@@ -641,6 +619,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const optionElements = options.querySelectorAll('.dropdown-option');
         optionElements.forEach(option => {
             option.addEventListener('click', function() {
+                if (form.dataset.submitting === 'true') return; // Prevent repeated clicks while loading
+
                 const value = this.getAttribute('data-value');
                 const text = this.innerHTML;
                 
@@ -653,7 +633,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Close dropdown
                 options.classList.remove('show');
                 
-                // Submit form
+                // Submit form once
+                form.dataset.submitting = 'true';
                 form.classList.add('loading');
                 form.submit();
             });

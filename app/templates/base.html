@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/thysia-emerald.css') }}">
 </head>
@@ -215,7 +215,7 @@
             <span class="user-role">{{ current_user.role.replace('_', ' ').title() }}</span>
         </div>
         <a href="#" onclick="showLogoutModal(); return false;" class="user-menu-btn" title="Sign out"
-           style="text-decoration:none;">
+           aria-label="Sign out" aria-haspopup="dialog" aria-controls="logoutModal" style="text-decoration:none;">
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
                 <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"
                       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -295,18 +295,19 @@
 </div>
 
 <!-- LOGOUT CONFIRMATION MODAL -->
-<div class="modal-overlay" id="logoutModal">
-    <div class="modal modal-confirm">
+<div class="modal-overlay" id="logoutModal" role="presentation">
+    <div class="modal modal-confirm" role="dialog" aria-modal="true" aria-labelledby="logoutModalTitle"
+         aria-describedby="logoutModalMessage">
         <div class="modal-confirm-icon modal-confirm-icon-info">
-            <svg width="48" height="48" fill="none" viewBox="0 0 24 24">
+            <svg width="48" height="48" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
         </div>
-        <h3 class="modal-confirm-title">Sign Out</h3>
-        <p class="modal-confirm-message">Are you sure you want to sign out?</p>
+        <h3 class="modal-confirm-title" id="logoutModalTitle">Sign Out</h3>
+        <p class="modal-confirm-message" id="logoutModalMessage">Are you sure you want to sign out?</p>
         <div class="modal-confirm-actions">
             <button type="button" onclick="closeModal('logoutModal')" class="btn btn-secondary btn-lg">Cancel</button>
-            <button type="button" onclick="confirmLogout()" class="btn btn-primary btn-lg">OK</button>
+            <button type="button" onclick="confirmLogout()" class="btn btn-primary btn-lg">Sign Out</button>
         </div>
     </div>
 </div>

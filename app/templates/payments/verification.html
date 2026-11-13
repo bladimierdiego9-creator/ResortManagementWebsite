@@ -1832,10 +1832,12 @@
 <!-- 9. Image Lightbox Modal -->
 <div id="imageLightboxModal" class="modal-backdrop lightbox-backdrop" onclick="closeLightbox()">
     <div class="lightbox-container" onclick="event.stopPropagation()">
-        <button type="button" class="lightbox-close" onclick="closeLightbox()">&times;</button>
         <div class="lightbox-header">
             <h3 id="lightboxTitle">Image Preview</h3>
-            <a id="lightboxDownload" href="#" download class="lightbox-download-btn">⬇ Download</a>
+            <div class="lightbox-actions">
+                <a id="lightboxDownload" href="#" download class="lightbox-download-btn">⬇ Download</a>
+                <button type="button" class="lightbox-close" onclick="closeLightbox()" aria-label="Close image preview">&times;</button>
+            </div>
         </div>
         <div class="lightbox-body">
             <img id="lightboxImage" src="" alt="Proof Image">
@@ -3090,13 +3092,26 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 16px;
 }
 
 .lightbox-header h3 {
+    flex: 1 1 auto;
+    min-width: 0;
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 15px;
     font-weight: 700;
     color: var(--text-primary);
+}
+
+.lightbox-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 0 0 auto;
 }
 
 .lightbox-download-btn {
@@ -3104,17 +3119,30 @@
     text-decoration: none;
     font-size: 13px;
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .lightbox-close {
-    position: absolute;
-    top: 14px;
-    right: 18px;
+    position: static;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
     background: transparent;
-    border: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
     color: var(--text-muted);
-    font-size: 24px;
+    font-size: 22px;
+    line-height: 1;
     cursor: pointer;
+}
+
+.lightbox-close:hover {
+    background: var(--surface-3);
+    color: var(--text-primary);
 }
 
 .lightbox-body {
@@ -3133,6 +3161,12 @@
 }
 
 /* Responsive */
+@media (max-width: 520px) {
+    .lightbox-header { padding: 14px 16px; gap: 12px; }
+    .lightbox-actions { gap: 10px; }
+    .lightbox-header h3 { font-size: 14px; }
+}
+
 @media (max-width: 900px) {
     .match-body {
         grid-template-columns: 1fr;

@@ -1,16 +1,41 @@
-from flask import render_template, redirect, url_for, flash, request, session, make_response
+from flask import render_template, redirect, url_for, flash, request, session, make_response, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 from app.blueprints.auth import auth_bp
 from app.models import Account
 from app.extensions import db
 from app.email import send_password_reset_email
 from datetime import datetime, timedelta
+from urllib.parse import urlsplit
 import secrets
+
+
+def _safe_next_url(target):
+    """Only allow local absolute paths as post-login destinations."""
+    if not target:
+        return None
+
+    parsed = urlsplit(target)
+    if (parsed.scheme or parsed.netloc or not parsed.path.startswith('/')
+            or parsed.path.startswith('//') or '\\' in parsed.path):
+        return None
+    return target
+
+
+def _expire_remember_cookie(response):
+    """Expire Flask-Login's persistent cookie using its configured path/domain."""
+    config = current_app.config
+    response.delete_cookie(
+        config.get('REMEMBER_COOKIE_NAME', 'remember_token'),
+        path=config.get('REMEMBER_COOKIE_PATH') or config.get('SESSION_COOKIE_PATH') or '/',
+        domain=config.get('REMEMBER_COOKIE_DOMAIN') or config.get('SESSION_COOKIE_DOMAIN')
+    )
+    return response
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
+        session['current_page'] = url_for('admin.overview')
         return redirect(url_for('admin.overview'))
 
     error = None
@@ -21,44 +46,54 @@ def login():
 
         user = Account.query.filter_by(email=email).first()
         if user and user.check_password(password) and user.status == 'active':
-            # Session lifetime: 12 h when "Remember" is off, 7 days when on
-            from flask import current_app
-            if remember:
-                current_app.permanent_session_lifetime = timedelta(days=7)
+            if user.role not in ('admin', 'super_admin'):
+                error = 'This account does not have access to the admin dashboard.'
             else:
-                current_app.permanent_session_lifetime = timedelta(hours=12)
+                # Session lifetime: 12 h when "Remember" is off, 7 days when on
+                from flask import current_app
+                if remember:
+                    current_app.permanent_session_lifetime = timedelta(days=7)
+                else:
+                    current_app.permanent_session_lifetime = timedelta(hours=12)
 
-            session.permanent = True
-            login_user(user, remember=remember)
-            user.last_login = datetime.utcnow()
-            db.session.commit()
+                session.permanent = True
+                login_user(user, remember=remember)
+                flash('Login successful', 'success')
+                user.last_login = datetime.utcnow()
+                db.session.commit()
 
-            # ── Login-session token ──────────────────────────────────────────
-            # Generate a unique token, store it in the server-side session AND
-            # in an HttpOnly cookie.  The before_request hook validates that
-            # both values match on every subsequent request.
-            token = secrets.token_hex(32)
-            session['login_token'] = token
-            session['login_user_id'] = user.id
+                # ── Login-session token ──────────────────────────────────────
+                # Generate a unique token, store it in the server-side session
+                # and an HttpOnly cookie. The before_request hook validates
+                # that both values match on subsequent requests.
+                token = secrets.token_hex(32)
+                session['login_token'] = token
+                session['login_user_id'] = user.id
 
-            next_page = request.args.get('next')
-            resp = make_response(redirect(next_page or url_for('admin.overview')))
+                next_page = _safe_next_url(request.form.get('next') or request.args.get('next'))
+                destination = next_page or url_for('admin.overview')
+                session['current_page'] = urlsplit(destination).path
+                resp = make_response(redirect(destination))
 
-            max_age = 7 * 24 * 3600 if remember else 12 * 3600
-            resp.set_cookie(
-                'login_token',
-                token,
-                max_age=max_age,
-                httponly=True,
-                samesite='Lax',
-                secure=False,   # set True when served over HTTPS
-                path='/'
-            )
-            return resp
+                max_age = 7 * 24 * 3600 if remember else 12 * 3600
+                resp.set_cookie(
+                    'login_token',
+                    token,
+                    max_age=max_age,
+                    httponly=True,
+                    samesite='Lax',
+                    secure=False,   # set True when served over HTTPS
+                    path='/'
+                )
+                return resp
         else:
             error = 'Invalid email or password.'
 
-    return render_template('auth/login.html', error=error)
+    response = make_response(render_template('auth/login.html', error=error))
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 @auth_bp.route('/force-logout')
@@ -69,6 +104,8 @@ def force_logout():
     
     # Clear all session data
     session.clear()
+    # Preserve Flask-Login's instruction to remove the remember-me cookie.
+    session['_remember'] = 'clear'
     
     # Create clean response
     resp = make_response(redirect(url_for('auth.login')))
@@ -80,6 +117,7 @@ def force_logout():
     resp.delete_cookie('nav_intent')
     resp.delete_cookie('session', path='/')
     resp.delete_cookie('session')
+    _expire_remember_cookie(resp)
     
     # Clear cache
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
@@ -97,6 +135,9 @@ def logout():
     
     # Clear all session data (including login_token, current_page, etc.)
     session.clear()
+    # session.clear() removes Flask-Login's own deletion marker; restore it so
+    # its after-request hook also expires the persistent remember-me cookie.
+    session['_remember'] = 'clear'
     
     # Create response with redirect
     resp = make_response(redirect(url_for('auth.login')))
@@ -106,6 +147,7 @@ def logout():
     resp.delete_cookie('login_token')  # Delete without path as backup
     resp.delete_cookie('nav_intent', path='/')
     resp.delete_cookie('nav_intent')  # Delete without path as backup
+    _expire_remember_cookie(resp)
     
     # Add cache control headers to prevent caching
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
@@ -128,6 +170,7 @@ def index():
 def forgot_password():
     """Handle forgot password - send OTP email."""
     if current_user.is_authenticated:
+        session['current_page'] = url_for('admin.overview')
         return redirect(url_for('admin.overview'))
     
     if request.method == 'POST':
@@ -186,6 +229,7 @@ def forgot_password():
 def verify_otp():
     """Handle OTP verification."""
     if current_user.is_authenticated:
+        session['current_page'] = url_for('admin.overview')
         return redirect(url_for('admin.overview'))
     
     # Check if email is in session
@@ -218,6 +262,7 @@ def verify_otp():
 def reset_password():
     """Handle password reset after OTP verification."""
     if current_user.is_authenticated:
+        session['current_page'] = url_for('admin.overview')
         return redirect(url_for('admin.overview'))
     
     # Check if OTP was verified

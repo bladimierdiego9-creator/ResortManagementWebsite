@@ -3,7 +3,7 @@ from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensions import db, login_manager
-from sqlalchemy import String, TypeDecorator, func
+from sqlalchemy import String, TypeDecorator, func, text
 
 
 class GUID(TypeDecorator):
@@ -467,6 +467,35 @@ class RFIDCard(db.Model):
 
     def __repr__(self):
         return f'<RFIDCard {self.card_uid} ({self.owner_name})>'
+
+
+class RFIDScanControl(db.Model):
+    """Single scanner registration session shared by the admin page and ESP32."""
+    __tablename__ = 'rfid_scan_control'
+    id = db.Column(db.SmallInteger, primary_key=True)
+    is_armed = db.Column(db.Boolean, nullable=False, default=False)
+    session_id = db.Column(db.String(36), nullable=True)
+    scanned_uid = db.Column(db.String(64), nullable=True)
+    scanned_at = db.Column(db.DateTime, nullable=True)
+    started_at = db.Column(db.DateTime, nullable=True)
+    expires_at = db.Column(db.DateTime, nullable=True)
+
+
+class RFIDScanEvent(db.Model):
+    """Admin-requested RFID tap waiting to be matched to a registry card."""
+    __tablename__ = 'rfid_scan_events'
+    id = db.Column(db.Integer, primary_key=True)
+    card_uid = db.Column(db.String(64), nullable=False, index=True)
+    rfid_card_id = db.Column(
+        db.Integer, db.ForeignKey('rfid_cards.id', ondelete='SET NULL'), nullable=True
+    )
+    scan_session_id = db.Column(db.String(36), nullable=False, unique=True, index=True)
+    scanned_at = db.Column(
+        db.DateTime, nullable=False,
+        default=datetime.utcnow,
+        server_default=func.now(),
+    )
+    processed_at = db.Column(db.DateTime, nullable=True)
 
 
 class Payroll(db.Model):

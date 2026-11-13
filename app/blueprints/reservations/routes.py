@@ -6,6 +6,7 @@ from app.models import Reservation, Booking, Guest, Facility, Payment, Account
 from app.extensions import db
 from datetime import datetime, date
 from sqlalchemy import func, or_
+from sqlalchemy.orm import joinedload
 
 
 @reservations_bp.route('/')
@@ -31,9 +32,10 @@ def index():
     )
 
     # Fetch reservations (admin-created) - exclude archived by default
-    res_query = Reservation.query.filter_by(archived=view_archived)
-    # Fetch reservations (admin-created) - exclude archived by default
-    res_query = Reservation.query.filter_by(archived=view_archived)
+    res_query = Reservation.query.options(
+        joinedload(Reservation.guest),
+        joinedload(Reservation.payment)
+    ).filter_by(archived=view_archived)
     if status_filter:
         if status_filter == 'cancel_requested':
             res_query = res_query.filter_by(cancellation_request_status='pending')
@@ -52,7 +54,9 @@ def index():
     reservations_list = res_query.order_by(Reservation.created_at.desc()).all()
 
     # Fetch bookings (guest-created) - exclude archived by default
-    book_query = Booking.query.filter_by(archived=view_archived)
+    book_query = Booking.query.options(
+        joinedload(Booking.account)
+    ).filter_by(archived=view_archived)
     if status_filter:
         if status_filter == 'cancel_requested':
             book_query = book_query.filter(or_(Booking.status == 'cancel_requested', Booking.cancellation_request_status == 'pending'))

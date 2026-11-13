@@ -128,8 +128,6 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- DEBUG INFO -->
-                            <tr style="background:#ffffcc;"><td colspan="5"><strong>DEBUG:</strong> {{ recent_bookings|length }} items loaded</td></tr>
                             {% for item in recent_bookings %}
                             <tr style="cursor:pointer;" onclick="window.location='{% if item.type == 'booking' %}{{ url_for('reservations.detail', id='book-' ~ item.id) }}{% else %}{{ url_for('reservations.detail', id=item.id) }}{% endif %}'">
                                 <td>

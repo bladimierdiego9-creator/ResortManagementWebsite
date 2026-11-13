@@ -2,11 +2,15 @@ from flask import render_template, request, redirect, url_for, flash, jsonify, c
 from flask_login import login_required
 from app.blueprints.attendance_payroll import attendance_payroll_bp
 from app.decorators import admin_required, log_action
-from app.models import AttendanceLog, Payroll, Staff, ShiftHandover, RFIDCard, Account
+from app.models import AttendanceLog, Payroll, Staff, ShiftHandover, RFIDCard, RFIDScanControl, RFIDScanEvent, Account
 from app.extensions import db
 from datetime import datetime, date, timedelta, time
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 import hmac
+import uuid
+
+PAYROLL_HOURLY_RATE = 80.0
 
 
 @attendance_payroll_bp.route('/')
@@ -20,83 +24,117 @@ def index():
     today = date.today()
     page = request.args.get('page', 1, type=int)
 
-    # Attendance logs (for attendance tab)
-    attendance_logs = AttendanceLog.query.order_by(
-        AttendanceLog.time_in.desc()
-    ).paginate(page=page, per_page=10, error_out=False)
-
-    staff_list = Staff.query.filter_by(status='active').order_by(Staff.full_name).all()
-    payrolls = Payroll.query.order_by(Payroll.created_at.desc()).limit(20).all()
-    handovers = ShiftHandover.query.order_by(
-        ShiftHandover.created_at.desc()
-    ).limit(10).all()
-
-    today_on_time = AttendanceLog.query.filter(
-        func.date(AttendanceLog.time_in) == today,
-        AttendanceLog.status == 'on_time'
-    ).count()
-    today_late = AttendanceLog.query.filter(
-        func.date(AttendanceLog.time_in) == today,
-        AttendanceLog.status == 'late'
-    ).count()
-    today_total = today_on_time + today_late
-
-    # ── RFID Cards Tab Query, Filtering & Sorting ────────────────────────
+    # Defaults
+    attendance_logs = None
+    staff_list = []
+    payrolls = []
+    handovers = []
+    rfid_cards = None
+    today_on_time = 0
+    today_late = 0
+    today_total = 0
+    total_rfid = 0
+    active_rfid = 0
+    assigned_rfid = 0
+    unassigned_rfid = 0
     q = request.args.get('q', '').strip()
     status_filter = request.args.get('status', 'all').strip().lower()
     sort_by = request.args.get('sort', 'uid').strip().lower()
     sort_order = request.args.get('order', 'asc').strip().lower()
-    rfid_page = request.args.get('page', 1, type=int) if tab == 'rfid' else 1
 
-    rfid_query = RFIDCard.query.outerjoin(Staff, Staff.id == RFIDCard.staff_id)
+    if tab == 'attendance':
+        # Attendance logs with eager-loaded staff to avoid N+1 queries
+        attendance_logs = AttendanceLog.query.options(
+            joinedload(AttendanceLog.staff)
+        ).order_by(
+            AttendanceLog.time_in.desc()
+        ).paginate(page=page, per_page=10, error_out=False)
 
-    if q:
-        like = f"%{q}%"
-        rfid_query = rfid_query.filter(
-            db.or_(
-                RFIDCard.card_uid.ilike(like),
-                RFIDCard.notes.ilike(like),
-                Staff.full_name.ilike(like),
-                Staff.role.ilike(like),
-                Staff.shift.ilike(like)
+        today_on_time = AttendanceLog.query.filter(
+            func.date(AttendanceLog.time_in) == today,
+            AttendanceLog.status == 'on_time'
+        ).count()
+        today_late = AttendanceLog.query.filter(
+            func.date(AttendanceLog.time_in) == today,
+            AttendanceLog.status == 'late'
+        ).count()
+        today_total = today_on_time + today_late
+        staff_list = Staff.query.filter_by(status='active').order_by(Staff.full_name).all()
+
+    elif tab == 'rfid':
+        rfid_page = page
+        rfid_query = RFIDCard.query.options(
+            joinedload(RFIDCard.staff)
+        ).outerjoin(Staff, Staff.id == RFIDCard.staff_id)
+
+        if q:
+            like = f"%{q}%"
+            rfid_query = rfid_query.filter(
+                db.or_(
+                    RFIDCard.card_uid.ilike(like),
+                    RFIDCard.notes.ilike(like),
+                    Staff.full_name.ilike(like),
+                    Staff.role.ilike(like),
+                    Staff.shift.ilike(like)
+                )
             )
-        )
 
-    if status_filter in ('active', 'inactive', 'blocked'):
-        rfid_query = rfid_query.filter(RFIDCard.status == status_filter)
-    elif status_filter == 'unassigned':
-        rfid_query = rfid_query.filter(RFIDCard.staff_id.is_(None))
-    elif status_filter == 'assigned':
-        rfid_query = rfid_query.filter(RFIDCard.staff_id.isnot(None))
+        if status_filter in ('active', 'inactive', 'blocked'):
+            rfid_query = rfid_query.filter(RFIDCard.status == status_filter)
+        elif status_filter == 'unassigned':
+            rfid_query = rfid_query.filter(RFIDCard.staff_id.is_(None))
+        elif status_filter == 'assigned':
+            rfid_query = rfid_query.filter(RFIDCard.staff_id.isnot(None))
 
-    is_desc = (sort_order == 'desc')
-    if sort_by == 'owner':
-        order_col = Staff.full_name.desc() if is_desc else Staff.full_name.asc()
-    elif sort_by == 'status':
-        order_col = RFIDCard.status.desc() if is_desc else RFIDCard.status.asc()
-    elif sort_by == 'role':
-        order_col = Staff.role.desc() if is_desc else Staff.role.asc()
-    elif sort_by == 'shift':
-        order_col = Staff.shift.desc() if is_desc else Staff.shift.asc()
-    elif sort_by == 'last_used':
-        order_col = RFIDCard.last_used_at.desc() if is_desc else RFIDCard.last_used_at.asc()
-    elif sort_by == 'date':
-        order_col = RFIDCard.created_at.desc() if is_desc else RFIDCard.created_at.asc()
-    else:  # uid
-        order_col = RFIDCard.card_uid.desc() if is_desc else RFIDCard.card_uid.asc()
+        is_desc = (sort_order == 'desc')
+        if sort_by == 'owner':
+            order_col = Staff.full_name.desc() if is_desc else Staff.full_name.asc()
+        elif sort_by == 'status':
+            order_col = RFIDCard.status.desc() if is_desc else RFIDCard.status.asc()
+        elif sort_by == 'role':
+            order_col = Staff.role.desc() if is_desc else Staff.role.asc()
+        elif sort_by == 'shift':
+            order_col = Staff.shift.desc() if is_desc else Staff.shift.asc()
+        elif sort_by == 'last_used':
+            order_col = RFIDCard.last_used_at.desc() if is_desc else RFIDCard.last_used_at.asc()
+        elif sort_by == 'date':
+            order_col = RFIDCard.created_at.desc() if is_desc else RFIDCard.created_at.asc()
+        else:  # uid
+            order_col = RFIDCard.card_uid.desc() if is_desc else RFIDCard.card_uid.asc()
 
-    rfid_query = rfid_query.order_by(order_col)
-    rfid_cards = rfid_query.paginate(page=rfid_page, per_page=12, error_out=False)
+        rfid_query = rfid_query.order_by(order_col)
+        rfid_cards = rfid_query.paginate(page=rfid_page, per_page=12, error_out=False)
 
-    total_rfid = RFIDCard.query.count()
-    active_rfid = RFIDCard.query.filter_by(status='active').count()
-    assigned_rfid = RFIDCard.query.filter(RFIDCard.staff_id.isnot(None)).count()
-    unassigned_rfid = RFIDCard.query.filter(RFIDCard.staff_id.is_(None)).count()
+        total_rfid = RFIDCard.query.count()
+        active_rfid = RFIDCard.query.filter_by(status='active').count()
+        assigned_rfid = RFIDCard.query.filter(RFIDCard.staff_id.isnot(None)).count()
+        unassigned_rfid = RFIDCard.query.filter(RFIDCard.staff_id.is_(None)).count()
+        staff_list = Staff.query.filter_by(status='active').order_by(Staff.full_name).all()
+
+    elif tab == 'payroll':
+        payrolls = Payroll.query.options(
+            joinedload(Payroll.staff)
+        ).order_by(Payroll.created_at.desc()).limit(20).all()
+        handovers = ShiftHandover.query.order_by(
+            ShiftHandover.created_at.desc()
+        ).limit(10).all()
+        staff_list = Staff.query.filter_by(status='active').order_by(Staff.full_name).all()
+
+        today_on_time = AttendanceLog.query.filter(
+            func.date(AttendanceLog.time_in) == today,
+            AttendanceLog.status == 'on_time'
+        ).count()
+        today_late = AttendanceLog.query.filter(
+            func.date(AttendanceLog.time_in) == today,
+            AttendanceLog.status == 'late'
+        ).count()
+        today_total = today_on_time + today_late
 
     return render_template('attendance_payroll/index.html',
                            attendance_logs=attendance_logs,
                            staff_list=staff_list,
                            payrolls=payrolls,
+                           payroll_hourly_rate=PAYROLL_HOURLY_RATE,
                            handovers=handovers,
                            tab=tab,
                            today=today,
@@ -215,6 +253,7 @@ def register_rfid():
     staff_id = request.form.get('staff_id', '').strip()
     status = request.form.get('status', 'active').strip().lower()
     notes = request.form.get('notes', '').strip() or None
+    scan_event_id = request.form.get('scan_event_id', '').strip()
 
     if not card_uid:
         flash('Card Tag UID is required.', 'error')
@@ -222,6 +261,18 @@ def register_rfid():
 
     if status not in ('active', 'inactive', 'blocked'):
         status = 'active'
+
+    scan_event = None
+    if scan_event_id:
+        try:
+            scan_event = RFIDScanEvent.query.filter_by(
+                id=int(scan_event_id), card_uid=card_uid
+            ).first()
+        except (TypeError, ValueError):
+            scan_event = None
+        if scan_event is None:
+            flash('The scan session expired. Scan the card again before registering it.', 'error')
+            return redirect(url_for('attendance_payroll.index', tab='rfid'))
 
     existing = RFIDCard.query.filter_by(card_uid=card_uid).first()
     if existing and existing.status != 'pending':
@@ -249,7 +300,7 @@ def register_rfid():
                 target_staff.account.rfid_tag = card_uid
 
         if existing:
-            # Promote the ESP32-created pending row instead of inserting a duplicate.
+            # Reuse an older pending row if this UID was scanned before the event inbox existed.
             existing.staff_id = target_staff.id if target_staff else None
             existing.status = status
             existing.notes = notes or 'Registered from ESP32 scan'
@@ -262,6 +313,10 @@ def register_rfid():
                 notes=notes
             )
             db.session.add(new_card)
+        if scan_event:
+            db.session.flush()
+            scan_event.rfid_card_id = new_card.id
+            scan_event.processed_at = datetime.utcnow()
         db.session.commit()
         log_action(f"Registered RFID card: {card_uid}", "RFIDCard", new_card.id)
         owner_msg = f" and assigned to {target_staff.full_name}" if target_staff else " (Unassigned)"
@@ -283,8 +338,27 @@ def lookup_rfid():
         return jsonify({'error': 'Card UID is required.'}), 400
 
     card = RFIDCard.query.filter_by(card_uid=card_uid).first()
-    if not card or card.status == 'pending':
+    if not card:
+        legacy_staff = Staff.query.filter(func.upper(Staff.rfid_tag) == card_uid).first()
+        if legacy_staff:
+            return jsonify({
+                'found': True,
+                'card_uid': card_uid,
+                'status': 'active',
+                'owner': legacy_staff.full_name,
+                'assigned': True,
+            })
         return jsonify({'found': False})
+
+    # Pending, unassigned cards are expected during registration. Return their
+    # state so the scan modal can show that the database has received the tap.
+    if card.status == 'pending' and card.staff_id is None:
+        return jsonify({
+            'found': False,
+            'status': 'pending',
+            'assigned': False,
+            'owner': 'Unassigned',
+        })
 
     return jsonify({
         'found': True,
@@ -292,38 +366,89 @@ def lookup_rfid():
         'card_uid': card.card_uid,
         'status': card.status,
         'owner': card.owner_name,
+        'assigned': card.staff_id is not None,
         'reactivate_url': url_for('attendance_payroll.reactivate_rfid', id=card.id),
     })
+
+
+@attendance_payroll_bp.route('/rfid/scan-session/start', methods=['POST'])
+@login_required
+@admin_required
+def start_rfid_scan_session():
+    """Arm the ESP32 only while an admin is actively scanning a card."""
+    control = RFIDScanControl.query.get(1)
+    if control is None:
+        control = RFIDScanControl(id=1)
+        db.session.add(control)
+
+    session_id = uuid.uuid4().hex
+    now = datetime.utcnow()
+    control.is_armed = True
+    control.session_id = session_id
+    control.scanned_uid = None
+    control.scanned_at = None
+    control.started_at = now
+    control.expires_at = now + timedelta(minutes=2)
+    db.session.commit()
+    return jsonify(armed=True, session_id=session_id)
+
+
+@attendance_payroll_bp.route('/rfid/scan-session/stop', methods=['POST'])
+@login_required
+@admin_required
+def stop_rfid_scan_session():
+    """Disarm the scanner when the admin cancels or leaves the scan step."""
+    payload = request.get_json(silent=True) or {}
+    session_id = str(payload.get('session_id', '')).strip()
+    control = RFIDScanControl.query.get(1)
+    if control and session_id and control.session_id == session_id:
+        control.is_armed = False
+        control.session_id = None
+        control.scanned_uid = None
+        control.scanned_at = None
+        control.expires_at = None
+        db.session.commit()
+    return jsonify(armed=False)
 
 
 @attendance_payroll_bp.route('/rfid/pending-scan')
 @login_required
 @admin_required
 def pending_rfid_scan():
-    """Browser poll endpoint for an unregistered UID scanned by the ESP32."""
-    if request.args.get('baseline') == '1':
-        return jsonify(cursor=datetime.utcnow().isoformat(timespec='microseconds'))
+    """Return and consume the scan event for the current admin session."""
+    session_id = request.args.get('session_id', '').strip()
+    if not session_id:
+        return jsonify(error='Scan session is required.'), 400
 
-    cursor_value = request.args.get('after', '')
-    try:
-        cursor_time = datetime.fromisoformat(cursor_value)
-    except (TypeError, ValueError):
-        return jsonify(error='Invalid scan cursor'), 400
+    control = RFIDScanControl.query.filter_by(id=1).with_for_update().first()
+    if not control or not control.is_armed or control.session_id != session_id:
+        return jsonify(found=False, armed=False)
+    now = datetime.utcnow()
+    if not control.expires_at or control.expires_at <= now:
+        control.is_armed = False
+        control.session_id = None
+        control.scanned_uid = None
+        control.scanned_at = None
+        control.expires_at = None
+        db.session.commit()
+        return jsonify(found=False, armed=False)
+    scan_event = RFIDScanEvent.query.filter_by(scan_session_id=session_id).first()
+    if not scan_event:
+        # Keep long admin scans alive, but avoid writing on every 700 ms poll.
+        if control.expires_at <= now + timedelta(seconds=60):
+            control.expires_at = now + timedelta(minutes=2)
+            db.session.commit()
+        return jsonify(found=False, armed=True)
 
-    card = RFIDCard.query.filter(
-        RFIDCard.status == 'pending',
-        RFIDCard.staff_id.is_(None),
-        RFIDCard.last_used_at > cursor_time,
-    ).order_by(RFIDCard.last_used_at.desc(), RFIDCard.id.desc()).first()
-
-    if not card:
-        return jsonify(found=False, cursor=cursor_value)
-
-    return jsonify(
-        found=True,
-        uid=card.card_uid,
-        cursor=card.last_used_at.isoformat(timespec='microseconds'),
-    )
+    uid = scan_event.card_uid
+    event_id = scan_event.id
+    control.is_armed = False
+    control.session_id = None
+    control.scanned_uid = None
+    control.scanned_at = None
+    control.expires_at = None
+    db.session.commit()
+    return jsonify(found=True, uid=uid, event_id=event_id, armed=False)
 
 
 @attendance_payroll_bp.route('/rfid/<int:id>/reactivate', methods=['POST'])
@@ -564,12 +689,7 @@ def generate_payroll():
                 else:
                     regular_hours += duration
 
-        # TODO: Replace with per-staff hourly_rate from Staff model or a
-        # PayrollConfig table. Payroll generation is disabled until real
-        # rates are configured — no record is saved for this staff member.
-        hourly_rate = getattr(staff, 'hourly_rate', None)
-        if not hourly_rate:
-            continue
+        hourly_rate = PAYROLL_HOURLY_RATE
 
         overtime_rate = hourly_rate * 1.5  # standard OT multiplier
         gross = (regular_hours * hourly_rate) + (overtime_hours * overtime_rate)
@@ -598,9 +718,6 @@ def generate_payroll():
 
     db.session.commit()
     log_action(f'Generated payroll for {generated} staff members', 'Payroll')
-    skipped = len(staff_list) - generated
     msg = f'Payroll generated for {generated} staff member(s).'
-    if skipped:
-        msg += f' {skipped} skipped (no hourly rate configured).'
     flash(msg, 'success' if generated else 'warning')
     return redirect(url_for('attendance_payroll.index', tab='payroll'))

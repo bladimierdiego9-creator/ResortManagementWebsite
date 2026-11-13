@@ -157,15 +157,14 @@ function cancelAction() {
 }
 window.cancelAction = cancelAction;
 
-// ── LOGOUT MODAL ────────────────────────────────────────────
+// ── LOGOUT CONFIRMATION ────────────────────────────────────
 function showLogoutModal() {
-  const modal = document.getElementById('logoutModal');
-  if (modal) modal.classList.add('open');
+  openModal('logoutModal');
 }
 window.showLogoutModal = showLogoutModal;
 
 function confirmLogout() {
-  window.location.href = '/auth/logout';
+  window.location.assign('/auth/logout');
 }
 window.confirmLogout = confirmLogout;
 

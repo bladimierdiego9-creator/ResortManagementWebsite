@@ -135,9 +135,55 @@
     </div>
 </div>
 
+{% if staff_accounts.pages > 1 %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:12.5px;color:var(--text-muted);">
+    <span>Showing {{ ((staff_accounts.page - 1) * staff_accounts.per_page) + 1 }}–{{ [staff_accounts.page * staff_accounts.per_page, staff_accounts.total] | min }} of {{ staff_accounts.total }} staff members</span>
+    <div style="display:flex;gap:6px;">
+        {% if staff_accounts.has_prev %}
+        <a href="{{ url_for('accounts.index', tab='staff', page=staff_accounts.prev_num) }}" class="btn btn-sm btn-secondary">← Prev</a>
+        {% endif %}
+        {% for p in staff_accounts.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+            <a href="{{ url_for('accounts.index', tab='staff', page=p) }}" class="btn btn-sm {% if p == staff_accounts.page %}btn-primary{% else %}btn-secondary{% endif %}">{{ p }}</a>
+            {% else %}
+            <span style="padding:0 4px;align-self:center;">…</span>
+            {% endif %}
+        {% endfor %}
+        {% if staff_accounts.has_next %}
+        <a href="{{ url_for('accounts.index', tab='staff', page=staff_accounts.next_num) }}" class="btn btn-sm btn-secondary">Next →</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
 {% elif tab == 'guests' %}
-<div class="page-actions mb-16" style="display:flex;justify-content:flex-end;">
-    <button onclick="openModal('addGuestModal')" class="btn btn-primary">
+<div class="filter-bar" style="justify-content:space-between;">
+    <form method="GET" action="{{ url_for('accounts.index') }}" role="search"
+          style="display:flex;align-items:center;gap:8px;flex:1;max-width:620px;flex-wrap:wrap;">
+        <input type="hidden" name="tab" value="guests">
+        <div style="position:relative;flex:1;min-width:180px;max-width:420px;">
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+                <path d="m16 16 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <input type="search" id="guestSearch" name="search" class="form-input"
+                   value="{{ search_term }}" placeholder="Search name, username, email, or phone"
+                   aria-label="Search guest accounts" autocomplete="off"
+                   style="width:100%;padding-left:36px;">
+        </div>
+        <button type="submit" class="btn btn-secondary">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+                <path d="m16 16 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Search
+        </button>
+        {% if search_term %}
+        <a href="{{ url_for('accounts.index', tab='guests') }}" class="btn btn-secondary">Clear</a>
+        {% endif %}
+    </form>
+    <button type="button" onclick="openModal('addGuestModal')" class="btn btn-primary" style="margin-left:auto;">
         <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
         Add Guest Account
     </button>
@@ -186,7 +232,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="8" class="text-center text-muted" style="padding:36px;">No guests found. Click "Add Guest Account" to get started.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted" style="padding:36px;">{% if search_term %}No guests match &quot;{{ search_term }}&quot;.{% else %}No guests found. Click &quot;Add Guest Account&quot; to get started.{% endif %}</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -195,21 +241,21 @@
 
 {% if guest_accounts.pages > 1 %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:12.5px;color:var(--text-muted);">
-    <span>Showing {{ ((guest_accounts.page - 1) * 8) + 1 }}–{{ [guest_accounts.page * 8, guest_accounts.total] | min }} of {{ guest_accounts.total }} guests</span>
+    <span>Showing {{ ((guest_accounts.page - 1) * guest_accounts.per_page) + 1 }}–{{ [guest_accounts.page * guest_accounts.per_page, guest_accounts.total] | min }} of {{ guest_accounts.total }} guests</span>
     <div style="display:flex;gap:6px;">
         {% if guest_accounts.has_prev %}
-        <a href="{{ url_for('accounts.index', tab='guests', page=guest_accounts.prev_num) }}" class="btn btn-sm btn-secondary">← Prev</a>
+        <a href="{{ url_for('accounts.index', tab='guests', page=guest_accounts.prev_num, search=search_term or None) }}" class="btn btn-sm btn-secondary">← Prev</a>
         {% endif %}
         {% for p in guest_accounts.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
             {% if p %}
-            <a href="{{ url_for('accounts.index', tab='guests', page=p) }}"
+            <a href="{{ url_for('accounts.index', tab='guests', page=p, search=search_term or None) }}"
                class="btn btn-sm {% if p == guest_accounts.page %}btn-primary{% else %}btn-secondary{% endif %}">{{ p }}</a>
             {% else %}
             <span style="padding:0 4px;align-self:center;">…</span>
             {% endif %}
         {% endfor %}
         {% if guest_accounts.has_next %}
-        <a href="{{ url_for('accounts.index', tab='guests', page=guest_accounts.next_num) }}" class="btn btn-sm btn-secondary">Next →</a>
+        <a href="{{ url_for('accounts.index', tab='guests', page=guest_accounts.next_num, search=search_term or None) }}" class="btn btn-sm btn-secondary">Next →</a>
         {% endif %}
     </div>
 </div>

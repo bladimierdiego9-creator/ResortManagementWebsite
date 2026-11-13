@@ -6,6 +6,7 @@ from app.models import Payment, Reservation, GCashConfig, GCashTransaction, Paym
 from app.extensions import db
 from datetime import datetime, timedelta
 from sqlalchemy import func, or_
+from sqlalchemy.orm import joinedload
 import base64
 import time
 from functools import wraps
@@ -13,52 +14,24 @@ import secrets
 
 
 def validate_session_access(f):
-    """Decorator to validate session access with URL session param, cookies, and cache control"""
+    """Ensure secure headers, cookie protection, and cache control for payment views."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # 1. Retrieve session token from server session and cookie
+        # 1. Retrieve or issue session token in session and cookie
         session_token = session.get('payment_verification_token')
         cookie_token = request.cookies.get('payment_session')
         
-        # Use existing valid session or generate new secure token
         valid_token = session_token or cookie_token
         if not valid_token:
             valid_token = secrets.token_urlsafe(32)
         
-        # Ensure session consistency on server
         session['payment_verification_token'] = valid_token
         session.permanent = True
         
-        # 2. Check session in URL query parameters
-        url_session = request.args.get('session')
-        
-        # If GET request and URL session is missing or was changed/tampered with,
-        # redirect back to the exact same page with the valid session attached.
-        # "para kahit palitan yung url hindi parin aalis sa page kung saan ka nandon"
-        if request.method == 'GET' and url_session != valid_token:
-            query_params = request.args.to_dict()
-            query_params['session'] = valid_token
-            redirect_url = url_for(request.endpoint, **query_params, **kwargs)
-            
-            resp = redirect(redirect_url)
-            # Set cookie and cache headers on redirect
-            resp.set_cookie(
-                'payment_session',
-                valid_token,
-                max_age=24 * 60 * 60,
-                secure=request.is_secure,
-                httponly=True,
-                samesite='Lax'
-            )
-            resp.headers['Cache-Control'] = 'private, no-cache, no-store, must-revalidate, max-age=0'
-            resp.headers['Pragma'] = 'no-cache'
-            resp.headers['Expires'] = '0'
-            return resp
-        
-        # 3. Execute view function
+        # 2. Execute view function directly without 302 URL redirection
         result = f(*args, **kwargs)
         
-        # 4. Attach cookies and cache headers to response
+        # 3. Attach security headers and cookies to response
         response = make_response(result)
         response.headers['Cache-Control'] = 'private, no-cache, no-store, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
@@ -88,7 +61,10 @@ def index():
     status_filter = request.args.get('status', '')
     mode_filter = request.args.get('mode', '')
 
-    query = Payment.query.order_by(Payment.created_at.desc())
+    # Eager load reservation and guest to eliminate N+1 queries
+    query = Payment.query.options(
+        joinedload(Payment.reservation).joinedload(Reservation.guest)
+    ).order_by(Payment.created_at.desc())
 
     if status_filter:
         query = query.filter_by(status=status_filter)

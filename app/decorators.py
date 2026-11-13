@@ -23,8 +23,7 @@ def admin_required(f):
         if not current_user.is_authenticated:
             return redirect(url_for('auth.login', next=request.url))
         if current_user.role not in ('admin', 'super_admin'):
-            flash('You do not have permission to access that page.', 'error')
-            return redirect(url_for('admin.overview'))
+            return redirect(url_for('auth.logout'))
         return f(*args, **kwargs)
     return decorated_function
 

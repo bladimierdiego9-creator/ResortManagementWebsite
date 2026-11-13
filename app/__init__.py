@@ -1,11 +1,13 @@
-from flask import Flask
-from app.extensions import db, login_manager
+from flask import Flask, request
+from app.extensions import db, login_manager, cache
 from config import Config
 
 
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    # Enable browser caching for static assets (12 hours)
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 43200
 
     db.init_app(app)
     login_manager.init_app(app)
@@ -133,6 +135,15 @@ def create_app(config_class=Config):
         # First visit or same page refresh: record the current page.
         session['current_page'] = current_path
 
+    # Invalidate cached views and data whenever any mutation occurs
+    @app.after_request
+    def invalidate_cache_on_mutation(response):
+        if request.method in ('POST', 'PUT', 'DELETE', 'PATCH') and 200 <= response.status_code < 400:
+            cache.clear('dashboard')
+            cache.clear('calendar')
+            cache.clear('facilities')
+        return response
+
 
     from app.blueprints.auth import auth_bp
     from app.blueprints.admin import admin_bp
@@ -197,127 +208,102 @@ def create_app(config_class=Config):
         return redirect(url_for('auth.login'))
 
     with app.app_context():
+        # Ensure database tables exist
         db.create_all()
 
-        # Drop the unique constraint on accounts.reset_token if it exists.
-        # The column was originally created with unique=True, which causes
-        # failures when two users coincidentally receive the same 6-digit OTP.
-        try:
-            uri = str(db.engine.url)
-            if 'sqlite' in uri:
-                # SQLite doesn't support ALTER TABLE DROP CONSTRAINT, but
-                # unique constraints on nullable columns don't block inserts
-                # of duplicate NULLs in SQLite, so this is a no-op.
-                pass
-            else:
-                # PostgreSQL: find and drop the constraint by inspecting
-                # information_schema
-                with db.engine.connect() as conn:
-                    result = conn.execute(db.text("""
-                        SELECT constraint_name
-                        FROM information_schema.table_constraints
-                        WHERE table_name = 'accounts'
-                          AND constraint_type = 'UNIQUE'
-                          AND constraint_name LIKE '%reset_token%'
-                    """))
-                    for row in result:
-                        conn.execute(db.text(
-                            f'ALTER TABLE accounts DROP CONSTRAINT IF EXISTS "{row[0]}"'
-                        ))
-                    conn.commit()
-        except Exception as e:
-            print(f"[STARTUP] Could not drop reset_token unique constraint: {e}")
-
-        # Auto-sync unlinked staff and guests to ensure they have accounts
+        # Auto-sync unlinked staff and guests only if unlinked records exist
         try:
             from app.models import Staff, Guest, Account
             import re
 
-            unlinked_staff = Staff.query.filter(Staff.account_id.is_(None)).all()
-            for s in unlinked_staff:
-                name_parts = (s.full_name or 'Staff').strip().split(' ', 1)
-                first_name = name_parts[0]
-                last_name = name_parts[1] if len(name_parts) > 1 else ''
-                base_username = re.sub(r'[^a-z0-9]', '', (s.full_name or '').lower()) or f"staff{s.id}"
-                username = base_username
-                suffix = 1
-                while Account.query.filter_by(username=username).first():
-                    username = f"{base_username}{suffix}"
-                    suffix += 1
+            has_unlinked = (
+                Staff.query.filter(Staff.account_id.is_(None)).first() is not None or
+                Guest.query.filter(Guest.account_id.is_(None)).first() is not None
+            )
 
-                email = (s.email or '').strip().lower() or f"{username}@adthysia.com"
-                suffix = 1
-                base_email = email
-                while Account.query.filter_by(email=email).first():
-                    email_parts = base_email.split('@')
-                    email = f"{email_parts[0]}{suffix}@{email_parts[1]}"
-                    suffix += 1
+            if has_unlinked:
+                unlinked_staff = Staff.query.filter(Staff.account_id.is_(None)).all()
+                for s in unlinked_staff:
+                    name_parts = (s.full_name or 'Staff').strip().split(' ', 1)
+                    first_name = name_parts[0]
+                    last_name = name_parts[1] if len(name_parts) > 1 else ''
+                    base_username = re.sub(r'[^a-z0-9]', '', (s.full_name or '').lower()) or f"staff{s.id}"
+                    username = base_username
+                    suffix = 1
+                    while Account.query.filter_by(username=username).first():
+                        username = f"{base_username}{suffix}"
+                        suffix += 1
 
-                acc = Account(
-                    username=username,
-                    email=email,
-                    first_name=first_name,
-                    last_name=last_name,
-                    role='staff',
-                    rfid_tag=s.rfid_tag,
-                    status=s.status or 'active'
-                )
-                acc.set_password('Staff@123')
-                db.session.add(acc)
-                db.session.flush()
+                    email = (s.email or '').strip().lower() or f"{username}@adthysia.com"
+                    suffix = 1
+                    base_email = email
+                    while Account.query.filter_by(email=email).first():
+                        email_parts = base_email.split('@')
+                        email = f"{email_parts[0]}{suffix}@{email_parts[1]}"
+                        suffix += 1
 
-                s.account_id = acc.id
-                s.email = email
+                    acc = Account(
+                        username=username,
+                        email=email,
+                        first_name=first_name,
+                        last_name=last_name,
+                        role='staff',
+                        rfid_tag=s.rfid_tag,
+                        status=s.status or 'active'
+                    )
+                    acc.set_password('Staff@123')
+                    db.session.add(acc)
+                    db.session.flush()
 
-            unlinked_guests = Guest.query.filter(Guest.account_id.is_(None)).all()
-            for g in unlinked_guests:
-                name_parts = (g.full_name or 'Guest').strip().split(' ', 1)
-                first_name = name_parts[0]
-                last_name = name_parts[1] if len(name_parts) > 1 else ''
-                base_username = re.sub(r'[^a-z0-9]', '', (g.full_name or '').lower()) or f"guest{g.id}"
-                username = base_username
-                suffix = 1
-                while Account.query.filter_by(username=username).first():
-                    username = f"{base_username}{suffix}"
-                    suffix += 1
+                    s.account_id = acc.id
+                    s.email = email
 
-                email = (g.email or '').strip().lower() or f"{username}@guest.adthysia.com"
-                suffix = 1
-                base_email = email
-                while Account.query.filter_by(email=email).first():
-                    email_parts = base_email.split('@')
-                    email = f"{email_parts[0]}{suffix}@{email_parts[1]}"
-                    suffix += 1
+                unlinked_guests = Guest.query.filter(Guest.account_id.is_(None)).all()
+                for g in unlinked_guests:
+                    name_parts = (g.full_name or 'Guest').strip().split(' ', 1)
+                    first_name = name_parts[0]
+                    last_name = name_parts[1] if len(name_parts) > 1 else ''
+                    base_username = re.sub(r'[^a-z0-9]', '', (g.full_name or '').lower()) or f"guest{g.id}"
+                    username = base_username
+                    suffix = 1
+                    while Account.query.filter_by(username=username).first():
+                        username = f"{base_username}{suffix}"
+                        suffix += 1
 
-                acc = Account(
-                    username=username,
-                    email=email,
-                    first_name=first_name,
-                    last_name=last_name,
-                    role='guest',
-                    status='active'
-                )
-                acc.set_password('Guest@123')
-                db.session.add(acc)
-                db.session.flush()
+                    email = (g.email or '').strip().lower() or f"{username}@guest.adthysia.com"
+                    suffix = 1
+                    base_email = email
+                    while Account.query.filter_by(email=email).first():
+                        email_parts = base_email.split('@')
+                        email = f"{email_parts[0]}{suffix}@{email_parts[1]}"
+                        suffix += 1
 
-                g.account_id = acc.id
-                g.email = email
+                    acc = Account(
+                        username=username,
+                        email=email,
+                        first_name=first_name,
+                        last_name=last_name,
+                        role='guest',
+                        status='active'
+                    )
+                    acc.set_password('Guest@123')
+                    db.session.add(acc)
+                    db.session.flush()
 
-            if unlinked_staff or unlinked_guests:
+                    g.account_id = acc.id
+                    g.email = email
+
                 db.session.commit()
         except Exception as e:
             print(f"[STARTUP] Could not sync unlinked accounts: {e}")
 
-        # Auto-sync RFID cards from Staff who have rfid_tag
+        # Seed initial RFID cards only if table is completely empty
         try:
             from app.models import Staff, RFIDCard, AttendanceLog
-            staff_with_rfid = Staff.query.filter(Staff.rfid_tag.isnot(None)).all()
-            synced_rfid = 0
-            for s in staff_with_rfid:
-                existing_card = RFIDCard.query.filter_by(card_uid=s.rfid_tag).first()
-                if not existing_card:
-                    # Look up last attendance log for last_used_at
+            if not RFIDCard.query.first():
+                staff_with_rfid = Staff.query.filter(Staff.rfid_tag.isnot(None)).all()
+                synced_rfid = 0
+                for s in staff_with_rfid:
                     last_log = AttendanceLog.query.filter(
                         (AttendanceLog.rfid_tap_in == s.rfid_tag) | (AttendanceLog.rfid_tap_out == s.rfid_tag)
                     ).order_by(AttendanceLog.time_in.desc()).first()
@@ -332,13 +318,10 @@ def create_app(config_class=Config):
                     )
                     db.session.add(card)
                     synced_rfid += 1
-                elif existing_card.staff_id != s.id:
-                    existing_card.staff_id = s.id
-                    synced_rfid += 1
 
-            if synced_rfid:
-                db.session.commit()
-                print(f"[STARTUP] Synced {synced_rfid} RFID cards.")
+                if synced_rfid:
+                    db.session.commit()
+                    print(f"[STARTUP] Initialized {synced_rfid} RFID cards.")
         except Exception as e:
             print(f"[STARTUP] Could not sync RFID cards: {e}")
 

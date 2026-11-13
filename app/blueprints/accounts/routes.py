@@ -1,6 +1,7 @@
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_required
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
+from sqlalchemy.exc import IntegrityError
 from app.blueprints.accounts import accounts_bp
 from app.decorators import admin_required, log_action
 from app.models import Account, Staff, Guest
@@ -74,48 +75,64 @@ def index():
         tab = 'admins'
 
     page = request.args.get('page', 1, type=int)
+    search_term = request.args.get('search', '', type=str).strip() if tab == 'guests' else ''
 
-    # Admins tab — accounts only, no join needed
-    admin_accounts = Account.query.filter(
-        Account.role.in_(['admin', 'super_admin'])
-    ).order_by(Account.created_at.desc()).all()
-
-    # Staff tab — accounts with role='staff', left-joined to staff table
-    # Use select() + manual pagination (compatible with Flask-SQLAlchemy 3.x)
-    PER_PAGE_STAFF = 20
-    staff_base = (
-        select(Account, Staff)
-        .outerjoin(Staff, Staff.account_id == Account.id)
-        .where(Account.role == 'staff')
-        .order_by(Account.first_name, Account.last_name)
-    )
-    staff_total = db.session.execute(
-        select(func.count()).select_from(
-            Account
-        ).where(Account.role == 'staff')
-    ).scalar() or 0
-    staff_rows = db.session.execute(
-        staff_base.offset((page - 1) * PER_PAGE_STAFF).limit(PER_PAGE_STAFF)
-    ).all()
-    staff_accounts = _Pagination(staff_rows, staff_total, page, PER_PAGE_STAFF)
-
-    # Guests tab — accounts with role='guest', left-joined to guests table
+    PER_PAGE_STAFF = 8
     PER_PAGE_GUESTS = 10
-    guest_base = (
-        select(Account, Guest)
-        .outerjoin(Guest, Guest.account_id == Account.id)
-        .where(Account.role == 'guest')
-        .order_by(Account.first_name, Account.last_name)
-    )
-    guest_total = db.session.execute(
-        select(func.count()).select_from(
-            Account
-        ).where(Account.role == 'guest')
-    ).scalar() or 0
-    guest_rows = db.session.execute(
-        guest_base.offset((page - 1) * PER_PAGE_GUESTS).limit(PER_PAGE_GUESTS)
-    ).all()
-    guest_accounts = _Pagination(guest_rows, guest_total, page, PER_PAGE_GUESTS)
+
+    admin_accounts = []
+    staff_accounts = _Pagination([], 0, page, PER_PAGE_STAFF)
+    guest_accounts = _Pagination([], 0, page, PER_PAGE_GUESTS)
+
+    # Load data ONLY for the active tab to prevent slow redundant queries
+    if tab == 'admins':
+        admin_accounts = Account.query.filter(
+            Account.role.in_(['admin', 'super_admin'])
+        ).order_by(Account.created_at.desc()).all()
+    elif tab == 'staff':
+        staff_base = (
+            select(Account, Staff)
+            .outerjoin(Staff, Staff.account_id == Account.id)
+            .where(Account.role == 'staff')
+            .order_by(Account.first_name, Account.last_name)
+        )
+        staff_total = db.session.execute(
+            select(func.count()).select_from(Account).where(Account.role == 'staff')
+        ).scalar() or 0
+        staff_rows = db.session.execute(
+            staff_base.offset((page - 1) * PER_PAGE_STAFF).limit(PER_PAGE_STAFF)
+        ).all()
+        staff_accounts = _Pagination(staff_rows, staff_total, page, PER_PAGE_STAFF)
+    elif tab == 'guests':
+        guest_filters = [Account.role == 'guest']
+        if search_term:
+            search_pattern = f'%{search_term}%'
+            guest_filters.append(or_(
+                Guest.full_name.ilike(search_pattern),
+                Account.first_name.ilike(search_pattern),
+                Account.last_name.ilike(search_pattern),
+                Account.username.ilike(search_pattern),
+                Account.email.ilike(search_pattern),
+                Guest.email.ilike(search_pattern),
+                Guest.phone.ilike(search_pattern),
+            ))
+
+        guest_base = (
+            select(Account, Guest)
+            .outerjoin(Guest, Guest.account_id == Account.id)
+            .where(*guest_filters)
+            .order_by(Account.first_name, Account.last_name)
+        )
+        guest_total = db.session.execute(
+            select(func.count(func.distinct(Account.id)))
+            .select_from(Account)
+            .outerjoin(Guest, Guest.account_id == Account.id)
+            .where(*guest_filters)
+        ).scalar() or 0
+        guest_rows = db.session.execute(
+            guest_base.offset((page - 1) * PER_PAGE_GUESTS).limit(PER_PAGE_GUESTS)
+        ).all()
+        guest_accounts = _Pagination(guest_rows, guest_total, page, PER_PAGE_GUESTS)
 
     return render_template(
         'accounts/index.html',
@@ -123,6 +140,7 @@ def index():
         staff_accounts=staff_accounts,
         guest_accounts=guest_accounts,
         tab=tab,
+        search_term=search_term,
     )
 
 
@@ -437,6 +455,20 @@ def edit_staff(id):
         flash('Full name is required.', 'error')
         return redirect(url_for('accounts.index', tab='staff'))
 
+    # Normalize the number before checking it so a +63 number cannot bypass
+    # the existing 09-format unique constraint.
+    phone_clean = phone.replace(' ', '').replace('-', '')
+    if phone_clean.startswith('+63'):
+        phone_clean = '0' + phone_clean[3:]
+
+    if phone_clean:
+        phone_query = Staff.query.filter(Staff.phone == phone_clean)
+        if account.staff_profile:
+            phone_query = phone_query.filter(Staff.id != account.staff_profile.id)
+        if phone_query.first():
+            flash('That phone number is already assigned to another staff member. Please use a different number.', 'error')
+            return redirect(url_for('accounts.index', tab='staff'))
+
     if username and username != account.username.lower():
         if len(username) < 3:
             flash('Username must be at least 3 characters long.', 'error')
@@ -484,7 +516,7 @@ def edit_staff(id):
         if role:
             sp.role = role
         sp.shift = shift
-        sp.phone = phone or None
+        sp.phone = phone_clean or None
         sp.rfid_tag = account.rfid_tag
         sp.email = account.email
         sp.status = account.status
@@ -494,7 +526,7 @@ def edit_staff(id):
             full_name=account.full_name,
             role=role or 'staff',
             shift=shift,
-            phone=phone or None,
+            phone=phone_clean or None,
             rfid_tag=account.rfid_tag,
             email=account.email,
             status=account.status,
@@ -505,9 +537,17 @@ def edit_staff(id):
         db.session.commit()
         log_action(f'Updated staff account: {account.username}', 'Account', id)
         flash(f'Staff member {account.full_name} updated successfully.', 'success')
-    except Exception as e:
+    except IntegrityError as e:
         db.session.rollback()
-        flash(f'Error updating staff member: {str(e)}', 'error')
+        if 'staff_phone_unique' in str(e.orig):
+            flash('That phone number is already assigned to another staff member. Please use a different number.', 'error')
+        else:
+            current_app.logger.exception('Could not update staff account %s.', id)
+            flash('Could not update staff member because one of the details is already in use.', 'error')
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Could not update staff account %s.', id)
+        flash('Could not update staff member. Please review the details and try again.', 'error')
 
     return redirect(url_for('accounts.index', tab='staff'))
 
