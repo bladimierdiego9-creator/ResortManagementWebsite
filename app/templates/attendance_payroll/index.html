@@ -157,6 +157,10 @@
        class="tab {% if tab == 'payroll' %}active{% endif %}">Payroll</a>
 </div>
 
+{% if tab in ('attendance', 'payroll') %}
+{% include 'attendance_payroll/live_shifts.html' %}
+{% endif %}
+
 <!-- ATTENDANCE TAB -->
 {% if tab == 'attendance' %}
 <div class="card">

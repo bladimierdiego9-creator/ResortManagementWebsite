@@ -152,6 +152,55 @@ def index():
                            sort_order=sort_order)
 
 
+@attendance_payroll_bp.get('/api/live-shifts')
+@login_required
+@admin_required
+def live_shifts():
+    """Read RFID shifts directly from the shared database."""
+    # Mobile stores Philippine wall time in timestamp-without-time-zone columns.
+    from datetime import timezone
+    from sqlalchemy import inspect, text
+
+    if not inspect(db.engine).has_table('staff_shifts'):
+        return jsonify(error='The shared staff shifts table is unavailable.'), 503
+
+    now = datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
+    rows = db.session.execute(text("""
+        SELECT s.id, s.clock_in_at, s.clock_out_at, s.status,
+               COALESCE(p.full_name, 'Unknown staff') AS staff_name
+        FROM staff_shifts AS s
+        LEFT JOIN staff AS p ON p.id = s.staff_id
+        WHERE s.status != 'voided'
+        ORDER BY s.clock_in_at DESC, s.id DESC
+        LIMIT 50
+    """)).mappings()
+    records = []
+    for row in rows:
+        start, end = row['clock_in_at'], row['clock_out_at']
+        evening = start.time() >= time(17, 45)
+        night = evening or start.time() < time(6)
+        shift_date = start.date() - timedelta(days=int(night and not evening))
+        scheduled_start = datetime.combine(shift_date, time(18 if night else 7))
+        scheduled_end = datetime.combine(
+            shift_date + timedelta(days=int(night)), time(6 if night else 17)
+        )
+        pay = None
+        if end is not None and row['status'] == 'completed':
+            minutes = int((end - scheduled_end).total_seconds() / 60)
+            pay = round(max(0, (960 if night else 800) + minutes * 80 / 60), 2)
+        records.append({
+            'staff': row['staff_name'],
+            'tour': 'Night' if night else 'Day',
+            'clock_in': start.strftime('%b %d, %I:%M %p'),
+            'clock_out': end.strftime('%b %d, %I:%M %p') if end else None,
+            'attendance': 'Late' if start > scheduled_start + timedelta(minutes=15) else 'On time',
+            'pay': pay,
+        })
+    return jsonify(records=records, updated=now.strftime('%I:%M:%S %p')), 200, {
+        'Cache-Control': 'private, no-store',
+    }
+
+
 @attendance_payroll_bp.route('/api/rfid/scan', methods=['POST'])
 def device_rfid_scan():
     """Authenticated ESP32 endpoint; writes into the existing attendance system."""
