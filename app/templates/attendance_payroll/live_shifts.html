@@ -1,0 +1,51 @@
+<section class="card mb-24" data-live-shifts-url="{{ url_for('attendance_payroll.live_shifts') }}">
+    <div class="card-header">
+        <span class="card-title">RFID Attendance &amp; Shift Payroll</span>
+        <span data-shift-status role="status">Loading…</span>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Staff</th><th>Tour</th><th>Clock In</th><th>Clock Out</th><th>Attendance</th><th>Shift Pay</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</section>
+<script>
+(() => {
+    const panel = document.currentScript.previousElementSibling;
+    const body = panel.querySelector('tbody');
+    const status = panel.querySelector('[data-shift-status]');
+    const currency = new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' });
+
+    async function refresh() {
+        try {
+            const response = await fetch(panel.dataset.liveShiftsUrl, {
+                headers: { Accept: 'application/json' },
+                cache: 'no-store',
+                redirect: 'error'
+            });
+            if (!response.ok) throw new Error('Shift feed unavailable');
+            const { records, updated } = await response.json();
+            const rows = records.map(record => {
+                const row = document.createElement('tr');
+                for (const value of [record.staff, record.tour, record.clock_in,
+                    record.clock_out ?? 'On duty', record.attendance,
+                    record.pay === null ? 'Pending clock out' : currency.format(record.pay)]) {
+                    row.insertCell().textContent = value;
+                }
+                return row;
+            });
+            body.replaceChildren(...rows);
+            status.textContent = records.length ? 'Updated ' + updated + ' PHT' : 'No RFID shifts recorded';
+        } catch {
+            status.textContent = 'Unable to refresh RFID shifts';
+        } finally {
+            setTimeout(refresh, 5000);
+        }
+    }
+
+    refresh();
+})();
+</script>
