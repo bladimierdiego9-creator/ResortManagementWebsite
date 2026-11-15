@@ -77,7 +77,7 @@ if _on_vercel and _shared_pooler and _parsed_db_url.port in (None, 5432):
     _db_url = _parsed_db_url.set(port=6543)
 
 # SQLite doesn't support connect_timeout — only pass it for Postgres
-_is_sqlite = _db_url.startswith('sqlite')
+_is_sqlite = _parsed_db_url.get_backend_name() == 'sqlite'
 _engine_options = {
     'pool_pre_ping': True,
     'pool_recycle': 300,
