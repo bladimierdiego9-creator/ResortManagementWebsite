@@ -161,7 +161,7 @@ def live_shifts():
     from datetime import timezone
     from sqlalchemy import inspect, text
 
-    if not inspect(db.engine).has_table('staff_shifts'):
+    if not inspect(db.session.connection()).has_table('staff_shifts'):
         return jsonify(error='The shared staff shifts table is unavailable.'), 503
 
     now = datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)

@@ -3,6 +3,7 @@ from datetime import timedelta
 from urllib.parse import quote
 
 from dotenv import load_dotenv
+from sqlalchemy.pool import NullPool
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'), override=True)
@@ -79,6 +80,13 @@ _engine_options = {
 }
 if not _is_sqlite:
     _engine_options['connect_args'] = {'connect_timeout': 10}
+    if os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'):
+        # The Supabase session pooler limits concurrent clients across instances.
+        # Release its connection when Flask tears down each request.
+        _engine_options = {
+            'poolclass': NullPool,
+            'connect_args': {'connect_timeout': 10},
+        }
 
 
 class Config:
