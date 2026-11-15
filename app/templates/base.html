@@ -146,6 +146,17 @@
                 </a>
             </li>
             <li>
+                <a href="{{ url_for('admin.walk_ins') }}"
+                   class="nav-item {% if request.endpoint == 'admin.walk_ins' %}active{% endif %}" data-nav-link>
+                    <span class="nav-icon" aria-hidden="true">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24">
+                            <path d="M8 3h8v4h4v14H4V7h4V3zm0 9h8m-8 4h8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                    Walk-in Records
+                </a>
+            </li>
+            <li>
                 <a href="{{ url_for('attendance_payroll.index', tab='rfid') }}"
                    class="nav-item {% if request.blueprint == 'attendance_payroll' and request.args.get('tab') == 'rfid' %}active{% endif %}" data-nav-link>
                     <span class="nav-icon">

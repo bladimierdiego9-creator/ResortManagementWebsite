@@ -1,13 +1,47 @@
-from flask import render_template, jsonify, request as req, render_template_string
+from flask import render_template, jsonify, request, render_template_string
 from flask_login import login_required, current_user
 from app.blueprints.admin import admin_bp
 from app.decorators import admin_required
 from app.models import Reservation, Payment, Staff, AttendanceLog, AIChatLog, Guest, Facility
 from app.extensions import db, cache
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 import calendar as cal_module
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import joinedload
+
+
+@admin_bp.get('/walk-ins')
+@login_required
+@admin_required
+def walk_ins():
+    """Read the same walk-in records that staff enter in the mobile app."""
+    resort_time = timezone(timedelta(hours=8))
+    today = datetime.now(resort_time).date()
+    try:
+        selected_date = date.fromisoformat(request.args.get('date', today.isoformat()))
+        start = datetime.combine(selected_date, time.min, tzinfo=resort_time)
+        end = start + timedelta(days=1)
+    except (ValueError, OverflowError):
+        return 'Invalid walk-in date.', 400
+
+    records = db.session.execute(text("""
+        SELECT h.recorded_at, h.visit_type, h.adults, h.kids, h.toddlers,
+               h.seniors, h.total_amount, h.paid, h.payment_method, h.status,
+               h.void_reason, to_jsonb(h)->'inclusions' AS inclusions
+        FROM public.headcount_records AS h
+        WHERE h.recorded_at >= :start AND h.recorded_at < :end
+        ORDER BY h.recorded_at DESC, h.id DESC
+    """), {'start': start, 'end': end}).mappings().all()
+
+    active = [row for row in records if row.status == 'active']
+    return render_template(
+        'admin/walk_ins.html', records=records, selected_date=selected_date,
+        resort_time=resort_time,
+        guests=sum(row.adults + row.kids + row.toddlers + row.seniors for row in active),
+        collected=sum(row.total_amount for row in active if row.paid),
+        unpaid=sum(row.total_amount for row in active if not row.paid),
+        cash=sum(row.total_amount for row in active if row.paid and row.payment_method == 'cash'),
+    ), 200, {'Cache-Control': 'private, no-store'}
 
 
 def _fmt_clock_time(value):
@@ -26,8 +60,8 @@ def api_bookings():
     FullCalendar sends ?start=YYYY-MM-DD&end=YYYY-MM-DD when navigating months."""
     from app.models import Booking
     
-    start_str = req.args.get('start', '')
-    end_str   = req.args.get('end', '')
+    start_str = request.args.get('start', '')
+    end_str   = request.args.get('end', '')
 
     cache_key = f"calendar:events:{start_str[:10]}:{end_str[:10]}"
     cached_events = cache.get(cache_key)

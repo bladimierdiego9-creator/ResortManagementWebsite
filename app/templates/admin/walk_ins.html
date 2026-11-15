@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Walk-in Records — A&D Thysia{% endblock %}
+{% block breadcrumb %}Walk-in Records{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Walk-in Records</h1>
+        <p class="page-subtitle">Entries recorded in the staff app. Times are in PHT.</p>
+    </div>
+    <form method="get" class="flex items-center gap-8">
+        <label for="walk-in-date">Date</label>
+        <input class="form-input" id="walk-in-date" name="date" type="date" value="{{ selected_date.isoformat() }}" required>
+        <button class="btn btn-secondary" type="submit">View records</button>
+    </form>
+</div>
+
+<div class="stats-grid">
+    {% for label, value in [('Guests', guests), ('Collected', format_currency(collected)), ('Unpaid', format_currency(unpaid)), ('Cash', format_currency(cash))] %}
+    <div class="stat-card">
+        <span class="stat-label">{{ label }}</span>
+        <span class="stat-value">{{ value }}</span>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <div class="card-header"><span class="card-title">Records ({{ records|length }})</span></div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Time</th><th>Package</th><th>Adults</th><th>Kids</th><th>Toddlers</th><th>Seniors</th><th>Inclusions</th><th>Total</th><th>Payment</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                {% for row in records %}
+                <tr>
+                    <td>{{ row.recorded_at.astimezone(resort_time).strftime('%I:%M %p') }}</td>
+                    <td>{{ 'Day Tour' if row.visit_type == 'day_tour' else 'Overnight' }}</td>
+                    <td>{{ row.adults }}</td><td>{{ row.kids }}</td><td>{{ row.toddlers }}</td><td>{{ row.seniors }}</td>
+                    <td>
+                        {% for item, quantity in (row.inclusions or {}).items() if quantity %}
+                        <div>{{ quantity }} × {{ item.replace('_', ' ')|title }}</div>
+                        {% else %}—{% endfor %}
+                    </td>
+                    <td>{{ format_currency(row.total_amount) }}</td>
+                    <td>{{ row.payment_method.replace('_', ' ')|title if row.paid else 'Unpaid' }}</td>
+                    <td>{{ row.status|title }}{% if row.void_reason %}<div>{{ row.void_reason }}</div>{% endif %}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="10" class="text-center text-muted">No walk-ins recorded for this date.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
