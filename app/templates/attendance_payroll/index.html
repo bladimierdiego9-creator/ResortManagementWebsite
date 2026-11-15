@@ -161,73 +161,8 @@
 {% include 'attendance_payroll/live_shifts.html' %}
 {% endif %}
 
-<!-- ATTENDANCE TAB -->
-{% if tab == 'attendance' %}
-<div class="card">
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Staff</th>
-                    <th>Role</th>
-                    <th>Time In</th>
-                    <th>Time Out</th>
-                    <th>Duration</th>
-                    <th>Status</th>
-                    <th>RFID</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for log in attendance_logs.items %}
-                <tr>
-                    <td class="font-semibold">{{ log.staff.full_name }}</td>
-                    <td>{{ log.staff.role.replace('_', ' ').title() }}</td>
-                    <td>{{ log.time_in.strftime('%b %d, %H:%M') }}</td>
-                    <td>
-                        {% if log.time_out %}
-                        {{ log.time_out.strftime('%H:%M') }}
-                        {% else %}
-                        <span class="badge badge-confirmed" style="font-size:11px;">Active</span>
-                        {% endif %}
-                    </td>
-                    <td class="text-muted">
-                        {% if log.time_out %}
-                        {% set mins = ((log.time_out - log.time_in).total_seconds() / 60) | int %}
-                        {{ (mins // 60) }}h {{ (mins % 60) }}m
-                        {% else %}—{% endif %}
-                    </td>
-                    <td>
-                        <span class="att-dot {{ log.status }}"></span>
-                        <span class="badge badge-{{ log.status }}">{{ log.status.replace('_', ' ').title() }}</span>
-                    </td>
-                    <td class="text-muted" style="font-size:12px;">{{ log.rfid_tap_in or '—' }}</td>
-                </tr>
-                {% else %}
-                <tr><td colspan="7" class="text-center text-muted" style="padding:36px;">No attendance logs.</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% if attendance_logs.pages > 1 %}
-    <div class="card-footer flex items-center justify-between">
-        <span class="text-muted" style="font-size:13px;">Page {{ attendance_logs.page }} of {{ attendance_logs.pages }}</span>
-        <nav class="pagination" aria-label="Pagination">
-            {% if attendance_logs.has_prev %}
-            <a href="{{ url_for('attendance_payroll.index', tab='attendance', page=attendance_logs.prev_num) }}">&laquo;</a>
-            {% endif %}
-            {% for p in attendance_logs.iter_pages() %}
-                {% if p %}<a href="{{ url_for('attendance_payroll.index', tab='attendance', page=p) }}" class="{% if p == attendance_logs.page %}current{% endif %}">{{ p }}</a>{% else %}<span>…</span>{% endif %}
-            {% endfor %}
-            {% if attendance_logs.has_next %}
-            <a href="{{ url_for('attendance_payroll.index', tab='attendance', page=attendance_logs.next_num) }}">&raquo;</a>
-            {% endif %}
-        </nav>
-    </div>
-    {% endif %}
-</div>
-
 <!-- RFID MANAGEMENT TAB -->
-{% elif tab == 'rfid' %}
+{% if tab == 'rfid' %}
 <div class="page-actions mb-16" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
     <!-- Search and Filter Form -->
     <form method="GET" action="{{ url_for('attendance_payroll.index') }}" class="flex items-center gap-8" style="flex-wrap:wrap;flex:1;">
