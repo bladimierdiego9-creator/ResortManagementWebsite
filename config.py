@@ -3,6 +3,7 @@ from datetime import timedelta
 from urllib.parse import quote
 
 from dotenv import load_dotenv
+from sqlalchemy.engine import make_url
 from sqlalchemy.pool import NullPool
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -69,6 +70,11 @@ def get_database_url():
 
 
 _db_url = get_database_url()
+_on_vercel = bool(os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'))
+_parsed_db_url = make_url(_db_url)
+_shared_pooler = (_parsed_db_url.host or '').endswith('.pooler.supabase.com')
+if _on_vercel and _shared_pooler and _parsed_db_url.port in (None, 5432):
+    _db_url = _parsed_db_url.set(port=6543)
 
 # SQLite doesn't support connect_timeout — only pass it for Postgres
 _is_sqlite = _db_url.startswith('sqlite')
@@ -80,13 +86,15 @@ _engine_options = {
 }
 if not _is_sqlite:
     _engine_options['connect_args'] = {'connect_timeout': 10}
-    if os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'):
+    if _on_vercel:
         # The Supabase session pooler limits concurrent clients across instances.
         # Release its connection when Flask tears down each request.
         _engine_options = {
             'poolclass': NullPool,
             'connect_args': {'connect_timeout': 10},
         }
+        if _shared_pooler and make_url(_db_url).port == 6543:
+            _engine_options['connect_args']['prepare_threshold'] = None
 
 
 class Config:
